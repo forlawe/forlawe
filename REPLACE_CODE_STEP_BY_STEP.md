@@ -272,7 +272,8 @@ files have drifted.
 
 | Check | Command | Result |
 |---|---|---|
-| Your test suite, before my edits | `pytest -q` | **1044 passed, 8 skipped** (16m42s) |
+| Your test suite, **before** my edits | `pytest -q` | **1044 passed, 8 skipped** (16m42s) |
+| Your test suite, **after** my edits | `pytest -q` (full suite, background) | **1044 passed, 8 skipped** (17m19s) — identical, nothing broken |
 | Tests covering the files I touched | `pytest -q tests/test_nav_links_resolve.py tests/test_navigation.py tests/test_a11y_pass.py tests/test_founder_ux.py tests/test_smoke.py tests/test_phone_look.py tests/test_patient_hub.py tests/test_onboard.py tests/test_accounts_login.py` | **74 passed** |
 | Patch fits a pristine copy of your zip | `git apply --check` then `git apply`, then `diff -q` | applied cleanly; result **byte-identical** to this workspace |
 | Live page checks | `bash deploy/03_verify.sh http://127.0.0.1:8077` | **passed: 17, failed: 0** |
