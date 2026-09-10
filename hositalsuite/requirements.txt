@@ -1,0 +1,39 @@
+# Pinned to versions that are TESTED GREEN (116/116) as of 2026-08-15.
+#
+# Why pinned: `Flask>=3.0` style ranges mean a breaking upstream release can
+# fail a deploy at the worst possible moment, with no code change on our side.
+#
+# The form `>=X,<Y` allows patch/bugfix and security releases in, while keeping
+# the next minor version out until someone has run the tests against it.
+# Upgrade deliberately: bump a pin, run `pytest`, then deploy.
+
+Flask>=3.1.3,<3.2
+Flask-Login>=0.6.3,<0.7
+Flask-SQLAlchemy>=3.1.1,<3.2
+SQLAlchemy>=2.0.52,<2.1
+Werkzeug>=3.1.8,<3.2
+Jinja2>=3.1.6,<3.2
+alembic>=1.19.1,<1.20
+reportlab>=5.0.0,<5.1
+qrcode>=8.2,<9
+Pillow>=12.3.0,<13
+requests>=2.33.0,<3
+openpyxl>=3.1.5,<3.2
+psycopg2-binary>=2.9.12,<3
+python-dotenv>=1.2.2,<2
+gunicorn>=26.0.0,<27
+pytest>=9.0.3,<10
+# F-009: coverage reporting — "792 tests pass" says nothing about which code
+# they exercise. Run `pytest --cov=app --cov-report=term` and read the number.
+pytest-cov>=7.0.0,<8
+# Phase 1 hardening: Redis for shared rate limiting + caching (expert review S5)
+redis>=5.0.0,<6
+# Observability: error tracking (expert review Phase 2)
+sentry-sdk[flask]>=2.20.0,<3
+# Object storage for file uploads (expert review D1) — optional, only needed if STORAGE_BACKEND=s3
+boto3>=1.35.0,<2
+botocore>=1.35.0,<2
+# v2 Push — Web Push VAPID, works closed like alarm, free, cost saver
+pywebpush>=1.14.0,<2
+# Cryptography for VAPID keys
+cryptography>=45.0.0,<46

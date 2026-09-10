@@ -1,0 +1,65 @@
+# --- secrets & local configuration ---
+.env
+.secret_key
+*.pem
+*.key
+instance/
+vapid_keys.json
+private_key.pem
+public_key.pem
+
+# --- live data: database, uploads, reports, backups (never commit) ---
+data/
+
+# --- session artifacts from local testing ---
+# These are curl cookie jars containing REAL signed session cookies. Seven of
+# them were committed by accident and have been removed from the repo; this
+# pattern set stops it happening again. Never commit a cookie jar or a token.
+cookies.txt
+pub_cookies.txt
+adm.txt
+adm*.txt
+hod.txt
+md.txt
+md*.txt
+fin.txt
+pub.txt
+lang.txt
+t.txt
+u.txt
+*.cookies
+*cookies*.txt
+
+# --- logs ---
+*.log
+
+# --- Python ---
+.coverage
+htmlcov/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# AI master for app icons — only the sized PNGs ship
+app/static/icons/icon-source.png
+
+# --- OS / editor ---
+.DS_Store
+.idea/
+.vscode/
+loadtest/results/*.csv
+ss.txt
+*.txt.cookies
+md2.txt
+lang.txt
+
+# --- CI workflow (F-001) ---
+# The active workflow copy is prepared here locally, but this GitHub App token
+# cannot push workflow files (workflows:write permission). Activation is a
+# manual step documented in ci/README.md — DO NOT git-add this directory until
+# pushing with a token that has the workflow scope.
+.github/

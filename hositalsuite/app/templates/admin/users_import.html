@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}Bulk staff upload{% endblock %}
+{% block content %}
+<h1>📋 Bulk staff upload</h1>
+<p class="muted">Add many staff at once from a spreadsheet, instead of typing each one.
+  Nothing is saved until you have seen a preview and pressed confirm.</p>
+
+<div class="card pad-lg mb" style="max-width:720px">
+  <h2 style="margin-top:0">Step 1 — Start from a template</h2>
+  <p class="muted" style="margin-top:0">Download one, fill in your staff, then upload it below.
+    Already have a list in Excel? Skip this — we accept your own columns too.</p>
+  <div class="row" style="gap:8px;flex-wrap:wrap">
+    <a class="btn small secondary" href="/admin/users/import/template?kind=nominal">
+      ⬇ Nominal roll (all staff)</a>
+    <a class="btn small secondary" href="/admin/users/import/template?kind=department">
+      ⬇ Departmental list</a>
+    <a class="btn small secondary" href="/admin/users/import/template?kind=unit">
+      ⬇ Unit / section list</a>
+  </div>
+</div>
+
+<div class="card pad-lg mb" style="max-width:720px">
+  <h2 style="margin-top:0">Step 2 — Upload your file</h2>
+  <form method="post" action="/admin/users/import" enctype="multipart/form-data">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+
+    <label>Spreadsheet <span class="req">*</span></label>
+    <input type="file" name="file" accept=".csv,.xlsx" required>
+    <p class="hint">CSV or Excel (.xlsx), up to 2,000 staff per file.</p>
+
+    <label>If a row has no department, put them in</label>
+    <select name="default_department_id">
+      <option value="">— leave unassigned —</option>
+      {% for d in depts %}<option value="{{ d.id }}">{{ d.name }}</option>{% endfor %}
+    </select>
+    <p class="hint">Useful when you are uploading one department's list at a time.</p>
+
+    <button class="btn big mt">Preview the import →</button>
+  </form>
+</div>
+
+<div class="card pad" style="max-width:720px">
+  <h2 style="margin-top:0">What the file needs</h2>
+  <p class="muted" style="margin-top:0">A header row, then one staff member per line.
+    Only <b>Name</b> is required.</p>
+  <table class="table">
+    <thead><tr><th>Column</th><th>Required</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td><b>Name</b></td><td>Yes</td><td>e.g. <code>MRS ODEBE IDEHAI</code> — titles are handled</td></tr>
+      <tr><td>Department</td><td>No</td><td>Must match a department you already have</td></tr>
+      <tr><td>Phone</td><td>No</td><td>e.g. <code>08028327098</code></td></tr>
+      <tr><td>Email</td><td>No</td><td></td></tr>
+      <tr><td>Designation</td><td>No</td><td>e.g. <code>HOD</code>, <code>Nurse</code>, <code>Admin Manager</code></td></tr>
+    </tbody>
+  </table>
+  <p class="hint">We also recognise other common headings — Staff Name, Dept, GSM, Mobile,
+    Cadre, Position and so on. Your existing spreadsheet will probably just work.</p>
+
+  <div class="notice mt">
+    <b>What happens to each new account</b>
+    <ul style="margin:6px 0 0 18px">
+      <li>A username is created from the name (<code>MRS ODEBE IDEHAI</code> → <code>odebe.idehai</code>)</li>
+      <li>A random temporary password is set — you will see the list once, at the end</li>
+      <li>They must change that password the first time they sign in</li>
+      <li>They start <b>awaiting your approval</b> and cannot sign in until you approve them</li>
+    </ul>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}My consulting room{% endblock %}
+{% block content %}
+<h1>🚪 My consulting room</h1>
+
+{% if session and session.is_open %}
+  <div class="card pad-lg mb" style="border-left:6px solid #1a7f37">
+    <div class="spread">
+      <div>
+        <div style="font-size:1.1rem;font-weight:800">🟢 You are ready to consult</div>
+        <div class="muted">{{ clinic_labels.get(session.clinic, session.clinic) }}
+          · {{ session.consulting_room }}</div>
+      </div>
+      <form method="post" action="/triage/not-ready">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        <button class="btn small secondary">Stop taking patients</button>
+      </form>
+    </div>
+  </div>
+{% else %}
+  <div class="card pad-lg mb">
+    <h2 style="margin-top:0">Tell Triage you are ready</h2>
+    {% if not available and not session %}
+    <p class="hint">You must also be on today's roster. If you are not, Triage
+      cannot send you patients even after clicking ready.</p>
+    {% endif %}
+    <form method="post" action="/triage/ready">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <div class="grid cols2">
+        <div><label style="margin-top:0">Clinic</label>
+          <select name="clinic" required>
+            {% for code, label in clinics %}<option value="{{ code }}">{{ label }}</option>{% endfor %}
+          </select></div>
+        <div><label style="margin-top:0">Consulting room</label>
+          <select name="consulting_room" required>
+            {% for r in rooms %}<option value="{{ r }}">{{ r }}</option>{% endfor %}
+          </select></div>
+      </div>
+      <button class="btn big mt">🟢 I am ready to consult</button>
+    </form>
+  </div>
+{% endif %}
+
+<h2>My call room queue</h2>
+{% if not queue %}
+  <div class="card pad-lg"><p class="muted" style="margin:0">
+    No patients yet. Triage will send them to you and you will hear the call.</p></div>
+{% else %}
+  {% for v in queue %}
+  {% set p = patients.get(v.patient_id) %}
+  <div class="card pad-lg mb">
+    <div class="spread">
+      <div>
+        <div style="font-size:1.05rem;font-weight:800">{{ p.full_name if p else '—' }}</div>
+        <div class="muted" style="font-size:.85rem">
+          {{ p.hospital_number if p }} · {{ clinic_labels.get(v.clinic, v.clinic) }}</div>
+      </div>
+      <span class="pill {{ 'green' if v.status == 'IN_CONSULTATION' else 'amber' }}">{{ v.status }}</span>
+    </div>
+    {% if p and p.care_flags %}
+    <div class="notice mt" style="text-align:left">
+      <b>⚠ Needs help:</b> {{ p.care_flags | join(' · ') }}</div>
+    {% endif %}
+  </div>
+  {% endfor %}
+{% endif %}
+{% endblock %}

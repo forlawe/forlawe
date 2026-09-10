@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Your hospital is ready{% endblock %}
+{% block content %}
+<div class="card pad-lg mb" style="border-left:6px solid var(--primary)">
+  <h1>Your hospital is ready</h1>
+  <p>{{ org.name if org else 'Your hospital' }} is open. You are signed in.
+    Voice reminders stay on — tap once if the phone asks for permission to speak.</p>
+</div>
+
+<div class="card mb">
+  <h2>How a patient moves</h2>
+  <p class="muted">Do these in this order. The doctor chooses the last desks.</p>
+  <div class="grid cols2">
+    <div class="list-item"><b>1. Booking</b><div class="muted">Patient picks a day from their phone.</div></div>
+    <div class="list-item"><b>2. Register (HIMS)</b><div class="muted">Open one folder. Never a second folder for the same person.</div></div>
+    <div class="list-item"><b>3. Triage</b><div class="muted">Nurse places them for a ready room.</div></div>
+    <div class="list-item"><b>4. Consulting room</b><div class="muted">Doctor sees them, then sends them on.</div></div>
+    <div class="list-item"><b>5. Next desk</b><div class="muted">LAHSMA, Billing, Pay Point, Lab, Pharmacy or Emergency — one, two or three.</div></div>
+  </div>
+</div>
+
+<div class="card mb">
+  <h2>Do these next (about 10 minutes)</h2>
+  <a class="list-item" href="/admin/users">👥 Add staff — one person per desk</a>
+  <a class="list-item" href="/admin/posters">🖨 Print QR posters for Reception</a>
+  <a class="list-item" href="/admin/security">🔒 Turn on a phone code for Super Admin</a>
+  <a class="list-item" href="/admin/hospital">🎨 Check the logo and colours</a>
+  <a class="list-item" href="/admin/branches">🏢 Name the annex if you have two sites</a>
+  <a class="list-item" href="/welcome">👁 See what a patient sees</a>
+</div>
+
+<form method="post" action="/start/guide-done">
+  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+  <button class="btn big">Take me to the dashboard</button>
+</form>
+{% endblock %}
+{% block scripts %}
+<script nonce="{{ csp_nonce }}">
+(function(){
+  try{
+    var u = new SpeechSynthesisUtterance(
+      "Your hospital is ready. Add staff next, then print the posters for reception.");
+    u.lang = "{{ speech_lang or 'en-NG' }}";
+    u.rate = 0.95;
+    window.speechSynthesis.speak(u);
+  }catch(e){}
+})();
+</script>
+{% endblock %}

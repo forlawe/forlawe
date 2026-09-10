@@ -1,0 +1,44 @@
+{# Shared help form. Expects: staff, open_ids, help_reasons, next_url #}
+<form method="post" action="/attendance/override" enctype="multipart/form-data">
+  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+  <input type="hidden" name="next" value="{{ next_url }}">
+  <p class="hint">Use this when a phone is lost, spoilt, or has no internet.
+    You must take a photo of the person standing at the gate. The reason is
+    a fixed list — writing a story is not enough. This stops friends covering
+    for each other.</p>
+  {% if not staff %}
+  <p class="flash info">Nobody is on your help list. Ask Admin to set each
+    person's department. You can only sign people in your own department.</p>
+  {% else %}
+  <fieldset class="mb" style="border:1px solid #d7e3ec;border-radius:10px;padding:10px 12px">
+    <legend>Who</legend>
+    {% for u in staff %}
+    <label class="row" style="gap:8px;margin:6px 0;align-items:center">
+      <input type="radio" name="user_id" value="{{ u.id }}"
+             {% if u.id in open_ids %}disabled{% endif %}
+             style="width:auto">
+      <span>{{ u.name }}
+        {% if u.department %} · {{ u.department.name }}{% endif %}
+        {% if u.id in open_ids %}
+          <span class="pill gray">already signed in</span>
+        {% endif %}
+      </span>
+    </label>
+    {% endfor %}
+  </fieldset>
+  <fieldset class="mb" style="border:1px solid #d7e3ec;border-radius:10px;padding:10px 12px">
+    <legend>Why</legend>
+    {% for code, label in help_reasons %}
+    <label class="row" style="gap:8px;margin:6px 0;align-items:center">
+      <input type="radio" name="help_reason" value="{{ code }}" required style="width:auto">
+      <span>{{ label }}</span>
+    </label>
+    {% endfor %}
+  </fieldset>
+  <label>Photo of the person at the gate</label>
+  <input type="file" name="evidence" accept="image/*" capture="environment" required>
+  <label>Short note (optional)</label>
+  <input type="text" name="reason" maxlength="120" placeholder="e.g. screen cracked this morning">
+  <button class="btn mt">Sign them in</button>
+  {% endif %}
+</form>

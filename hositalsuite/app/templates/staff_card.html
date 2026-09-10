@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="{{ lang if lang else 'en' }}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+{% include "_pwa_head.html" %}
+<title>Your staff card — {{ hospital.name if hospital else 'Hospital' }}</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}?v={{ app_version }}">
+</head>
+<body>
+<div class="login-wrap">
+  <div class="card login-card pad-lg" style="max-width:520px">
+    <div class="center mb">
+      <div style="font-size:2.4rem">🪪</div>
+      <h1 style="margin:4px 0 2px">Your staff card</h1>
+      <div class="muted">Email is activated. Fill this so the System Admin
+      knows who you are. You cannot use the app until they tap Approve.</div>
+    </div>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for cat, msg in messages %}<div class="flash {{ cat }}">{{ msg }}</div>{% endfor %}
+    {% endwith %}
+    <form method="post" action="/staff-card" id="staffCard">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <label>Full name <span class="req">*</span></label>
+      <input type="text" name="name" value="{{ name or '' }}" required autocomplete="name">
+
+      <label>Department <span class="req">*</span></label>
+      <select name="department_id" id="dept" required>
+        <option value="">— Pick your department —</option>
+        {% for d in tree %}
+        <option value="{{ d.id }}" {{ 'selected' if department_id == d.id }}>{{ d.name }}</option>
+        {% endfor %}
+      </select>
+
+      <label>Section (in the department)</label>
+      <select name="section_id" id="section">
+        <option value="">— None / not sure —</option>
+      </select>
+
+      <label>Unit / Cadre desk</label>
+      <select name="unit_id" id="unit">
+        <option value="">— None / not sure —</option>
+      </select>
+
+      <label>Cadre (your title in the department)</label>
+      <input type="text" name="cadre" value="{{ cadre or '' }}"
+             placeholder="e.g. Nursing Officer, Consultant, Clerk">
+
+      <label>Job you are asking for <span class="req">*</span></label>
+      <select name="requested_role" required>
+        {% for code, label in roles %}
+        <option value="{{ code }}" {{ 'selected' if requested_role == code }}>{{ label }}</option>
+        {% endfor %}
+      </select>
+      <div class="hint">This is a request. The System Admin decides. Super Admin cannot be requested.</div>
+
+      <label>Special responsibility (if any)</label>
+      <input type="text" name="special_duty" value="{{ special or '' }}"
+             placeholder="e.g. Duty roster, infection control, night supervisor">
+
+      <div class="mt">
+        <button class="btn big" type="submit" style="width:100%">Send my staff card</button>
+      </div>
+    </form>
+    <p class="center mt"><a href="/login">Back to sign in</a></p>
+  </div>
+</div>
+<script nonce="{{ csp_nonce }}">
+(function () {
+  var TREE = {{ tree | tojson }};
+  var preS = "{{ section_id or '' }}";
+  var preU = "{{ unit_id or '' }}";
+  var dept = document.getElementById("dept");
+  var sec = document.getElementById("section");
+  var unit = document.getElementById("unit");
+  function fill(sel, items, first, picked) {
+    sel.innerHTML = "";
+    var o = document.createElement("option");
+    o.value = ""; o.textContent = first;
+    sel.appendChild(o);
+    (items || []).forEach(function (it) {
+      var x = document.createElement("option");
+      x.value = it.id; x.textContent = it.name;
+      if (String(it.id) === String(picked)) x.selected = true;
+      sel.appendChild(x);
+    });
+  }
+  function onDept() {
+    var d = TREE.filter(function (x) { return String(x.id) === String(dept.value); })[0];
+    fill(sec, d ? d.sections : [], "— None / not sure —", preS);
+    onSec();
+  }
+  function onSec() {
+    var d = TREE.filter(function (x) { return String(x.id) === String(dept.value); })[0];
+    var s = d ? (d.sections || []).filter(function (x) { return String(x.id) === String(sec.value); })[0] : null;
+    fill(unit, s ? s.units : [], "— None / not sure —", preU);
+  }
+  dept.addEventListener("change", function () { preS = ""; preU = ""; onDept(); });
+  sec.addEventListener("change", function () { preU = ""; onSec(); });
+  onDept();
+})();
+</script>
+</body>
+</html>

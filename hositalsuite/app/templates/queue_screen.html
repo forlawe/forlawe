@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="{{ lang if lang else 'en' }}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+{% include "_pwa_head.html" %}
+<title>Queue Display — {{ org.name if org else '' }}</title>
+<style nonce="{{ csp_nonce }}">
+  body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:#0a4468;color:#fff}
+  .bar{background:#083a58;padding:14px 22px;display:flex;justify-content:space-between;align-items:center}
+  .bar b{font-size:1.15rem}
+  .wrap{max-width:900px;margin:0 auto;padding:26px 18px;text-align:center}
+  .serving{background:#fff;color:#0a4468;border-radius:20px;padding:34px;margin:14px 0}
+  .serving .lbl{font-size:1rem;text-transform:uppercase;letter-spacing:.12em;color:#5b6b7c}
+  .serving .num{font-size:5.4rem;font-weight:800;line-height:1.05}
+  .next{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:18px}
+  .next .chip{background:#12639a;border-radius:12px;padding:12px 20px;font-size:1.5rem;font-weight:700}
+  .muted{color:#9fc2d8;font-size:.9rem}
+  select{padding:8px;border-radius:8px;font-size:1rem}
+</style>
+<meta http-equiv="refresh" content="10">
+</head>
+<body>
+<div class="bar">
+  <b>🏥 {{ org.name if org else 'Hospital' }} — Queue Display</b>
+  <form method="get">
+    <select name="dept" onchange="this.form.submit()">
+      <option value="">All departments</option>
+      {% for d in depts %}<option value="{{ d.id }}" {{ 'selected' if dept and dept.id==d.id }}>{{ d.name }}</option>{% endfor %}
+    </select>
+  </form>
+</div>
+<div class="wrap">
+  {% if dept %}
+    {% if now_serving %}
+    <div class="serving">
+      <div class="lbl">Now serving — {{ dept.name }}</div>
+      <div class="num" id="serving-num">{{ now_serving.code }}</div>
+      <div class="muted">Please proceed to the {{ dept.name }} desk</div>
+    </div>
+    {% else %}
+    <div class="serving"><div class="lbl">{{ dept.name }}</div>
+      <div class="num" style="font-size:2.6rem">Waiting for first call</div></div>
+    {% endif %}
+    {% if upcoming %}
+    <div class="muted">Coming up next:</div>
+    <div class="next">{% for u in upcoming %}<div class="chip">{{ u.code }}</div>{% endfor %}</div>
+    {% endif %}
+  {% else %}
+    <div class="serving"><div class="lbl">Select a department above</div>
+      <div class="num" style="font-size:2.4rem">Queue numbers only — names are never displayed</div></div>
+  {% endif %}
+  <p class="muted">Screen refreshes automatically · Privacy-safe: ticket numbers only</p>
+</div>
+{% if now_serving %}
+<script nonce="{{ csp_nonce }}">
+/* Zero-cost voice announcement via browser speech (§19) — falls back silently to text. */
+try {
+  var n = document.getElementById('serving-num').textContent.trim();
+  if (window.speechSynthesis && 'SpeechSynthesisUtterance' in window) {
+    var u = new SpeechSynthesisUtterance('Now serving ticket ' + n.split('').join(' '));
+    u.rate = 0.95; window.speechSynthesis.speak(u);
+  }
+} catch (e) { /* text display remains — voice is an enhancement, not a dependency */ }
+</script>
+{% endif %}
+</body>
+</html>

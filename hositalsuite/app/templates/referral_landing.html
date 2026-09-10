@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="{{ lang }}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+{% include "_pwa_head.html" %}
+<meta name="theme-color" content="#0e5a8a">
+<title>{{ _('refer_landing_title') }} — {{ org.name }}</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}?v={{ app_version }}">
+</head>
+<body>
+<div class="portal-head">
+  {% include "_brand_mark.html" %}
+  <div>💌 {{ _('refer_landing_title') }}</div>
+  {% include "_langbar.html" %}
+</div>
+<main class="wrap" style="max-width:560px">
+  {% with back_to="/welcome" %}{% include "_patient_nav.html" %}{% endwith %}
+  <div class="privacy-note">{{ _('refer_landing_sub') }}</div>
+
+  <div class="card pad-lg center">
+    <p style="font-size:1.05rem;margin-top:0">{{ _('refer_friend_said') }}</p>
+    <a class="btn big" href="/book?r={{ referral.code }}" style="width:100%">📅 {{ _('refer_book_cta') }}</a>
+    <div class="btn-row grid cols2 mt">
+      <a class="btn secondary" href="/queue/join">🧍 {{ _('q_title') }}</a>
+      <a class="btn ghost" href="/feedback">⭐ {{ _('fb_title') }}</a>
+    </div>
+    <p class="hint mt">{{ _('no_account') }} · {{ _('refer_no_pressure') }}</p>
+  </div>
+
+  <div class="card mt center">
+    <small class="muted">Need to raise a concern instead?
+      <a href="/complaint">{{ _('btn_complaint')|lower }}</a></small>
+  </div>
+  {% include "_help_desk.html" %}
+</main>
+<div class="footer">{{ org.name }} · share good care · no login needed</div>
+<script src="{{ url_for('static', filename='js/app.js') }}?v={{ app_version }}" nonce="{{ csp_nonce }}"></script>
+</body>
+</html>

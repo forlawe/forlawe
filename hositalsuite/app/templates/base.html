@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="{{ lang if lang else 'en' }}"> {# F-022: assistive tech must know the real language #}
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="{{ settings.brand_primary or '#0e5a8a' }}">
+<title>{% block title %}Hospital Admin Manager Suite{% endblock %}</title>
+{% include "_pwa_head.html" %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}?v={{ app_version }}">
+{% block extra_head %}{% endblock %}
+<style nonce="{{ csp_nonce }}">
+  :root{
+    --primary: {{ settings.brand_primary or '#0e5a8a' }};
+    --accent: {{ settings.brand_accent or '#12b5a5' }};
+    --gold: {{ settings.brand_gold or '#ffd700' }};
+    --primary-glow: color-mix(in srgb, var(--primary) 18%, transparent);
+  }
+  #mainnav{display:flex;flex-wrap:nowrap;overflow-x:auto;gap:2px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+  #mainnav::-webkit-scrollbar{display:none}
+  #mainnav a{flex:0 0 auto;white-space:nowrap}
+  #mainnav{scrollbar-width:thin;scrollbar-color:#9bb8cc transparent;padding-bottom:4px}
+  #mainnav::-webkit-scrollbar{display:block;height:5px}
+  #mainnav::-webkit-scrollbar-thumb{background:#9bb8cc;border-radius:3px}
+  #mainnav::-webkit-scrollbar-track{background:transparent}
+  .navwrap{position:relative}
+  .navwrap::after{content:"";position:absolute;right:0;top:0;bottom:6px;width:26px;pointer-events:none;background:linear-gradient(to right,rgba(255,255,255,0),#fff)}
+  .backbar{padding:8px 14px 0}
+  .backlink{display:inline-block;font-weight:700;text-decoration:none;font-size:.95rem;padding:7px 14px;border-radius:999px;border:1px solid var(--line,#d7e3ec);background:#fff;color:#0e5a8a}
+  .backlink:active{background:#eef4f9}
+  /* Premium+++ UI — animations, gold fast-track, journey timeline */
+  @keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+  .premium-gold{background:linear-gradient(135deg,#FFD700,#FFA500);color:#000;font-weight:900;animation:shimmer 3s infinite linear;background-size:200% 100%}
+  .premium-card{transition:transform .2s, box-shadow .2s}
+  .premium-card:active{transform:scale(0.98)}
+  .haptic-btn:active{transform:scale(0.95)}
+  /* Loading time — skeleton */
+  .skeleton{background:linear-gradient(90deg,#eee 25%,#f5f5f5 50%,#eee 75%);background-size:200% 100%;animation:shimmer 1.5s infinite}
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main-content">Skip to main content</a>
+<div class="offline-banner" id="offline-banner">📴 OFFLINE — DATA SAVED LOCALLY. You can keep working; entries sync when you're back online.</div>
+<div class="online-banner" id="online-banner">✅ Back online</div>
+<div class="topbar">
+  <a class="brand" href="{{ url_for('main.home') }}">
+    {% if hospital and hospital.logo_path %}
+      <img class="brand-logo" src="/branding/logo" alt="" style="max-height:32px;max-width:120px;object-fit:contain">
+    {% else %}🏥{% endif %}
+    <span>{{ hospital.name if hospital else 'Hospital Suite' }}{% if current_branch %} · {{ current_branch.name }}{% endif %}</span>
+  </a>
+  <span class="conn" id="conn-chip">ONLINE</span>
+  {% if current_user.is_authenticated %}
+  <span class="who">{{ current_user.name.split()[0] }}<br>
+    {{ {'SUPER_ADMIN':'Administrator','MD_CEO':'MD / CEO','ADMIN_MANAGER':'Admin Manager','HOD':'HOD'}[current_user.role] }}</span>
+  {% endif %}
+</div>
+{% if current_user.is_authenticated %}
+<button type="button" class="nav-toggle" id="nav-toggle" aria-expanded="false" aria-controls="mainnav">☰ Menu</button>
+<div class="navwrap" id="navwrap">
+<nav class="nav" id="mainnav">
+  {% set can = nav_permissions() %}
+  <a href="{{ url_for('main.home') }}" class="{{ 'active' if request.path == '/' }}" {% if request.path == '/' %}aria-current="page"{% endif %}>Dashboard</a>
+  {% if can.dept_desk %}<a href="{{ url_for('deptdesk.desk') }}" class="{{ 'active' if request.path.startswith('/my-department') }}" {% if request.path.startswith('/my-department') %}aria-current="page"{% endif %}>My Department</a>{% endif %}
+  {% if can.inspections %}<a href="{{ url_for('inspections.inspection_list') }}" class="{{ 'active' if request.path.startswith('/inspections') or request.path.startswith('/admin-manager') }}" {% if request.path.startswith('/inspections') or request.path.startswith('/admin-manager') %}aria-current="page"{% endif %}>Admin Manager</a>{% endif %}
+  {% if can.reception %}<a href="{{ url_for('reception.desk') }}" class="{{ 'active' if request.path.startswith('/reception') }}" {% if request.path.startswith('/reception') %}aria-current="page"{% endif %}>Reception</a>{% endif %}
+  {% if can.reception or can.bookings %}<a href="{{ url_for('fasttrack.desk') }}" class="{{ 'active' if request.path.startswith('/fasttrack') }}" style="{% if request.path.startswith('/fasttrack') %}background:#000;color:#FFD700;font-weight:700{% else %}font-weight:400{% endif %}" {% if request.path.startswith('/fasttrack') %}aria-current="page"{% endif %}>⭐ Fast Track</a>{% endif %}
+  {% if can.cashdesk %}<a href="{{ url_for('cashdesk.billing') }}" class="{{ 'active' if request.path.startswith('/billing') }}" {% if request.path.startswith('/billing') %}aria-current="page"{% endif %}>Billing</a><a href="{{ url_for('cashdesk.paypoint') }}" class="{{ 'active' if request.path.startswith('/paypoint') }}" {% if request.path.startswith('/paypoint') %}aria-current="page"{% endif %}>Pay Point</a>{% endif %}
+  {% if can.hims %}<a href="{{ url_for('hims.desk') }}" class="{{ 'active' if request.path.startswith('/hims') }}" {% if request.path.startswith('/hims') %}aria-current="page"{% endif %}>HIMS</a>{% endif %}
+  {% if can.lahsma %}<a href="{{ url_for('lahsma.desk') }}" class="{{ 'active' if request.path.startswith('/lahsma') }}" {% if request.path.startswith('/lahsma') %}aria-current="page"{% endif %}>LAHSMA</a>{% endif %}
+  {% if can.triage %}<a href="{{ url_for('triage.bench') }}" class="{{ 'active' if request.path.startswith('/triage') }}" {% if request.path.startswith('/triage') %}aria-current="page"{% endif %}>Triage</a>{% endif %}
+  {% if can.consulting %}<a href="{{ url_for('consulting.room') }}" class="{{ 'active' if request.path.startswith('/consulting-room') }}" {% if request.path.startswith('/consulting-room') %}aria-current="page"{% endif %}>My Room</a>{% endif %}
+  {% if can.onward %}<a href="{{ url_for('consulting.onward_board') }}" class="{{ 'active' if request.path.startswith('/onward') }}" {% if request.path.startswith('/onward') %}aria-current="page"{% endif %}>Onward</a>{% endif %}
+  {% if can.tracking %}<a href="{{ url_for('tracking.dashboard') }}" class="{{ 'active' if request.path.startswith('/tracking') }}" {% if request.path.startswith('/tracking') %}aria-current="page"{% endif %}>Patient Flow</a>{% endif %}
+  {% if can.bookings %}<a href="{{ url_for('bookings.staff_list') }}" class="{{ 'active' if request.path.startswith('/bookings') }}" {% if request.path.startswith('/bookings') %}aria-current="page"{% endif %}>Bookings</a><a href="{{ url_for('queue.staff_queue') }}" class="{{ 'active' if request.path == '/queue' }}" {% if request.path == '/queue' %}aria-current="page"{% endif %}>Queue</a>{% endif %}
+  {% if can.complaints %}<a href="{{ url_for('complaints.staff_queue') }}" class="{{ 'active' if request.path.startswith('/complaints') }}" {% if request.path.startswith('/complaints') %}aria-current="page"{% endif %}>Complaints</a><a href="{{ url_for('feedback.staff_list') }}" class="{{ 'active' if request.path.startswith('/feedbacks') }}" {% if request.path.startswith('/feedbacks') %}aria-current="page"{% endif %}>Satisfaction</a>{% endif %}
+  {% if can.referrals %}<a href="{{ url_for('referrals.staff_list') }}" class="{{ 'active' if request.path.startswith('/referrals') }}" {% if request.path.startswith('/referrals') %}aria-current="page"{% endif %}>Referrals</a>{% endif %}
+  {% if can.corrective %}<a href="{{ url_for('main.corrective_actions') }}" class="{{ 'active' if request.path.startswith('/corrective') }}" {% if request.path.startswith('/corrective') %}aria-current="page"{% endif %}>Corrective Actions</a>{% endif %}
+  {% if can.roster %}<a href="{{ url_for('roster.roster_view') }}" class="{{ 'active' if request.path.startswith('/roster') or request.path.startswith('/dept-roster') }}" {% if request.path.startswith('/roster') or request.path.startswith('/dept-roster') %}aria-current="page"{% endif %}>Roster</a>{% endif %}
+  {% if can.attendance %}<a href="{{ url_for('attendance.desk') }}" class="{{ 'active' if request.path.startswith('/attendance') }}" {% if request.path.startswith('/attendance') %}aria-current="page"{% endif %}>I am here</a>{% endif %}
+  {% if can.reports %}<a href="{{ url_for('reports.center') }}" class="{{ 'active' if request.path.startswith('/reports') }}" {% if request.path.startswith('/reports') %}aria-current="page"{% endif %}>Reports</a>{% endif %}
+  <a href="{{ url_for('main.notifications_inbox') }}" class="{{ 'active' if request.path.startswith('/notifications') }}" {% if request.path.startswith('/notifications') %}aria-current="page"{% endif %} title="Notifications">🔔</a>
+  <a href="{{ url_for('main.alert_settings') }}" class="{{ 'active' if request.path.startswith('/alert-settings') }}" {% if request.path.startswith('/alert-settings') %}aria-current="page"{% endif %} title="Voice & alert settings">🗣</a>
+  <a href="{{ url_for('mfa.setup') }}" class="{{ 'active' if request.path.startswith('/mfa') }}" {% if request.path.startswith('/mfa') %}aria-current="page"{% endif %} title="Protect my sign-in">🔐</a>
+  {% if can.roles_admin and not can.admin %}<a href="{{ url_for('rolesadmin.index') }}" class="{{ 'active' if request.path.startswith('/admin/roles') }}" {% if request.path.startswith('/admin/roles') %}aria-current="page"{% endif %}>🔐 Roles</a>{% endif %}
+  {% if can.admin %}<a href="{{ url_for('admin.overview') }}" class="{{ 'active' if request.path.startswith('/admin') }}" {% if request.path.startswith('/admin') %}aria-current="page"{% endif %}>⚙ Admin</a>{% endif %}
+  <form method="post" action="/logout" style="margin-left:auto"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="btn ghost small" type="submit">Sign out</button></form>
+</nav>
+</div>
+{% if request.path not in ('/', '/dashboard') %}<div class="backbar"><a class="backlink" href="javascript:void(0)" onclick="hmsBack()">← Back</a></div>{% endif %}
+<script nonce="{{ csp_nonce }}">function hmsBack(){if(document.referrer && history.length>1){history.back();}else{window.location.href='/';}}
+</script>
+{% endif %}
+<main class="wrap" id="main-content">
+  {% with messages = get_flashed_messages(with_categories=true) %}{% for cat, msg in messages %}<div class="flash {{ cat }}">{{ msg }}</div>{% endfor %}{% endwith %}
+  {% block content %}{% endblock %}
+</main>
+<div class="footer">
+  {% if hospital %}<b>{{ hospital.name }}</b>{% if hospital.address %} · {{ hospital.address }}{% endif %}{% if hospital.phone %} · {{ hospital.phone }}{% endif %}{% if hospital.email %} · {{ hospital.email }}{% endif %}<br>{% endif %}
+  Hospital Admin Manager Suite v{{ app_version }} · secure · audited · mobile-first · multi-hospital · slow-internet optimized<br>
+  <a href="{{ url_for('main.privacy') }}">Privacy Notice</a> · <a href="{{ url_for('main.privacy_request') }}">Your data rights</a> · <span id="browser-support">Browser: <span id="browser-name">detecting...</span></span>
+</div>
+<div id="toast-zone" aria-live="polite"></div>
+<div id="feature-phone-banner" style="display:none;position:fixed;bottom:0;left:0;right:0;background:#000;color:#FFD700;padding:12px;text-align:center;font-weight:700;z-index:9999">
+  📱 Feature phone / No Android/iOS? Main TV + Voice + USSD will call you. No app needed. Dial *xxx# or ask staff. <button onclick="this.parentElement.style.display='none'" style="margin-left:10px;background:#FFD700;color:#000;border:none;padding:4px 10px;border-radius:999px">OK</button>
+</div>
+
+<!-- Loading time premium: defer, code split, minimal, compressed logo, lazy native_voice -->
+<script src="{{ url_for('static', filename='js/app.js') }}?v={{ app_version }}" defer></script>
+<script src="{{ url_for('static', filename='js/push.js') }}?v={{ app_version }}" defer></script>
+<script nonce="{{ csp_nonce }}">
+ // Browser detection for footer — Chrome, Firefox, Safari, Edge, Samsung, UC, Opera
+(function(){
+  try{
+    var ua = navigator.userAgent.toLowerCase();
+    var name = 'Unknown';
+    if(ua.indexOf('edg') !== -1) name = 'Edge';
+    else if(ua.indexOf('opr') !== -1 || ua.indexOf('opera') !== -1) name = 'Opera';
+    else if(ua.indexOf('samsungbrowser') !== -1) name = 'Samsung Internet';
+    else if(ua.indexOf('ucbrowser') !== -1) name = 'UC Browser';
+    else if(ua.indexOf('firefox') !== -1 || ua.indexOf('fxios') !== -1) name = 'Firefox';
+    else if(ua.indexOf('safari') !== -1 && ua.indexOf('chrome') === -1) name = 'Safari';
+    else if(ua.indexOf('chrome') !== -1) name = 'Chrome';
+    var el = document.getElementById('browser-name');
+    if(el) el.textContent = name;
+  }catch(e){}
+})();
+
+// Lazy load native_voice only when needed — saves 3.5KB first paint, Africa slow internet optimized
+window._loadNativeVoice = function(){
+  if(window._nativeVoiceLoaded) return Promise.resolve();
+  return new Promise(function(res, rej){
+    var s = document.createElement('script');
+    s.src = "{{ url_for('static', filename='js/native_voice.js') }}?v={{ app_version }}";
+    s.async = true;
+    s.onload = function(){ window._nativeVoiceLoaded = true; res(); };
+    s.onerror = rej;
+    document.head.appendChild(s);
+  });
+};
+</script>
+
+{% if current_user.is_authenticated %}
+<script nonce="{{ csp_nonce }}">
+document.addEventListener('DOMContentLoaded', function(){
+  // Lazy load native voice only for staff who need it — premium loading time
+  if(document.body.getAttribute('data-native-voice') === '1' || window.location.pathname.indexOf('/alert-settings') === 0 || window.location.pathname.indexOf('/notifications') === 0){
+    window._loadNativeVoice().catch(function(){});
+  }
+  try{
+    if(window.hmsVoice){ hmsVoice.alertLang = "{{ speech_lang }}"; }
+    if(window.hmsAlerts){ hmsAlerts.start(); }
+    if(window.hmsFeaturePhoneCheck){ hmsFeaturePhoneCheck(); }
+  }catch(e){}
+  // Alarm mode banner — FIXED: not covering content, dismissible, mobile-friendly
+  try{
+    if(localStorage.getItem('hms-push-ok') !== '1' && window.hmsPush && hmsPush.isSupported()){
+      setTimeout(function(){
+        if(Notification.permission !== 'granted' && localStorage.getItem('hms-push-hide') !== '1'){
+          var bar = document.createElement('div');
+          bar.id = 'alarm-banner';
+          bar.style.cssText = 'position:fixed;bottom:16px;left:12px;right:12px;max-width:480px;margin:0 auto;background:linear-gradient(135deg,#0e5a8a,#12b5a5);color:#fff;padding:12px 14px;border-radius:14px;box-shadow:0 8px 30px rgba(0,0,0,0.25);z-index:9998;display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:.88rem;line-height:1.35;animation:slideUp .3s';
+          bar.innerHTML = '<span style=\"flex:1;min-width:180px\">🔔 Enable alarm mode? Get notified even when app closed, like alarm — free, saves SMS cost</span><div style=\"display:flex;gap:8px;flex-wrap:wrap\"><button class=\"btn small\" style=\"background:#FFD700;color:#000;min-height:36px\" onclick=\"hmsPush.enable().then(()=>{this.closest(\\'#alarm-banner\\').remove(); document.body.style.paddingBottom=\\'\\';}).catch(()=>{})\">Enable</button><button class=\"btn small ghost\" style=\"background:#fff;color:#0e5a8a;min-height:36px\" onclick=\"this.closest(\\'#alarm-banner\\').remove(); document.body.style.paddingBottom=\\'\\'; try{localStorage.setItem(\\'hms-push-hide\\',\\'1\\')}catch(e){}\">Later</button></div>';
+          document.body.appendChild(bar);
+          // Add padding so banner doesn't cover footer/content on phone
+          document.body.style.paddingBottom = '90px';
+        }
+      }, 3500);
+    }
+  }catch(e){}
+});
+</script>
+{% endif %}
+{% block scripts %}{% endblock %}
+</body>
+</html>

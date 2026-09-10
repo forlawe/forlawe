@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Audit logs{% endblock %}
+{% block content %}
+<h1>Audit Trail</h1>
+<p>
+  {% if chain_ok %}<span class="pill green">Integrity verified — {{ chain_rows }} chained records</span>
+  {% else %}<span class="pill red">CHAIN VERIFICATION FAILED — investigate immediately</span>{% endif %}
+  <span class="muted">Every entry is hash-chained to the previous one; tampering breaks the chain.</span>
+</p>
+<form class="row mb" method="get">
+  <input type="text" name="action" value="{{ action }}" placeholder="Filter by action (e.g. COMPLAINT)" style="max-width:320px">
+  <button class="btn small">Filter</button>
+</form>
+<div class="table-wrap card" style="padding:0">
+<table>
+  <tr><th>Time</th><th>User</th><th>Action</th><th>Record</th><th>Detail</th><th>IP</th></tr>
+  {% for a in items %}
+  <tr>
+    <td>{{ a.at.strftime('%d %b %H:%M:%S') }}</td>
+    <td>{{ a.user.name if a.user else 'system/public' }}</td>
+    <td><code>{{ a.action }}</code></td>
+    <td class="muted">{{ a.entity_type or '' }} {{ a.entity_id or '' }}</td>
+    <td class="muted" style="max-width:340px;overflow:hidden;text-overflow:ellipsis">{{ a.detail[:140] }}</td>
+    <td class="muted">{{ a.ip or '' }}</td>
+  </tr>
+  {% endfor %}
+</table>
+</div>
+{% endblock %}

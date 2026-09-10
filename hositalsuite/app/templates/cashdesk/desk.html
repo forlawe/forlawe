@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+<h1>{{ icon }} {{ title }}</h1>
+<p class="muted" style="font-size:.9rem;line-height:1.5">{{ blurb }}</p>
+
+<div class="card pad-lg mb" style="text-align:center;display:flex;justify-content:space-around;align-items:center;flex-wrap:wrap;gap:12px;border-left:5px solid #FFD700;background:linear-gradient(135deg,#FFFEF0,#FFF8DC)">
+  <div>
+    <div style="font-size:2rem;font-weight:900">{{ rows | length }}</div>
+    <div class="muted" style="font-size:.8rem">waiting here</div>
+  </div>
+  <div>
+    <div style="font-size:1.4rem;font-weight:900;color:#000;background:#FFD700;padding:4px 12px;border-radius:999px">{{ rows | selectattr('intake.is_fast_track') | list | length }}</div>
+    <div class="muted" style="font-size:.75rem;font-weight:800">Fast Track</div>
+  </div>
+  <div style="font-size:.84rem;color:#5a6b7b;max-width:280px;text-align:left;line-height:1.4">
+    Fast Track patients are seen first. They are marked gold. Quiet, fast, private.
+  </div>
+</div>
+
+{% if not rows %}
+  <div class="card pad-lg"><p class="muted" style="margin:0">{{ empty }}</p></div>
+{% else %}
+  {% for r in rows %}
+  <div class="card pad-lg mb" style="{% if r.intake.is_fast_track %}border-left:5px solid #FFD700;background:#FFFEF0{% endif %}">
+    <div class="spread">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:1.05rem;font-weight:800;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <span>{% if r.intake.is_fast_track %}👑 {% endif %}{{ r.intake.full_name }}</span>
+          {% if r.intake.is_fast_track %}<span class="pill" style="background:#000;color:#FFD700;font-size:.7rem;font-weight:900">FAST TRACK</span>{% endif %}
+        </div>
+        <div class="muted" style="font-size:.84rem;margin-top:3px">
+          {{ r.intake.ref }} · {{ payer_labels.get(r.intake.payer_type, r.intake.payer_type) }}
+          {%- if r.intake.payer_number %} · {{ r.intake.payer_number }}{% endif %}
+        </div>
+        {% if r.journey and r.journey.total %}
+        <div style="margin-top:8px;background:#fff;border-radius:8px;padding:6px 10px;font-size:.8rem;border:1px solid #f0e6c0">
+          ⏱ About {{ (r.journey.total)|hm }} left in total
+        </div>
+        {% endif %}
+      </div>
+      <div style="text-align:right">
+        <span class="pill {{ 'red' if r.waited >= 20 else 'amber' }}">{{ (r.waited)|hm }} wait</span>
+      </div>
+    </div>
+
+    {% if r.intake.care_flags %}
+    <div class="notice mt" style="text-align:left">
+      <b>Needs help:</b> {{ r.intake.care_flags | join(' · ') }}
+    </div>
+    {% endif %}
+
+    <form method="post" action="{{ action_url.replace('{id}', r.intake.id|string) }}" class="mt">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <label style="margin-top:0;font-size:.9rem">{{ ref_label }}</label>
+      <input type="text" name="{{ ref_field }}" maxlength="40" style="border-radius:10px;padding:10px 12px"
+             value="{{ (r.intake.bill_ref or '') if ref_field == 'bill_ref' else '' }}" placeholder="Enter reference if you have one">
+      <button class="btn mt" style="width:100%;border-radius:999px;font-weight:900;background:#000;color:#FFD700">{{ action_label }}</button>
+    </form>
+  </div>
+  {% endfor %}
+{% endif %}
+{% endblock %}

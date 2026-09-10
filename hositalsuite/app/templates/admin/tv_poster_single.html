@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}TV Poster {{ screen.code }}{% endblock %}
+{% block content %}
+<style nonce="{{ csp_nonce }}">
+@media print {
+  .no-print { display:none !important; }
+  body { background:white; }
+}
+.poster-a4 {
+  max-width:800px;
+  margin:0 auto;
+  border:3px solid #0ea5e9;
+  border-radius:22px;
+  padding:32px;
+  background:white;
+}
+.qr-big { text-align:center; margin:18px 0; }
+.qr-big img { width:340px; height:340px; border:2px solid #e5e7eb; border-radius:16px; }
+.url { font-family:monospace; background:#f8fafc; padding:6px 10px; border-radius:8px; word-break:break-all; font-size:1.1rem; }
+.badge { display:inline-block; padding:4px 12px; border-radius:999px; background:#e0f2fe; color:#0369a1; font-weight:600; }
+</style>
+
+<div class="no-print mb">
+  <a class="btn ghost" href="/admin/tv">← Back</a>
+  <a class="btn ghost" href="/admin/tv/posters">All posters</a>
+  <button class="btn" onclick="window.print()">🖨️ Print This Poster (A4)</button>
+  <a class="btn ghost" href="/admin/tv/qr/{{ screen.code }}.png" target="_blank">⬇️ Download QR PNG</a>
+</div>
+
+<div class="poster-a4">
+  <div style="text-align:center">
+    <div style="font-size:3rem">📺</div>
+    <h1 style="margin:6px 0">{{ screen.name }}</h1>
+    <div><span class="badge">{{ screen.code }}</span> <span class="muted">{{ screen.location or '' }} · {{ screen.screen_type }} {% if screen.clinic_code %}· {{ screen.clinic_code }}{% endif %}</span></div>
+  </div>
+
+  <div class="qr-big">
+    {% if qr %}
+      <img src="{{ qr }}" alt="QR for {{ screen.code }}">
+    {% else %}
+      <div style="width:340px;height:340px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;border-radius:16px;margin:0 auto">QR unavailable</div>
+    {% endif %}
+  </div>
+
+  <div style="text-align:center">
+    <p><b>Scan with phone camera to open live board</b></p>
+    <p><span class="url">{{ url }}</span></p>
+  </div>
+
+  <h3>How to use</h3>
+  <ol style="margin-left:18px;line-height:1.8">
+    <li>Scan QR → opens <code>/tv/{{ screen.code }}</code> live queue on your phone</li>
+    <li>See <b>Now Serving</b>, <b>Next Up</b>, stats, doctors ready</li>
+    <li>Staff: open same URL on Android phone → Cast/HDMI to big TV</li>
+    <li>Tap <b>Enable Voice</b> once → TV shouts every call (English → Yorùbá)</li>
+    <li>Use volume slider 🔉 <input type="range" disabled value="{{ screen.voice_volume }}" min="0" max="100" style="width:120px;vertical-align:middle"> 🔊 {{ screen.voice_volume }}% + <b>Test</b> button</li>
+    <li>Leave phone plugged — auto-refresh 5s, stay-awake ping 30s</li>
+  </ol>
+
+  <div style="background:#f0fdf4;border:1px solid #bbf7d0;padding:12px;border-radius:12px;margin-top:16px">
+    <b>Voice today:</b> {{ rotation.voice_name if rotation else 'Ada' }} ({{ rotation.slot_label if rotation else 'Female 1' }}) — {{ screen.voice_languages }} · 2 Male + 2 Female recycled daily: Ada → Emeka → Folake → Chinedu<br>
+    <b>Volume:</b> {{ screen.voice_volume }}% per TV, saved to server + localStorage<br>
+    <b>Print:</b> A4, laminate, stick below TV. Patients scan to reduce crowding.
+  </div>
+
+  <p class="muted" style="text-align:center;margin-top:18px;font-size:.85rem">Per-hospital QR · {{ base_url }} · No login needed for /tv/* · Admin: /admin/tv</p>
+</div>
+
+<div class="no-print mt" style="text-align:center">
+  <button class="btn" onclick="window.print()">🖨️ Print A4 Poster</button>
+</div>
+{% endblock %}

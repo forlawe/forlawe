@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Data requests{% endblock %}
+{% block content %}
+<h1>🔐 Patient data requests</h1>
+<p class="muted">Requests from patients to see or delete their data (Nigeria Data Protection
+  Act). The law gives you <b>30 days</b> to respond to each one.</p>
+
+<div class="card pad">
+  {% if items %}
+  <table class="table">
+    <thead><tr><th>Reference</th><th>Type</th><th>Phone</th><th>Received</th>
+      <th>Status</th><th></th></tr></thead>
+    <tbody>
+      {% for i in items %}
+      <tr>
+        <td><code>{{ i.ref }}</code></td>
+        <td>{{ 'Copy of my data' if i.kind == 'access' else 'Delete my data' }}</td>
+        <td>{{ i.phone }}</td>
+        <td>{{ i.created_at.strftime('%d %b %Y') }}
+          {% set age = (now - i.created_at).days if now else 0 %}
+          {% if i.status == 'NEW' and age > 21 %}
+            <span class="pill red">{{ age }} days — due soon</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if i.status == 'NEW' %}<span class="pill amber">Waiting</span>
+          {% elif i.status == 'DONE' %}<span class="pill green">Done</span>
+          {% else %}<span class="pill">Rejected</span>{% endif %}
+        </td>
+        <td><a class="btn small ghost" href="/admin/data-requests/{{ i.id }}">Open</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="muted">No data requests yet. Patients can send one from the
+    <a href="/privacy">Privacy Notice</a> page.</p>
+  {% endif %}
+</div>
+{% endblock %}

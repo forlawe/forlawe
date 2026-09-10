@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}Reports{% endblock %}
+{% block content %}
+<h1>📊 Report Center</h1>
+
+<div class="grid cols2 mb">
+  <div class="card">
+    <h2>Daily inspection report</h2>
+    <form class="row" method="get" action="/reports/inspection-daily">
+      <input type="date" name="date" value="{{ today.isoformat() }}">
+      <button class="btn small">PDF</button>
+      <button class="btn small ghost" name="format" value="csv">CSV</button>
+    </form>
+  </div>
+  <div class="card">
+    <h2>Weekly inspection summary</h2>
+    <form class="row" method="get" action="/reports/weekly">
+      <label style="margin:0">Week starting</label><input type="date" name="start">
+      <button class="btn small">PDF</button>
+      <button class="btn small ghost" name="format" value="csv">CSV</button>
+    </form>
+  </div>
+  <div class="card">
+    <h2>Monthly management report</h2>
+    <form class="row" method="get" action="/reports/monthly">
+      <input type="month" name="month">
+      <button class="btn small">PDF</button>
+      <button class="btn small ghost" name="format" value="csv">CSV</button>
+    </form>
+  </div>
+  <div class="card">
+    <h2>Complaint &amp; escalation reports</h2>
+    <div class="row">
+      <a class="btn small" href="/reports/complaints?format=pdf">Complaints PDF</a>
+      <a class="btn small ghost" href="/reports/complaints?format=csv">CSV</a>
+      <a class="btn small danger" href="/reports/escalations?format=csv">Escalations CSV</a>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Corrective actions (outstanding)</h2>
+    <div class="row">
+      <a class="btn small" href="/reports/corrective-actions?format=pdf">PDF</a>
+      <a class="btn small ghost" href="/reports/corrective-actions?format=csv">CSV</a>
+    </div>
+  </div>
+  <div class="card">
+    <h2>How patients rated the visit</h2>
+    <p class="hint">Stars, departments, happy vs low scores. Same numbers as Feedback.</p>
+    <div class="row">
+      <a class="btn small" href="/feedbacks">Open the board</a>
+      <a class="btn small ghost" href="/feedbacks.csv?days=30">CSV (30 days)</a>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Referrals &amp; repeat visits</h2>
+    <p class="hint">Share-links, clicks, bookings that came from a friend, returning patients.</p>
+    <div class="row">
+      <a class="btn small" href="/reports/referrals?format=pdf">PDF</a>
+      <a class="btn small ghost" href="/reports/referrals?format=csv">CSV</a>
+      <a class="btn small secondary" href="/referrals">Open live board</a>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Admin Manager compliance</h2>
+    <form class="row" method="get" action="/reports/compliance">
+      <label style="margin:0">Last N days</label>
+      <input type="number" name="days" value="30" min="7" max="365" style="width:90px">
+      <button class="btn small">PDF</button>
+      <button class="btn small ghost" name="format" value="csv">CSV</button>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <h2>🗂 Digital report archive</h2>
+  <p class="hint">Every generated report is stored permanently with a verification code.</p>
+  <div class="table-wrap">
+  <table>
+    <tr><th>Generated</th><th>Report</th><th>Verification</th><th></th></tr>
+    {% for r in archive %}
+    <tr>
+      <td>{{ r.created_at.strftime('%d %b %Y %H:%M') }}</td>
+      <td>{{ r.title }}</td>
+      <td><code>{{ r.verify_code }}</code> · <a href="/verify/{{ r.verify_code }}">verify</a></td>
+      <td><a class="btn small ghost" href="/reports/archive/{{ r.id }}/download">⬇ PDF</a></td>
+    </tr>
+    {% endfor %}
+  </table>
+  </div>
+</div>
+{% endblock %}

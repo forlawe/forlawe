@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="{{ lang if lang else 'en' }}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0e5a8a">
+<title>Set up your hospital</title>
+<style nonce="{{ csp_nonce }}">
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+  background:#f2f5f8;color:#152433;line-height:1.45}
+.wrap{max-width:520px;margin:0 auto;padding:16px 16px 48px}
+.top{display:flex;align-items:center;justify-content:space-between;margin:8px 0 16px}
+.brand{font-weight:800;letter-spacing:-.02em}
+.hear{border:1.5px solid #0e5a8a;background:#fff;color:#0e5a8a;font-weight:800;
+  border-radius:999px;padding:8px 14px;min-height:42px;cursor:pointer}
+.dots{display:flex;gap:6px;margin:0 0 14px}
+.dots i{flex:1;height:6px;border-radius:99px;background:#dbe4ec}
+.dots i.on{background:#0e5a8a}
+.card{background:#fff;border:1px solid #e8eef3;border-radius:16px;padding:18px;
+  box-shadow:0 1px 2px rgba(16,42,67,.06)}
+h1{font-size:1.35rem;margin:.1rem 0 .4rem;letter-spacing:-.02em}
+.muted{color:#5b6b7c}
+label{display:block;font-weight:680;font-size:.88rem;margin:14px 0 6px}
+input[type=text],input[type=password],input[type=tel],input[type=email],select{
+  width:100%;padding:13px 12px;font-size:16px;border:1.5px solid #dbe4ec;
+  border-radius:10px;background:#fff}
+input:focus,select:focus{outline:none;border-color:#0e5a8a;box-shadow:0 0 0 4px rgba(14,90,138,.14)}
+.hint{font-size:.78rem;color:#5b6b7c;margin-top:4px}
+.err{background:#fdeaea;color:#c0262c;border:1px solid #f3c1c3;border-radius:10px;
+  padding:11px 13px;margin:8px 0;font-weight:650;font-size:.9rem}
+.row{display:flex;gap:10px}
+.row>div{flex:1}
+.colors{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.colors label{margin-top:0;text-align:center}
+.colors input[type=color]{width:100%;height:52px;border:0;background:none;padding:0;cursor:pointer}
+.flow{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}
+.flow span{background:#e8f2f8;color:#0a4468;border-radius:999px;padding:6px 10px;
+  font-size:.78rem;font-weight:750}
+.navbtns{display:flex;gap:10px;margin-top:18px}
+.btn{flex:1;border:0;cursor:pointer;background:#0e5a8a;color:#fff;font-weight:800;
+  border-radius:12px;padding:15px 16px;min-height:52px;font-size:1rem}
+.btn.ghost{background:#fff;color:#0a4468;border:1.5px solid #dbe4ec}
+.chk{display:flex;gap:10px;align-items:flex-start;margin:12px 0;font-weight:650}
+.step{display:none}
+.step.on{display:block}
+.foot{text-align:center;color:#8595a6;font-size:.75rem;margin-top:18px}
+a{color:#0e5a8a}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div class="brand">🏥 Set up your hospital</div>
+    <button type="button" class="hear" id="hear">🔊 Hear this</button>
+  </div>
+  <div class="dots" id="dots" aria-hidden="true">
+    <i class="on"></i><i></i><i></i><i></i><i></i>
+  </div>
+
+  {% for e in errors %}<div class="err">{{ e }}</div>{% endfor %}
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for cat, msg in messages %}<div class="err">{{ msg }}</div>{% endfor %}
+  {% endwith %}
+
+  <form method="post" action="/start" id="wiz">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+
+    <section class="card step on" data-step="0" data-say="Welcome. We will set up your hospital in about five minutes. You will get a sign-in at the end.">
+      <h1>Welcome</h1>
+      <p>About five minutes. You will get a sign-in name when we finish. Patients will not need an account.</p>
+      <p class="muted">This is <b>not</b> a medical record. It runs the journey: book → register → triage → doctor → next desk.</p>
+      {% if already_admin %}
+      <input type="hidden" name="invite" value="">
+      <p class="hint">You already run a hospital on this site. This walk opens a <b>separate</b> hospital with its own staff and patients.</p>
+      {% elif need_invite %}
+      <label>Setup code</label>
+      <input type="text" name="invite" value="{{ form.invite or '' }}" autocomplete="off"
+             autocapitalize="characters" placeholder="ABCD-1234">
+      <p class="hint">This site already has a hospital. Ask that administrator for a one-time code.</p>
+      {% else %}
+      <input type="hidden" name="invite" value="">
+      <p class="hint">You are the first hospital on this site. No code needed.</p>
+      {% endif %}
+    </section>
+
+    <section class="card step" data-step="1" data-say="Tell us the hospital name and a short code. The code goes on every folder number, like I J D slash 2026 slash 00001.">
+      <h1>The hospital</h1>
+      <label>Hospital name</label>
+      <input type="text" name="name" id="name" value="{{ form.name or '' }}" required
+             placeholder="General Hospital Ijede" autocomplete="organization">
+      <label>Short code (on folder numbers)</label>
+      <input type="text" name="code" id="code" value="{{ form.code or '' }}" required
+             maxlength="12" autocapitalize="characters" placeholder="IJD"
+             autocomplete="off">
+      <p class="hint">2–12 letters. Example folder: <b>IJD/2026/00001</b></p>
+      <label>Hospital phone</label>
+      <input type="tel" name="phone" value="{{ form.phone or '' }}" inputmode="tel"
+             placeholder="08012345678" autocomplete="tel">
+      <label>Address</label>
+      <input type="text" name="address" value="{{ form.address or '' }}"
+             placeholder="Ijede, Ikorodu, Lagos" autocomplete="street-address">
+      <label>Email (optional)</label>
+      <input type="email" name="email" value="{{ form.email or '' }}" autocomplete="email">
+    </section>
+
+    <section class="card step" data-step="2" data-say="Now you. This is the first administrator. Pick a sign-in name that is not just admin, because that name may already be taken.">
+      <h1>You — the first administrator</h1>
+      <label>Your full name</label>
+      <input type="text" name="admin_name" value="{{ form.admin_name or '' }}" required
+             autocomplete="name" placeholder="Ada Okafor">
+      <label>Sign-in name</label>
+      <input type="text" name="username" id="username" value="{{ form.username or '' }}"
+             required autocapitalize="none" autocomplete="username" placeholder="ijd.admin">
+      <p class="hint">Not just “admin” — that name is often taken. We suggest hospitalcode.admin</p>
+      <label>Your phone</label>
+      <input type="tel" name="admin_phone" value="{{ form.admin_phone or '' }}"
+             inputmode="tel" autocomplete="tel" placeholder="08012345678">
+      <label>Password</label>
+      <input type="password" name="password" required autocomplete="new-password"
+             minlength="8">
+      <label>Type the password again</label>
+      <input type="password" name="confirm" required autocomplete="new-password">
+      <p class="hint">At least 10 characters. One CAPITAL, one small letter, one number, one symbol (like ! @ #).</p>
+    </section>
+
+    <section class="card step" data-step="3" data-say="Pick the hospital colours. These show on every page for your hospital only, not for anyone else.">
+      <h1>Look and sites</h1>
+      <p class="muted">Colours belong to <b>this</b> hospital only.</p>
+      <div class="colors">
+        <label>Main<br><input type="color" name="brand_primary" value="{{ form.brand_primary or '#0E5A8A' }}"></label>
+        <label>Accent<br><input type="color" name="brand_accent" value="{{ form.brand_accent or '#12B5A5' }}"></label>
+        <label>Gold<br><input type="color" name="brand_gold" value="{{ form.brand_gold or '#FFD700' }}"></label>
+      </div>
+      <label>Main site name</label>
+      <input type="text" name="main_name" value="{{ form.main_name or 'Main' }}">
+      <label>Second site (optional)</label>
+      <input type="text" name="annex_name" value="{{ form.annex_name or '' }}"
+             placeholder="Annex — leave blank if you have one building">
+    </section>
+
+    <section class="card step" data-step="4" data-say="Last choices. We can add the usual hospital departments for you. Voice reminders stay on so staff hear when a patient is waiting.">
+      <h1>How care will run</h1>
+      <div class="flow">
+        <span>1. Book</span><span>2. Register</span><span>3. Triage</span>
+        <span>4. Doctor</span><span>5. Next desk</span>
+      </div>
+      <p class="hint">The doctor then sends the person to one or more of: LAHSMA, Billing, Pay Point, Lab, Pharmacy, Emergency. You can rename desks later.</p>
+      <label class="chk">
+        <input type="checkbox" name="install_departments" value="1"
+               {% if form.install_departments %}checked{% endif %}>
+        <span>Add the usual hospital departments now (you can hide any later)</span>
+      </label>
+      <label>Voice language</label>
+      <select name="voice_lang">
+        {% for code, meta in langs.items() %}
+        <option value="{{ code }}" {% if form.voice_lang==code %}selected{% endif %}>{{ meta.name }}</option>
+        {% endfor %}
+      </select>
+      <p class="hint">The phone will speak alerts after sign-in. You can change this later under 🗣.</p>
+      <div class="navbtns">
+        <button type="button" class="btn ghost" id="back2">Back</button>
+        <button class="btn" type="submit">Open my hospital</button>
+      </div>
+    </section>
+
+    <div class="navbtns" id="stepnav">
+      <button type="button" class="btn ghost" id="back">Back</button>
+      <button type="button" class="btn" id="next">Next</button>
+    </div>
+  </form>
+  <p class="foot">Already have a sign-in? <a href="/login">Go to sign-in</a></p>
+</div>
+<script nonce="{{ csp_nonce }}">
+(function(){
+  var steps = Array.prototype.slice.call(document.querySelectorAll('.step'));
+  var dots = document.querySelectorAll('#dots i');
+  var i = 0;
+  var sayOn = false;
+  function speak(t){
+    try{
+      if(!window.speechSynthesis) return;
+      window.speechSynthesis.cancel();
+      var u = new SpeechSynthesisUtterance(t);
+      u.lang = 'en-NG';
+      u.rate = 0.95;
+      window.speechSynthesis.speak(u);
+    }catch(e){}
+  }
+  function show(n){
+    if(n<0) n=0;
+    if(n>steps.length-1) n=steps.length-1;
+    i=n;
+    steps.forEach(function(s,k){ s.classList.toggle('on', k===i); });
+    dots.forEach(function(d,k){ d.classList.toggle('on', k<=i); });
+    document.getElementById('stepnav').style.display = (i===steps.length-1) ? 'none' : 'flex';
+    document.getElementById('back').style.visibility = (i===0) ? 'hidden' : 'visible';
+    if(sayOn){
+      var t = steps[i].getAttribute('data-say');
+      if(t) speak(t);
+    }
+    try{ steps[i].querySelector('input,select,button').focus(); }catch(e){}
+    window.scrollTo(0,0);
+  }
+  document.getElementById('next').onclick = function(){ show(i+1); };
+  document.getElementById('back').onclick = function(){ show(i-1); };
+  document.getElementById('back2').onclick = function(){ show(i-1); };
+  document.getElementById('hear').onclick = function(){
+    sayOn = true;
+    var t = steps[i].getAttribute('data-say');
+    if(t) speak(t);
+  };
+  var name = document.getElementById('name');
+  var code = document.getElementById('code');
+  var user = document.getElementById('username');
+  if(name && code){
+    name.addEventListener('input', function(){
+      if(code.dataset.touched) return;
+      var letters = (name.value||'').toUpperCase().replace(/[^A-Z]/g,'');
+      code.value = letters.slice(0,3);
+      if(user && !user.dataset.touched){
+        user.value = (code.value.toLowerCase()||'hosp') + '.admin';
+      }
+    });
+    code.addEventListener('input', function(){
+      code.dataset.touched = '1';
+      if(user && !user.dataset.touched){
+        user.value = (code.value.toLowerCase().replace(/[^a-z0-9]/g,'')||'hosp') + '.admin';
+      }
+    });
+    user.addEventListener('input', function(){ user.dataset.touched='1'; });
+  }
+  if(document.querySelectorAll('.err').length){
+    show(0);
+  } else {
+    show(0);
+  }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="{{ lang if lang else 'en' }}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+{% include "_pwa_head.html" %}
+<meta name="theme-color" content="#0e5a8a">
+<title>Your Number {{ t.code }}</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}?v={{ app_version }}">
+<style nonce="{{ csp_nonce }}">
+  *{box-sizing:border-box}
+  body{background:#f6f9fc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;color:#0f2f47;margin:0}
+  .top{background: linear-gradient(135deg,#0e5a8a 0%,#0f8a6a 100%);color:#fff;padding:18px 20px 22px}
+  .top h1{margin:0;font-size:1.15rem;font-weight:900}
+  .top .sub{opacity:0.9;font-size:.85rem;margin-top:6px;line-height:1.5}
+  .wrap{max-width:640px;margin:0 auto;padding:14px 16px 24px}
+  .card{background:#fff;border-radius:16px;box-shadow:0 4px 18px rgba(16,42,67,0.08);border:1px solid #dbe4ec;overflow:hidden}
+  .card.pad{padding:18px}
+  .ticket-hero{text-align:center;padding:22px 18px 16px}
+  .code{font-size:3.6rem;font-weight:900;letter-spacing:-0.03em;color:#0e5a8a;line-height:1}
+  .dept{margin-top:6px;font-size:.95rem;color:#5a6b7b;font-weight:600}
+  .status-pill{display:inline-block;margin-top:10px;padding:6px 14px;border-radius:999px;font-weight:800;font-size:.82rem}
+  .s-wait{background:#e7f0f8;color:#0e5a8a}
+  .s-call{background:#10b981;color:#fff;animation:pulse 1.6s infinite}
+  .s-done{background:#e6f6f1;color:#0f8a6a}
+  @keyframes pulse{0%{transform:scale(1)}50%{transform:scale(1.04)}100%{transform:scale(1)}}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+  .kpi{background:#f6f9fc;border-radius:12px;padding:12px 14px;border:1px solid #e6edf3;text-align:center}
+  .kpi .v{font-size:1.4rem;font-weight:900;color:#0f2f47}
+  .kpi .l{font-size:.72rem;text-transform:uppercase;letter-spacing:0.05em;color:#6b7d90;margin-top:2px;font-weight:700}
+  .next-box{background: linear-gradient(135deg,#e7f0f8,#e6f6f1);border-radius:12px;padding:14px 16px;margin-top:14px;border-left:5px solid #0e5a8a}
+  .next-box .h{font-weight:900;font-size:.9rem;color:#0f2f47}
+  .next-box .p{font-size:.85rem;color:#425466;margin-top:4px;line-height:1.5}
+  .timeline{margin-top:16px}
+  .step{display:flex;gap:12px;padding:12px 0;border-left:2px solid #e6edf3;margin-left:10px;padding-left:22px;position:relative}
+  .step:last-child{border-left-color:transparent}
+  .step.active{border-left-color:#0e5a8a}
+  .step.done{border-left-color:#10b981}
+  .dot{width:22px;height:22px;border-radius:50%;background:#fff;border:2px solid #dbe4ec;display:flex;align-items:center;justify-content:center;position:absolute;left:-12px;top:14px;font-size:.8rem}
+  .step.active .dot{border-color:#0e5a8a;background:#0e5a8a;color:#fff}
+  .step.done .dot{border-color:#10b981;background:#10b981;color:#fff}
+  .step .title{font-weight:800;font-size:.92rem}
+  .step .desc{font-size:.82rem;color:#5a6b7b;margin-top:2px;line-height:1.4}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:12px 16px;border-radius:999px;font-weight:800;font-size:.9rem;text-decoration:none;border:none;cursor:pointer}
+  .btn.primary{background:#0e5a8a;color:#fff}
+  .btn.gold{background:#000;color:#FFD700}
+  .btn.full{width:100%}
+  .voice-bar{background:#fffbe6;border:1px solid #fde68a;border-radius:12px;padding:10px 14px;margin-top:14px;display:flex;gap:10px;align-items:center}
+  .voice-bar button{background:#0e5a8a;color:#fff;border:none;padding:7px 14px;border-radius:999px;font-weight:800;font-size:.82rem}
+  .tv-live{background:#0f172a;color:#fff;border-radius:14px;padding:14px 16px;margin-top:16px}
+</style>
+</head>
+<body>
+<div class="top">
+  <h1>Your visit — we are with you</h1>
+  <div class="sub">This is your private page. Keep it open. It shows where you are and what to do next. No medical details here — just your journey.</div>
+</div>
+
+<div class="wrap">
+  <div class="card">
+    <div class="ticket-hero">
+      <div style="font-size:.7rem;letter-spacing:0.12em;text-transform:uppercase;font-weight:800;color:#6b7d90">Your number</div>
+      <div class="code">{{ t.code }}</div>
+      <div class="dept">{{ t.department.name }} · {{ t.queue_date.strftime('%d %b %Y') }}</div>
+      {% if t.is_fast_track %}<div style="margin-top:10px"><span class="status-pill" style="background:#000;color:#FFD700">👑 Fast Track — You will be seen quickly</span></div>{% endif %}
+      {% if t.status == 'WAITING' %}
+        <div class="status-pill s-wait">● Waiting — please stay nearby</div>
+      {% elif t.status == 'CALLED' %}
+        <div class="status-pill s-call">📢 It's your turn — please come now</div>
+      {% elif t.status == 'DONE' %}
+        <div class="status-pill s-done">✅ Done — thank you</div>
+      {% endif %}
+    </div>
+
+    {% if t.status == 'WAITING' %}
+    <div class="pad" style="padding-top:0">
+      <div class="grid2">
+        <div class="kpi">
+          <div class="v">{{ ahead }}</div>
+          <div class="l">{{ 'person' if ahead==1 else 'people' }} ahead</div>
+        </div>
+        <div class="kpi">
+          <div class="v">{% if est %}{{ (est)|hm }}{% else %}~{% endif %}</div>
+          <div class="l">Estimated wait</div>
+        </div>
+      </div>
+
+      {% if now_serving %}
+      <div class="tv-live">
+        <div style="font-size:.8rem;letter-spacing:0.08em;text-transform:uppercase;opacity:0.8;font-weight:800">🔴 Live — Now serving</div>
+        <div style="margin-top:8px;font-weight:900;font-size:1.05rem">{{ now_serving.code }} is being called in {{ t.department.name }}</div>
+        <div style="font-size:.78rem;opacity:0.75;margin-top:4px">Watch the TV in the waiting area. When your number shows, please go to the desk.</div>
+      </div>
+      {% endif %}
+
+      <div class="next-box">
+        <div class="h">What to do now</div>
+        <div class="p">
+          1. Stay in the <b>{{ t.department.name }}</b> waiting area.<br>
+          2. Watch the TV — when <b>{{ t.code }}</b> shows, you will also hear your name.<br>
+          3. Keep this page open on your phone.<br>
+          {% if ahead == 0 %}<b style="color:#0e5a8a">You are next — please stay close to the door.</b>{% endif %}
+        </div>
+      </div>
+
+      {% if intake %}
+      <div class="timeline">
+        <div class="step {% if intake.stage != 'RECEPTION' %}done{% else %}active{% endif %}">
+          <div class="dot">1</div>
+          <div><div class="title">Welcome desk</div><div class="desc">We take your details and guide you.</div></div>
+        </div>
+        <div class="step {% if intake.stage in ('PAID','REGISTERED','TRIAGED','IN_CONSULTATION','ONWARD','DONE') %}done{% elif intake.stage in ('BILLING','PAYMENT') %}active{% endif %}">
+          <div class="dot">2</div>
+          <div><div class="title">Payment</div><div class="desc">Pay and collect your receipt. A few minutes.</div></div>
+        </div>
+        <div class="step {% if intake.stage in ('REGISTERED','TRIAGED','IN_CONSULTATION','ONWARD','DONE') %}done{% elif intake.stage=='PAID' %}active{% endif %}">
+          <div class="dot">3</div>
+          <div><div class="title">Registration</div><div class="desc">We open your folder.</div></div>
+        </div>
+        <div class="step {% if intake.stage in ('TRIAGED','IN_CONSULTATION','ONWARD','DONE') %}done{% elif intake.stage=='REGISTERED' %}active{% endif %}">
+          <div class="dot">4</div>
+          <div><div class="title">Nurse check</div><div class="desc">A nurse checks you and sends you to the doctor.</div></div>
+        </div>
+        <div class="step {% if intake.stage in ('IN_CONSULTATION','ONWARD','DONE') %}done{% elif intake.stage=='TRIAGED' %}active{% endif %}">
+          <div class="dot">5</div>
+          <div><div class="title">Doctor</div><div class="desc">The doctor sees you and tells you what is next.</div></div>
+        </div>
+        <div class="step">
+          <div class="dot">6</div>
+          <div><div class="title">Lab, Pharmacy, or Home</div><div class="desc">Collect your test or medicine, or go home. Our staff will guide you.</div></div>
+        </div>
+      </div>
+      {% endif %}
+
+      <div class="voice-bar" id="voiceBar">
+        <div style="flex:1"><b style="font-size:.85rem">🔊 Hear your update</b><div style="font-size:.78rem;color:#6b7d90;margin-top:2px">Tap to hear your place in line — in English, Yorùbá, Hausa, Igbo.</div></div>
+        <button onclick="patientVoice.enable()">Enable</button>
+      </div>
+
+      <div style="margin-top:14px"><a class="btn primary full" href="/queue/ticket?key={{ t.access_key }}">🔄 Refresh</a></div>
+      <div style="font-size:.78rem;color:#6b7d90;margin-top:10px;text-align:center;line-height:1.4">Auto-refreshes every 20 seconds. Keep this page open.<br>Your number only shows on TV — not your name. Private and safe.</div>
+      <meta http-equiv="refresh" content="20">
+    </div>
+
+    {% elif t.status == 'CALLED' %}
+    <div class="pad" style="padding-top:0;text-align:center">
+      <div style="font-size:3.5rem;margin:10px 0">📢</div>
+      <div style="font-size:1.35rem;font-weight:900">It's your turn!</div>
+      <div style="font-size:1rem;color:#425466;margin-top:8px;line-height:1.5">Please go to <b>{{ t.department.name }}</b> now.<br>Show your number: <b style="font-size:1.3rem;color:#0e5a8a">{{ t.code }}</b></div>
+      <div style="margin-top:18px"><a class="btn primary full" href="/queue/ticket?key={{ t.access_key }}">I am coming — refresh</a></div>
+    </div>
+
+    {% elif t.status == 'DONE' %}
+    <div class="pad" style="padding-top:0;text-align:center">
+      <div style="font-size:2.6rem">✅</div>
+      <div style="font-weight:900;font-size:1.15rem;margin-top:6px">You have been seen — thank you!</div>
+      <div style="margin-top:8px;color:#5a6b7b;font-size:.9rem;line-height:1.5">Our staff will call you for the next step. Please watch the TV and keep this page open.</div>
+      {% if onward %}
+      <div style="margin-top:16px;text-align:left" class="next-box">
+        <div class="h">What is next?</div>
+        <div class="p">
+          {% for ow in onward %}
+          • {{ ow.destination }} — {{ ow.status }}{% if ow.status=='PENDING' %} (please wait){% endif %}<br>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+      <div style="margin-top:16px"><a class="btn primary full" href="/welcome">🏠 Back to home</a></div>
+    </div>
+    {% endif %}
+
+    <div class="pad" style="border-top:1px solid #eef4f9;display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap">
+      <div style="font-size:.8rem;color:#425466;line-height:1.4"><b>Need help?</b><br>Ask at the help desk near reception.</div>
+      <a class="btn secondary" href="/welcome" style="border-radius:999px">Home</a>
+    </div>
+  </div>
+
+  <div style="text-align:center;margin:14px 0 8px;font-size:.8rem;color:#6b7d90">
+    <a href="/privacy" style="color:#0e5a8a;text-decoration:none">Privacy</a> · Your data stays in the hospital only
+  </div>
+</div>
+
+<script nonce="{{ csp_nonce }}">
+window.patientVoice = {
+  enabled:false, voices:[],
+  init(){
+    const load=()=>{ this.voices = speechSynthesis ? speechSynthesis.getVoices() : []; };
+    load(); if(window.speechSynthesis){ speechSynthesis.onvoiceschanged=load; setTimeout(load,600); }
+    try{ const k=localStorage.getItem('patient_voice_enabled'); if(k==='1'){ this.enabled=true; this.hideBar(); } }catch(e){}
+  },
+  hideBar(){ const b=document.getElementById('voiceBar'); if(b) b.style.display='none'; },
+  enable(){
+    this.enabled=true;
+    try{ localStorage.setItem('patient_voice_enabled','1'); }catch(e){}
+    this.hideBar();
+    try{ const u=new SpeechSynthesisUtterance(" "); u.volume=0.01; speechSynthesis.speak(u); }catch(e){}
+    this.speakStatus();
+  },
+  speak(text, lang){
+    if(!this.enabled || !window.speechSynthesis) return;
+    try{
+      const u=new SpeechSynthesisUtterance(text); u.lang=lang||'en-NG'; u.rate=0.92; u.volume=0.9;
+      if(this.voices && this.voices.length){
+        let c=this.voices.filter(v=> (v.lang||'').toLowerCase().includes((lang||'en').split('-')[0].toLowerCase()));
+        if(c.length){ u.voice=c[0]; }
+      }
+      speechSynthesis.speak(u);
+    }catch(e){}
+  },
+  speakStatus(){
+    const code="{{ t.code }}";
+    const ahead={{ ahead if t.status=='WAITING' else 0 }};
+    const status="{{ t.status }}";
+    const dept="{{ t.department.name }}";
+    let en="", yo="", ha="", ig="";
+    if(status==='WAITING'){
+      if(ahead===0){ en="You are next. Please stay close to "+dept; yo="Iwọ ni ẹni to kan. Jọwọ duro nitosi "+dept; ha="Kai ne na gaba. Don Allah ka zauna kusa da "+dept; ig="Ị bụ onye na-esote. Biko nọrọ nso "+dept; }
+      else { en="There are "+ahead+" people ahead of you in "+dept+". Please wait."; yo=ahead+" eniyan lo wa niwaju rẹ ni "+dept+". Jọwọ duro."; ha="Akwai mutane "+ahead+" a gabanka a "+dept+". Don Allah jira."; ig="Enwere mmadụ "+ahead+" n'ihu gị na "+dept+". Biko chere."; }
+    } else if(status==='CALLED'){
+      en="It is your turn. Ticket "+code+". Please go to "+dept+" now."; yo="Akan rẹ de. Tikẹti "+code+". Jọwọ lọ si "+dept+" nisisiyi."; ha="Lokacinka yayi. Tikiti "+code+". Don Allah je zuwa "+dept+" yanzu."; ig="Oge gị eruola. Tiketi "+code+". Biko gaa na "+dept+" ugbu a.";
+    }
+    if(!en) return;
+    let d=0;
+    for(const [txt, lang] of [[en,'en-NG'],[yo,'yo-NG'],[ha,'ha-NG'],[ig,'ig-NG']]){ if(!txt) continue; setTimeout(()=>this.speak(txt, lang), d); d+=3500; }
+  }
+};
+patientVoice.init();
+{% if t.status == 'CALLED' %}setTimeout(()=>{ if(patientVoice.enabled) patientVoice.speakStatus(); }, 1200);{% endif %}
+</script>
+</body>
+</html>

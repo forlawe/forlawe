@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}System health{% endblock %}
+{% block content %}
+<h1>System Health</h1>
+<div class="card" style="max-width:560px">
+  <p><b>Database:</b> <span class="pill {{ 'green' if info.database=='connected' else 'red' }}">{{ info.database }}</span></p>
+  <p><b>WhatsApp integration:</b> <span class="pill blue">{{ info.whatsapp_mode }}</span></p>
+  <h2 class="mt">Mail van (activation codes)</h2>
+  <p class="muted">Software on this server: <b>v{{ app_version }}</b></p>
+  {% if info.mail and info.mail.configured %}
+    <p><b>Status:</b> <span class="pill green">on — {{ info.mail.provider }}</span></p>
+    <p class="muted">Letters leave as <code>{{ info.mail.from }}</code>.</p>
+    {% if info.mail.provider == 'brevo' and info.mail.brevo_key_shape and info.mail.brevo_key_shape != 'ok' %}
+      <p class="flash error">The secret on this server does not look like a Brevo
+        <b>API</b> key (must start with <code>xkeysib-</code> and be long).
+        You may have pasted the SMTP password or the hidden dots of an old key.</p>
+    {% endif %}
+  {% else %}
+    <p><b>Status:</b> <span class="pill red">off — codes are not leaving</span></p>
+    <p>I looked inside <b>this</b> live server. Seeing the name on Render is not enough — the secret must be pasted and saved.</p>
+    <ul>
+      <li>Brevo key on this server:
+        {% if info.mail and info.mail.seen and info.mail.seen.brevo %}
+          <span class="pill green">yes</span>
+        {% else %}
+          <span class="pill red">empty</span>
+        {% endif %}
+      </li>
+      <li>MAIL_FROM on this server:
+        {% if info.mail and info.mail.seen and info.mail.seen.mail_from %}
+          <span class="pill green">yes</span> <code>{{ info.mail.from }}</code>
+        {% else %}
+          <span class="pill red">empty</span>
+        {% endif %}
+      </li>
+    </ul>
+    <p class="muted">On Render open the service that is live
+      (<code>hospital-suite</code>) → <b>Environment</b> → click
+      <code>BREVO_API_KEY</code> → paste the real secret from Brevo →
+      same for <code>MAIL_FROM</code> =
+      <code>Hospital Suite &lt;hcareproapp@gmail.com&gt;</code> →
+      <b>Save Changes</b> → wait until it is green → tap the test button.</p>
+  {% endif %}
+  <form method="post" action="/admin/health/test-mail" class="mt">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <button class="btn" type="submit">Send a test letter to my email</button>
+  </form>
+  <p><b>Backups:</b> stored in the database (survive restarts) —
+     <a href="/admin">download them here</a></p>
+  <p><b>Disk space:</b> {{ info.disk or 'unknown' }}</p>
+  <h2 class="mt">🤖 Patient Assistant AI</h2>
+  <p><b>Status:</b>
+    {% if ai.enabled %}<span class="pill green">on</span>
+    {% else %}<span class="pill">off — knowledge base only</span>{% endif %}</p>
+  <p><b>Providers:</b> {{ ai.providers | join(' → ') }}</p>
+  {% if ai.primary %}<p><b>Model:</b> <code>{{ ai.model }}</code></p>{% endif %}
+  <p><b>Used today:</b> {{ ai.used_today }} of {{ ai.daily_cap }}</p>
+  <p class="hint">The hospital's own 422 curated answers are always used first — the AI only
+    handles questions the library cannot answer, so it costs nothing on the free tier and the
+    assistant keeps working even with no AI configured.</p>
+
+  <h2 class="mt">Monitoring checklist</h2>
+  <ul class="muted">
+    <li>Nightly backups at 02:00 on any database engine — <b>download one monthly and keep it
+        off this server</b>, and restore one into a test database each quarter.</li>
+    <li>WhatsApp failures are flagged in Notifications &amp; retried manually or via queue.</li>
+    <li>Application errors return a friendly page; stack traces are never shown to users.</li>
+    <li>Check <code>/api/v1/health</code> — it reports the database, the background scheduler
+        and the time of the last backup.</li>
+    <li>For production: paid hosting (no cold starts), PostgreSQL, off-box backups, uptime monitoring.</li>
+  </ul>
+</div>
+{% endblock %}

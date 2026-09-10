@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% block title %}{{ insp.ref }}{% endblock %}
+{% block content %}
+<div class="spread mb">
+  <h1 style="margin:0">Inspection {{ insp.ref }}</h1>
+  <div>
+    <a class="btn small" href="/inspections/{{ insp.id }}/pdf">⬇ Download PDF</a>
+  </div>
+</div>
+
+<div class="grid cols2 mb">
+  <div class="card">
+    <h2>Details</h2>
+    <p><b>Date:</b> {{ insp.duty_date.strftime('%A, %d %B %Y') }}<br>
+       <b>Admin Manager:</b> {{ insp.inspector.name }}<br>
+       <b>Location:</b> {{ insp.department.name }}{% if insp.section %} › {{ insp.section.name }}{% endif %}{% if insp.unit %} › {{ insp.unit.name }}{% endif %}<br>
+       <b>Started:</b> {{ insp.started_at.strftime('%H:%M') }} · <b>Submitted:</b> {{ insp.submitted_at.strftime('%H:%M') }}<br>
+       <b>GPS:</b> {{ '✅ Captured' if insp.gps_captured else ('disabled' if insp.gps_mode=='disabled' else 'not captured') }}<br>
+       <b>Verification code:</b> <code>{{ insp.verify_code }}</code><br>
+       <b>Trend vs previous:</b> {{ trend }}</p>
+  </div>
+  <div class="card center">
+    <div class="muted" style="text-transform:uppercase;font-size:.72rem">Overall</div>
+    <div style="font-size:2.6rem;font-weight:800">{{ insp.total_score }}<span style="font-size:1.2rem;color:var(--muted)">/25</span></div>
+    <div>{{ insp.percent }}%</div>
+    <span class="pill {{ 'green' if insp.rating in ('EXCELLENT','GOOD') else ('amber' if insp.rating.startswith('FAIR') else ('orange' if insp.rating=='POOR' else 'red')) }}"
+          style="font-size:1rem;padding:8px 14px">{{ insp.rating }}</span>
+  </div>
+</div>
+
+<div class="card mb">
+  <h2>Criterion scores</h2>
+  <div class="table-wrap">
+  <table>
+    <tr><th>#</th><th>Criterion</th><th>Score</th><th>Explanation</th></tr>
+    {% for no in (1,2,3,4,5) %}
+    {% set s = scores.get(no) %}
+    <tr>
+      <td>C{{ no }}</td><td>{{ criteria[no].title }}</td>
+      <td><span class="pill {{ 'red' if s.score==1 else ('orange' if s.score==2 else ('amber' if s.score==3 else 'green')) }}">{{ s.score }}</span></td>
+      <td>{% if s.score <= 2 %}{{ s.explanation or '—' }}
+          {% if s.evidence_path %}<br><a href="#" onclick="alert('Evidence attached: {{ s.evidence_path }}');return false">📷 evidence</a>{% endif %}
+          {% else %}—{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  </div>
+</div>
+
+{% if insp.final_comment %}
+<div class="card mb">
+  <h2>📝 Admin Manager's comment</h2>
+  <p style="white-space:pre-wrap">{{ insp.final_comment }}</p>
+</div>
+{% endif %}
+
+{% if cas %}
+<div class="card mb"><h2>Corrective actions from this inspection</h2>
+  {% for ca in cas %}<div class="list-item"><b>{{ ca.finding[:100] }}</b>
+    <span class="pill {{ 'red' if ca.status=='OVERDUE' else ('green' if ca.status in ('COMPLETED','VERIFIED') else 'amber') }}">{{ ca.status }}</span>
+    <div class="muted">{{ ca.action_required }} · due {{ ca.deadline.strftime('%d %b %Y') }}</div></div>{% endfor %}
+</div>
+{% endif %}
+
+{% if current_user.role in ('SUPER_ADMIN','MD_CEO','ADMIN_MANAGER') %}
+<details>
+  <summary>➕ Create corrective action from this inspection</summary>
+  <form method="post" action="/corrective-actions">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <input type="hidden" name="source_type" value="inspection">
+    <input type="hidden" name="source_id" value="{{ insp.id }}">
+    <label>Finding</label><textarea name="finding" required></textarea>
+    <label>Required action</label><textarea name="action_required" required></textarea>
+    <div class="grid cols2">
+      <div><label>Responsible person</label>
+        <select name="owner_id" required>
+          {% for u in users %}<option value="{{ u.id }}">{{ u.name }} ({{ u.role }})</option>{% endfor %}
+        </select></div>
+      <div><label>Deadline</label><input type="date" name="deadline" required></div>
+    </div>
+    <button class="btn mt">Create &amp; notify owner</button>
+  </form>
+</details>
+{% endif %}
+
+{% if can_amend %}
+<details class="mt">
+  <summary>✏️ Controlled amendment (original record preserved)</summary>
+  <form method="post" action="/inspections/{{ insp.id }}/amend">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <label>Reason for amendment <span class="req">*</span></label>
+    <textarea name="reason" required></textarea>
+    {% for no in (1,2,3,4,5) %}
+      <label>C{{ no }} — {{ criteria[no].title }} (new score)</label>
+      <select name="score_{{ no }}">
+        {% for s in (1,2,3,4,5) %}<option value="{{ s }}" {{ 'selected' if scores.get(no) and scores[no].score==s }}>{{ s }}</option>{% endfor %}
+      </select>
+      <textarea name="explanation_{{ no }}" placeholder="Explanation (required if score 1–2)">{{ scores.get(no).explanation or '' if scores.get(no) else '' }}</textarea>
+    {% endfor %}
+    <button class="btn mt">Record amendment</button>
+  </form>
+</details>
+{% endif %}
+{% endblock %}

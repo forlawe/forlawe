@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Protect my sign-in{% endblock %}
+{% block content %}
+<p class="mb"><a class="btn big" href="/" style="width:100%;background:#1a7f37">← Skip — take me to my work</a></p>
+<h1>📱 Protect my sign-in</h1>
+<p class="muted">This is optional. You can skip it and work as usual. A password can be guessed. A phone code cannot.</p>
+
+{% if enabled %}
+<div class="flash success">Phone code is <b>on</b> for your account.</div>
+<div class="card mb" style="max-width:560px">
+  <h2>Turn it off</h2>
+  {% if forced %}
+  <p>Your job requires a phone code. You cannot turn it off.</p>
+  {% else %}
+  <form method="post" action="/mfa/disable">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <label>Your password</label>
+    <input type="password" name="password" required autocomplete="current-password">
+    <label>Current 6-digit phone code</label>
+    <input type="text" name="code" inputmode="numeric" maxlength="16" required>
+    <button class="btn danger mt">Turn phone code off</button>
+  </form>
+  {% endif %}
+</div>
+{% else %}
+{% if forced %}
+<div class="flash info">Your job requires a phone code. You cannot use the system
+  until this is done. It takes about one minute.</div>
+{% endif %}
+<p class="mb"><a class="btn big" href="/" style="width:100%;background:#1a7f37">← Skip — take me to my work</a></p>
+<div class="card mb" style="max-width:560px">
+  <h2>1. Install an authenticator app</h2>
+  <p>On your phone, install <b>Google Authenticator</b> or
+    <b>Microsoft Authenticator</b> from the Play Store (free).</p>
+  <h2>2. Scan this picture</h2>
+  <p class="center"><img src="{{ qr }}" alt="QR code for authenticator"
+       style="width:220px;height:220px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:8px"></p>
+  <p class="hint">Cannot scan? Type this key into the app instead:
+    <code style="word-break:break-all">{{ secret }}</code></p>
+  <h2>3. Type the 6-digit number the app shows</h2>
+  <form method="post" action="/mfa/setup">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <input type="text" name="code" inputmode="numeric" autocomplete="one-time-code"
+           maxlength="8" required placeholder="123456"
+           style="letter-spacing:.2em;font-size:1.3rem;text-align:center">
+    <button class="btn big mt" style="width:100%">Turn phone code on</button>
+  </form>
+</div>
+{% endif %}
+<p><a href="/admin/security">← Hospital security check</a></p>
+{% endblock %}

@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Import complete{% endblock %}
+{% block content %}
+<h1>✅ Import complete</h1>
+
+<div class="flash success">
+  <b>{{ result.created_count }} staff account(s) created.</b>
+  {% if result.skipped %} {{ result.skipped }} row(s) were skipped.{% endif %}
+</div>
+
+{% if result.created %}
+<div class="notice" style="border-left-color:#c62828;background:#fdecec">
+  <b>⚠ Copy these passwords now — this is the only time they are shown.</b><br>
+  They are not stored anywhere in readable form, so they cannot be shown again.
+  Print this page or copy it somewhere safe, then give each person their own line.
+  <div class="mt">
+    <button class="btn small secondary" type="button" onclick="window.print()">🖨 Print</button>
+    <button class="btn small secondary" type="button" id="copy-all">📋 Copy all</button>
+    <span id="copied" class="hint" style="display:none;color:#0f8a6a">✅ Copied</span>
+  </div>
+</div>
+
+<div class="table-wrap card" style="padding:0">
+<table id="creds">
+  <tr><th>Name</th><th>Username</th><th>Temporary password</th><th>Role</th><th>Department</th></tr>
+  {% for c in result.created %}
+  <tr>
+    <td>{{ c.name }}</td>
+    <td><code>{{ c.username }}</code></td>
+    <td><code style="font-size:1.02rem">{{ c.password }}</code></td>
+    <td>{{ c.role }}</td>
+    <td>{{ c.department or '—' }}</td>
+  </tr>
+  {% endfor %}
+</table>
+</div>
+
+<div class="notice mt">
+  <b>Next step:</b> these accounts are <b>awaiting approval</b> and cannot sign in yet.
+  Go to <a href="/admin/users">Users</a> and approve the ones you recognise.
+  Each person must change their password the first time they sign in.
+</div>
+{% endif %}
+
+<div class="row mt" style="gap:10px">
+  <a class="btn" href="/admin/users">Go to Users</a>
+  <a class="btn ghost" href="/admin/users/import">Import another file</a>
+</div>
+
+<script nonce="{{ csp_nonce }}">
+document.getElementById('copy-all')?.addEventListener('click', function () {
+  var rows = document.querySelectorAll('#creds tr');
+  var lines = [];
+  rows.forEach(function (tr) {
+    var cells = tr.querySelectorAll('th,td');
+    var vals = [];
+    cells.forEach(function (c) { vals.push(c.innerText.trim()); });
+    lines.push(vals.join('\t'));
+  });
+  var text = lines.join('\n');
+  function done() {
+    var el = document.getElementById('copied');
+    if (el) el.style.display = 'inline';
+  }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(done, function () {});
+  } else {
+    var ta = document.createElement('textarea');
+    ta.value = text; document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); done(); } catch (e) {}
+    document.body.removeChild(ta);
+  }
+});
+</script>
+{% endblock %}

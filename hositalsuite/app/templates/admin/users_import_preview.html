@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Import preview{% endblock %}
+{% block content %}
+<h1>Import preview</h1>
+
+<div class="flash {{ 'success' if error_count == 0 else 'info' }}">
+  <b>{{ valid_count }} staff will be created.</b>
+  {% if error_count %} {{ error_count }} row(s) have a problem and will be skipped.{% endif %}
+  Nothing has been saved yet.
+</div>
+
+<div class="table-wrap card" style="padding:0">
+<table>
+  <tr>
+    <th>Row</th><th>Name</th><th>Username</th><th>Department</th>
+    <th>Phone</th><th>Role</th><th>Status</th>
+  </tr>
+  {% for r in rows %}
+  <tr {% if not r.ok %}style="background:#fdf1f1"{% endif %}>
+    <td>{{ r.line }}</td>
+    <td>{{ r.name }}</td>
+    <td><code>{{ r.username }}</code></td>
+    <td>{{ r.department or '—' }}</td>
+    <td>{{ r.phone or '—' }}</td>
+    <td><span class="pill">{{ r.role }}</span></td>
+    <td>
+      {% if r.ok %}
+        <span class="pill green">will be created</span>
+      {% else %}
+        <span class="pill red">skipped</span>
+      {% endif %}
+      {% for e in r.errors %}<div class="hint" style="color:#8c1d1d">✗ {{ e }}</div>{% endfor %}
+      {% for w in r.warnings %}<div class="hint" style="color:#7a5b12">⚠ {{ w }}</div>{% endfor %}
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+</div>
+
+<div class="notice mt">
+  Every new account gets a random temporary password, must change it at first sign-in,
+  and starts <b>awaiting your approval</b>. You will see the passwords once on the next
+  screen — that is your only chance to copy them, so have somewhere ready.
+</div>
+
+<form method="post" action="/admin/users/import/confirm" class="mt row" style="gap:10px">
+  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+  <input type="hidden" name="token" value="{{ token }}">
+  <button class="btn big" {{ 'disabled' if valid_count == 0 }}>
+    ✅ Create {{ valid_count }} staff account(s)</button>
+  <a class="btn ghost" href="/admin/users/import">Cancel</a>
+</form>
+{% endblock %}

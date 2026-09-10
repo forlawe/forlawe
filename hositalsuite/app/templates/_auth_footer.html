@@ -1,0 +1,10 @@
+{# Shared "back to the front door" row for every auth screen.
+
+Why this exists: staff reach /login from a QR poster, a WhatsApp link or an old
+bookmark, and the only way back to the product page was the browser Back button.
+One row under the card fixes that. url_for() only (F-024) so a blueprint rename
+fails loudly instead of rotting into a 404. #}
+<nav class="auth-footer" aria-label="CareQueue">
+  <a href="{{ url_for('main.sales_landing') }}">← CareQueue home</a>
+  <a href="{{ url_for('main.patient_hub') }}">Patient view</a>
+</nav>

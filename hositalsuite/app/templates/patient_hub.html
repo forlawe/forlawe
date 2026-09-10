@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="{{ lang }}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+{% include "_pwa_head.html" %}
+<meta name="theme-color" content="#0e5a8a">
+<title>{{ _('tagline') }} — {{ org.name if org else 'Hospital' }}</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}?v={{ app_version }}">
+<style nonce="{{ csp_nonce }}">
+  .hub-grid{display:grid;grid-template-columns:1fr;gap:12px;margin-top:10px}
+  @media (min-width:620px){.hub-grid{grid-template-columns:1fr 1fr}}
+  .hub-tile{display:flex;align-items:center;gap:14px;text-decoration:none;
+    background:#fff;border:1px solid #dbe4ec;border-left:6px solid var(--accent,#0e5a8a);
+    border-radius:14px;padding:16px 14px;box-shadow:0 2px 10px rgba(16,42,67,.07);
+    transition:transform .12s ease, box-shadow .12s ease;min-height:78px}
+  .hub-tile:active{transform:scale(.985)}
+  .hub-tile:hover{box-shadow:0 6px 18px rgba(16,42,67,.14)}
+  .hub-ico{font-size:2rem;line-height:1;flex-shrink:0;width:52px;height:52px;
+    display:flex;align-items:center;justify-content:center;border-radius:12px;background:#eef4f9}
+  .hub-txt{min-width:0;display:block}
+  .hub-title{display:block;font-weight:800;font-size:1.06rem;color:#0f2f47;line-height:1.25}
+  .hub-desc{display:block;font-size:.85rem;color:#5a6b7b;margin-top:3px;line-height:1.35}
+  .hub-go{margin-left:auto;font-size:1.4rem;color:#9bb0c2;flex-shrink:0}
+  .t-book   {border-left-color:#0e5a8a} .t-book   .hub-ico{background:#e7f0f8}
+  .t-queue  {border-left-color:#0f8a6a} .t-queue  .hub-ico{background:#e6f6f1}
+  .t-chat   {border-left-color:#6b4fd8} .t-chat   .hub-ico{background:#efeafd}
+  .t-comp   {border-left-color:#c2521c} .t-comp   .hub-ico{background:#fdeee5}
+  .t-fb     {border-left-color:#c9a227} .t-fb     .hub-ico{background:#fdf6e0}
+  .t-refer  {border-left-color:#0d7fa6} .t-refer  .hub-ico{background:#e5f4fa}
+
+  /* Luxury Fast Track button — premium, gold, special */
+  .lux-card{
+    background: linear-gradient(135deg,#FFD700 0%,#FFC400 30%,#FFA500 70%,#FF8C00 100%);
+    border-radius:18px;padding:18px 18px 16px;margin:10px 0 16px;
+    box-shadow:0 10px 28px rgba(255,165,0,0.35), inset 0 1px 0 rgba(255,255,255,0.6);
+    border:1px solid rgba(0,0,0,0.08);position:relative;overflow:hidden;
+    display:flex;gap:14px;align-items:center;text-decoration:none;
+  }
+  .lux-card:before{
+    content:"";position:absolute;top:-30%;left:-20%;width:60%;height:200%;
+    background: linear-gradient(90deg,transparent,rgba(255,255,255,0.35),transparent);
+    transform:rotate(18deg);
+  }
+  .lux-icon{
+    width:56px;height:56px;border-radius:14px;background:#000;color:#FFD700;
+    display:flex;align-items:center;justify-content:center;font-size:1.9rem;
+    flex-shrink:0;box-shadow:0 4px 12px rgba(0,0,0,0.25);
+  }
+  .lux-txt{flex:1;min-width:0;position:relative}
+  .lux-title{font-weight:900;font-size:1.12rem;color:#000;line-height:1.2;letter-spacing:-0.01em}
+  .lux-sub{font-size:.86rem;color:#2b1a00;margin-top:4px;line-height:1.4;font-weight:500}
+  .lux-badge{
+    display:inline-flex;align-items:center;gap:4px;margin-top:8px;
+    background:#000;color:#FFD700;padding:5px 12px;border-radius:999px;
+    font-size:.72rem;font-weight:900;letter-spacing:0.04em;
+  }
+  .lux-go{
+    width:40px;height:40px;border-radius:50%;background:#000;color:#FFD700;
+    display:flex;align-items:center;justify-content:center;font-size:1.3rem;
+    flex-shrink:0;box-shadow:0 3px 10px rgba(0,0,0,0.25);
+  }
+  .emerg{display:block;margin:16px 0 4px;padding:13px 14px;border-radius:12px;
+    background:#fdecec;border:1px solid #f3c2c2;border-left:6px solid #c62828;
+    color:#8c1d1d;font-weight:700;font-size:.9rem;text-decoration:none}
+  .hub-foot{text-align:center;margin:18px 0 8px;font-size:.82rem;color:#5a6b7b}
+  .hub-foot a{color:#0e5a8a}
+</style>
+</head>
+<body>
+<div class="portal-head">
+  {% include "_brand_mark.html" %}
+  <div>{{ _('tagline') }}</div>
+  {% include "_langbar.html" %}
+  {% if qr_loc %}<div class="mt"><span class="pill blue">📍 {{ qr_loc.name }}</span></div>{% endif %}
+</div>
+
+<main class="wrap" style="max-width:640px">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for cat, msg in messages %}<div class="flash {{ cat }}">{{ msg }}</div>{% endfor %}
+  {% endwith %}
+
+  <!-- Premium luxury Fast Track booking — special button -->
+  <a class="lux-card" href="{{ url_for('bookings.portal') }}{{ q }}" aria-label="Book Fast Track">
+    <div class="lux-icon">👑</div>
+    <div class="lux-txt">
+      <div class="lux-title">Fast Track — Be Seen Fast</div>
+      <div class="lux-sub">Short on time? Book ahead and walk straight to our quiet executive lounge. No long queue. Calm, fast, private.</div>
+      <div class="lux-badge">⭐ PREMIUM • PAY MORE, GET FAST • EXECUTIVE LOUNGE</div>
+    </div>
+    <div class="lux-go">›</div>
+  </a>
+
+  <h1 style="font-size:1.25rem;margin:10px 0 2px;color:#0f2f47;font-weight:900">{{ _('hub_welcome') }}</h1>
+  <p class="muted" style="margin:0 0 6px;font-size:.9rem">{{ _('hub_sub') }}</p>
+
+  <div class="hub-grid">
+    <a class="hub-tile t-book" href="{{ url_for('bookings.portal') }}{{ q }}">
+      <span class="hub-ico">📅</span>
+      <span class="hub-txt">
+        <span class="hub-title">Book a visit</span>
+        <span class="hub-desc">Choose a day and time that works for you.</span>
+      </span><span class="hub-go">›</span>
+    </a>
+
+    <a class="hub-tile t-queue" href="{{ url_for('queue.join_page') }}{{ q }}">
+      <span class="hub-ico">🎟️</span>
+      <span class="hub-txt">
+        <span class="hub-title">Join the queue</span>
+        <span class="hub-desc">Get a number and track your turn live.</span>
+      </span><span class="hub-go">›</span>
+    </a>
+
+    <a class="hub-tile t-chat" href="{{ url_for('chat.chat_page') }}{{ q }}">
+      <span class="hub-ico">💬</span>
+      <span class="hub-txt">
+        <span class="hub-title">Ask us anything</span>
+        <span class="hub-desc">Find your way, hours, and help.</span>
+      </span><span class="hub-go">›</span>
+    </a>
+
+    <a class="hub-tile t-comp" href="{{ url_for('complaints.portal') }}{{ q }}">
+      <span class="hub-ico">📣</span>
+      <span class="hub-txt">
+        <span class="hub-title">Tell us a problem</span>
+        <span class="hub-desc">We will listen and fix it quickly.</span>
+      </span><span class="hub-go">›</span>
+    </a>
+
+    <a class="hub-tile t-fb" href="{{ url_for('feedback.portal') }}{{ q }}">
+      <span class="hub-ico">⭐</span>
+      <span class="hub-txt">
+        <span class="hub-title">How was your visit?</span>
+        <span class="hub-desc">Your feedback helps us improve.</span>
+      </span><span class="hub-go">›</span>
+    </a>
+
+    {% if share_url %}
+    <a class="hub-tile t-refer" href="#" id="share-tile">
+      <span class="hub-ico">💌</span>
+      <span class="hub-txt">
+        <span class="hub-title">Invite a friend</span>
+        <span class="hub-desc">Share the hospital with someone.</span>
+      </span><span class="hub-go">›</span>
+    </a>
+    {% endif %}
+  </div>
+
+  {% if share_url %}
+  <div class="card pad mt" id="share-box" style="display:none">
+    <b>Invite a friend</b>
+    <p class="muted" style="margin:6px 0">Share this link with someone who needs care.</p>
+    <div class="grid cols2" style="gap:8px">
+      <a class="btn" id="wa-share" href="{{ wa_url }}" target="_blank" rel="noopener">📲 WhatsApp</a>
+      <button class="btn secondary" type="button" id="copy-link">🔗 Copy link</button>
+    </div>
+    <input type="text" id="share-url" value="{{ share_url }}" readonly style="margin-top:10px;font-size:.82rem;text-align:center" onclick="this.select()">
+    <p class="hint center" id="copy-done" style="display:none;color:#0f8a6a">✅ Link copied — now paste it to your friend.</p>
+  </div>
+  {% endif %}
+
+  {# --- Emergency card — audited, properly linked to A&E and others per founder --- #}
+  <div class="emerg-card" style="margin:16px 0 12px;padding:14px;border-radius:14px;background:linear-gradient(135deg,#fdecec 0%,#fff3cd 100%);border:2px solid #c62828;border-left:7px solid #c62828;box-shadow:0 4px 14px rgba(198,40,40,.15)">
+    <div style="display:flex;gap:10px;align-items:flex-start">
+      <span style="font-size:1.6rem;flex-shrink:0">🚨</span>
+      <div style="flex:1;min-width:0">
+        <b style="font-size:.98rem;color:#8c1d1d">Emergency — Accident & Emergency Unit — open 24/7</b>
+        <div style="font-size:.84rem;color:#6b1a1a;margin-top:4px;line-height:1.45;font-weight:500">
+          Go straight to <b>Accident & Emergency</b> now — do not wait online. Tell reception it's an emergency. You will be seen immediately.
+        </div>
+        {# F-040: ONE instruction, not three (the product's own AI rule).
+           One primary action — register the A&E arrival; everything else is
+           demoted to one small secondary line. The old banner offered four
+           equal buttons plus a repeating "Linked:" line — in a real emergency
+           that is exactly how people end up doing nothing. #}
+        <div style="margin-top:10px">
+          <a href="{{ url_for('queue.join_page') }}{{ q }}{% if q %}&{% else %}?{% endif %}emergency=1" class="btn small" style="background:#c62828;color:#fff;font-weight:900;border-radius:999px;padding:10px 18px;text-decoration:none;font-size:.9rem">🚑 I'm coming to A&E — register me now</a>
+        </div>
+        <div style="margin-top:8px;font-size:.75rem;color:#8c1d1d;line-height:1.5">
+          Can't come in right now?
+          {% if hospital and hospital.phone %}
+          <a href="tel:{{ hospital.phone | replace(' ', '') }}" style="color:#8c1d1d;font-weight:700">📞 Call Help Desk — {{ hospital.phone }}</a>
+          {% else %}
+          <a href="#help-desk" onclick="document.querySelector('.help-desk')?.scrollIntoView({behavior:'smooth'});return false;" style="color:#8c1d1d;font-weight:700">📞 Help desk numbers below</a>
+          {% endif %}
+          · <a href="{{ url_for('chat.chat_page') }}{{ q }}{% if q %}&{% else %}?{% endif %}q=emergency" style="color:#8c1d1d">💬 ask for directions</a>
+          · <button type="button" style="background:none;border:none;padding:0;color:#8c1d1d;text-decoration:underline;font-size:inherit;cursor:pointer" onclick="try{if(window.hmsVoice&&hmsVoice.speak){hmsVoice.speak('Emergency — Go straight to Accident and Emergency now. It is open twenty four seven. Tell reception it is an emergency, you will be seen immediately. Do not wait for online queue. If outside hospital, call help desk or go to nearest hospital.');}}catch(e){}">🔊 listen</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {% include "_help_desk.html" %}
+
+  <div class="hub-foot">
+    <a href="{{ url_for('complaints.portal_status') }}">Check a complaint</a> ·
+    <a href="{{ url_for('bookings.portal_status') }}">Check a booking</a> ·
+    <a href="{{ url_for('main.privacy') }}">Privacy</a>
+  </div>
+</main>
+
+<script nonce="{{ csp_nonce }}">
+(function () {
+  var tile = document.getElementById('share-tile');
+  var box  = document.getElementById('share-box');
+  if (!tile || !box) return;
+  var url  = document.getElementById('share-url').value;
+  var text = {{ share_text | tojson }};
+  tile.addEventListener('click', function (e) {
+    e.preventDefault();
+    if (navigator.share) {
+      navigator.share({ title: document.title, text: text, url: url })
+               .catch(function () { box.style.display = 'block'; });
+    } else {
+      box.style.display = 'block';
+      box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  });
+  document.getElementById('copy-link').addEventListener('click', function () {
+    var done = document.getElementById('copy-done');
+    var input = document.getElementById('share-url');
+    function ok() { done.style.display = 'block'; }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(url).then(ok, function () { input.select(); });
+    } else {
+      input.select();
+      try { document.execCommand('copy'); ok(); } catch (err) {}
+    }
+  });
+})();
+</script>
+{% include "_install.html" %}
+</body>
+</html>

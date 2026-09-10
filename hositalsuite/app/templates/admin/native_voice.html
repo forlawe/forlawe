@@ -1,0 +1,361 @@
+{% extends "base.html" %}
+{% block title %}Native Voice Bank — {{ hospital.name if hospital else "Hospital" }}{% endblock %}
+
+{% block content %}
+<h1>🎙 Native Voice Bank — Phrase, Not Clone</h1>
+<p class="muted">Chrome/Google TTS sounds foreign. Real humans recording real phrases, stitched for dynamic time/name/place/count. <b>2M2F per language = 16 voices</b> recycled daily, 4 languages (en, yo, ha, ig). <b>Wait for their pick</b> — staff audition and pick, not auto-assign.</p>
+
+<div class="card pad mb" style="background:#f0fdf4;border-left:5px solid #1a7f37;max-width:100%;overflow:hidden">
+  <h2 style="margin:0">🎧 Audition & Pick — Wait for Their Pick</h2>
+  <p class="muted" style="margin:.3rem 0 0">Present 2 voices side-by-side, same phrase, wait for vote. Staff picks preferred voice for their TV/department.</p>
+  <div class="grid cols2 mt" style="gap:12px;max-width:100%">
+    <div>
+      <label>Phrase to audition:</label>
+      <select id="audition-key" style="width:100%">
+        <option value="queue_waiting">queue_waiting — 3 patients waiting at Laboratory</option>
+        <option value="consult_call_in">consult_call_in — Mrs Tayo please come to Room 1</option>
+        <option value="go_to_billing">go_to_billing — Please go to Billing</option>
+        <option value="greeting_morning">greeting_morning — Good morning</option>
+      </select>
+      <div class="mt" style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn small" onclick="auditionVoices()">▶ Audition 4 Voices (En)</button>
+        <button class="btn secondary small" onclick="auditionVoicesLang('yo')">Yoruba</button>
+        <button class="btn secondary small" onclick="auditionVoicesLang('ha')">Hausa</button>
+        <button class="btn secondary small" onclick="auditionVoicesLang('ig')">Igbo</button>
+      </div>
+      <div id="audition-out" class="mt" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px"></div>
+    </div>
+    <div>
+      <h3 style="margin-top:0">How expert does it:</h3>
+      <ul style="line-height:1.5;font-size:.9rem">
+        <li><b>2M2F recycled daily</b> — day_of_year %4 → FEMALE1/MALE1/FEMALE2/MALE2, per org, per TV</li>
+        <li><b>Wait for pick</b> — staff audition, vote, then assign voice_id to TV/UserPref</li>
+        <li><b>Phrase bank</b> — real recordings, not AI clone, warm Nigerian accent</li>
+        <li><b>Dynamic</b> — time via hour, name via speech_name(), count via number_*, place via place_*</li>
+        <li><b>Fallback</b> — if native missing, TTS fallback if enabled</li>
+      </ul>
+      <a class="btn small secondary mt" href="/admin/native-voice/missing">🔍 Missing Phrases Report</a>
+      <a class="btn small secondary mt" href="/admin/native-voice/script">📜 Recording Script</a>
+    </div>
+  </div>
+</div>
+
+<div class="card pad mb" style="background:#fffbeb;border-left:5px solid #f59e0b;max-width:100%;overflow:hidden">
+  <h2 style="margin:0">🎤 Voice Studio — Record Directly (Browser) — FIXED for Android Chrome</h2>
+  <p class="muted" style="margin:.3rem 0 0">Now supports <b>webm</b> from Android Chrome MediaRecorder. Tap Record, speak 1-10 sec, Save. Works on all browsers: Chrome, Samsung Internet, Firefox, Safari.</p>
+  <div class="grid cols2 mt" style="gap:16px">
+    <div style="min-width:0">
+      <label>Voice: <select id="rec-voice" style="width:100%">{% for v in voices %}<option value="{{ v.id }}">{{ v.display_name }}</option>{% endfor %}</select></label>
+      <label class="mt" style="display:block">Key: <input id="rec-key" value="queue_waiting" style="width:100%"></label>
+      <label class="mt" style="display:block">Lang: <select id="rec-lang" style="width:100%"><option>en</option><option>yo</option><option>ha</option><option>ig</option></select></label>
+      <label class="mt" style="display:block">Text template: <input id="rec-text" value="{name}, {count} patients waiting at {place}" style="width:100%"></label>
+      <div class="mt" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <button id="rec-btn" class="btn" onclick="toggleRec()">● Record</button>
+        <span id="rec-timer" class="muted">00:00</span>
+        <canvas id="rec-wave" width="200" height="40" style="border:1px solid #ddd;background:#000;border-radius:6px;max-width:100%"></canvas>
+      </div>
+      <audio id="rec-preview" controls style="width:100%;margin-top:8px;display:none"></audio>
+      <div id="rec-status" class="hint mt" style="display:none"></div>
+      <button id="rec-save" class="btn secondary small mt" style="display:none" onclick="saveRec()">💾 Save Recording to Bank</button>
+      <p class="hint">Records via MediaRecorder (webm/opus on Chrome, mp4 on Safari), shows waveform. Max 10 sec. Uploads to /admin/native-voice/phrase/upload. Now fixed to accept webm.</p>
+    </div>
+    <div style="min-width:0">
+      <h3 style="margin-top:0">Bulk Zip Upload</h3>
+      <form method="post" action="/admin/native-voice/bulk-upload" enctype="multipart/form-data">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        <label>Zip file (50 MB max): <input type="file" name="zipfile" accept=".zip" required></label>
+        <div class="mt"><button class="btn secondary small">📦 Import Zip (key_lang_code.mp3)</button></div>
+      </form>
+      <p class="hint">Name files like <code>queue_waiting_en_FEMALE1.mp3</code>, <code>number_3_yo_MALE1.mp3</code>. Now also accepts .webm from phone recordings.</p>
+      <div class="card pad mt" style="background:#eef6fb">
+        <b>Troubleshooting if Save fails:</b>
+        <ul style="font-size:.85rem;line-height:1.5;margin:6px 0 0 18px">
+          <li>Allow microphone: Chrome → lock icon → Allow Mic</li>
+          <li>Use Chrome, not in-app browser (Facebook browser blocks mic)</li>
+          <li>Record at least 1 second, less than 10 sec</li>
+          <li>Check internet — slow internet in Africa needs patience, wait 5 sec after Save</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card pad mb">
+  <h2>Current: {{ greeting }} — {{ now.strftime('%H:%M %d %b %Y') if now else '' }}</h2>
+  <p class="hint">Time-based greeting changes dynamically: morning (5-11), afternoon (12-16), evening (17-23).</p>
+  <p>Voice today: <b>{{ voices[0].display_name if voices else "None seeded yet" }}</b> — rotation day {{ (now.timetuple().tm_yday if now else 0) }} % 4</p>
+</div>
+
+<div class="grid cols2">
+  <div class="card pad" style="min-width:0">
+    <h2>⚙ Settings</h2>
+    <form method="post" action="/admin/native-voice/settings">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <label><input type="checkbox" name="enabled" {% if setting and setting.enabled %}checked{% endif %}> Enable native voice bank (master switch)</label><br>
+      <label><input type="checkbox" name="use_native" {% if setting and setting.use_native %}checked{% endif %}> Prefer native over TTS</label><br>
+      <label><input type="checkbox" name="fallback_to_tts" {% if setting and setting.fallback_to_tts %}checked{% endif %}> Fallback to TTS if native missing (recommended)</label><br>
+      <label>Languages (comma): <input type="text" name="languages" value="{{ setting.languages if setting else 'en,yo,ha,ig' }}" style="width:100%;max-width:200px"></label><br>
+      <label>Volume: <input type="number" name="volume" min="0" max="100" value="{{ setting.volume if setting else 100 }}" style="width:80px"></label><br>
+      <label>Rotation map JSON (optional): <input type="text" name="rotation_map" value="{{ setting.rotation_map or '' }}" placeholder='{"0":1,"1":2}' style="width:100%;max-width:300px"></label>
+      <div class="mt"><button class="btn">Save settings</button></div>
+    </form>
+  </div>
+
+  <div class="card pad" style="min-width:0">
+    <h2>🎤 Add Voice</h2>
+    <form method="post" action="/admin/native-voice/voice/add">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <label>Code: <select name="code" style="width:100%"><option>FEMALE1</option><option>MALE1</option><option>FEMALE2</option><option>MALE2</option></select></label><br>
+      <label>Name: <input type="text" name="name" placeholder="Ada" required></label><br>
+      <label>Gender: <select name="gender" style="width:100%"><option value="female">female</option><option value="male">male</option></select></label><br>
+      <label>Language: <select name="language" style="width:100%"><option value="en">en (Nigerian English)</option><option value="yo">yo (Yorùbá)</option><option value="ha">ha (Hausa)</option><option value="ig">ig (Igbo)</option></select></label><br>
+      <div class="mt"><button class="btn secondary">Add voice</button></div>
+    </form>
+  </div>
+</div>
+
+<div class="card pad mt" style="padding:0;overflow:hidden">
+  <h2 style="padding:16px 16px 0">🎧 Voices ({{ voices|length }}) — 2M2F recycled daily</h2>
+  <div style="padding:0 16px 12px">
+  {% for v in voices %}
+    <div class="row spread" style="border-bottom:1px solid #eee;padding:10px 0;gap:8px">
+      <span style="font-size:.9rem;min-width:0;flex:1"><b>{{ v.name }}</b> — {{ v.code }} — {{ v.gender }} — {{ v.language }} — {% if v.sample_key %}<span class="pill green">has sample</span>{% else %}<span class="pill red">no sample</span>{% endif %}</span>
+      <form method="post" action="/admin/native-voice/voice/{{ v.id }}/upload" enctype="multipart/form-data" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        <input type="file" name="audio" accept="audio/*" required style="max-width:160px">
+        <button class="btn small">Upload</button>
+      </form>
+    </div>
+  {% else %}
+    <p class="muted">No voices yet — seed happens on first load.</p>
+  {% endfor %}
+  </div>
+</div>
+
+<div class="card pad mt" style="max-width:100%;overflow:hidden">
+  <h2>🔊 Phrase Bank ({{ phrases|length }})</h2>
+  <p class="hint">Upload mp3/wav/ogg/webm/m4a for each phrase key + language + voice. Placeholders: {name}, {count}, {place}.</p>
+  <form method="post" action="/admin/native-voice/phrase/upload" enctype="multipart/form-data" class="mb" style="display:flex;gap:8px;flex-wrap:wrap;align-items:end">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <label>Voice: <select name="voice_id" required>{% for v in voices %}<option value="{{ v.id }}">{{ v.display_name }}</option>{% endfor %}</select></label>
+    <label>Key: <input type="text" name="key" list="base_keys" placeholder="queue_waiting" required style="width:160px">
+      <datalist id="base_keys">{% for k in base_keys %}<option value="{{ k }}">{% endfor %}</datalist>
+    </label>
+    <label>Lang: <select name="language"><option value="en">en</option><option value="yo">yo</option><option value="ha">ha</option><option value="ig">ig</option></select></label>
+    <label>Text: <input type="text" name="text_template" placeholder="{name}, please go to {place}" style="width:200px"></label>
+    <input type="file" name="audio" accept="audio/*" required>
+    <button class="btn small">Upload phrase</button>
+  </form>
+
+  <div class="table-wrap">
+    <table class="table">
+      <tr><th>Key</th><th>Lang</th><th>Voice</th><th>Text</th><th>Audio</th><th>Play</th></tr>
+      {% for p in phrases[:100] %}
+        <tr>
+          <td><code>{{ p.key }}</code></td>
+          <td>{{ p.language }}</td>
+          <td style="font-size:.85rem">{{ p.voice.name if p.voice else p.voice_id }}</td>
+          <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;font-size:.85rem">{{ p.text_template }}</td>
+          <td>{% if p.audio_key %}<span class="pill green">yes</span>{% else %}<span class="pill red">no</span>{% endif %}</td>
+          <td>{% if p.audio_key %}<audio controls src="/api/v1/voice/audio/{{ p.id }}" style="width:140px"></audio>{% endif %}</td>
+        </tr>
+      {% endfor %}
+    </table>
+  </div>
+  {% if phrases|length > 100 %}<p class="muted" style="padding:8px">Showing 100 of {{ phrases|length }}</p>{% endif %}
+</div>
+
+<script nonce="{{ csp_nonce }}">
+// Audition
+async function auditionVoices(){
+  const key = document.getElementById('audition-key').value;
+  await auditionVoicesLang('en', key);
+}
+async function auditionVoicesLang(lang, keyOverride){
+  const key = keyOverride || document.getElementById('audition-key').value;
+  const out = document.getElementById('audition-out');
+  out.innerHTML = '<p class="muted">Loading voices...</p>';
+  try {
+    const codes = ['FEMALE1','MALE1','FEMALE2','MALE2'];
+    out.innerHTML = '';
+    for (let code of codes){
+      const div = document.createElement('div');
+      div.style.border = '1px solid #ddd';
+      div.style.padding = '8px';
+      div.style.borderRadius = '8px';
+      div.style.background = '#fff';
+      div.innerHTML = `<b>${code} (${lang})</b><br><button class="btn small" onclick="playTTS('${code}','${lang}','${key}')" style="margin-top:6px">▶ Play ${code}</button> <button class="btn secondary small" onclick="pickVoice('${code}','${lang}')" style="margin-top:6px">Pick</button>`;
+      out.appendChild(div);
+    }
+  } catch(e){
+    out.innerHTML = '<p class="muted">Error: '+e+'</p>';
+  }
+}
+function playTTS(code, lang, key){
+  const map = {
+    'queue_waiting': 'Mr Tunde, 3 patients are waiting at the Laboratory.',
+    'consult_call_in': 'Mrs Tayo, please come in to Room 1 now.',
+    'go_to_billing': 'Patient, please go to the Billing Unit to collect your bill.',
+    'greeting_morning': 'Good morning, welcome to General Hospital Ijede.'
+  };
+  const text = map[key] || key;
+  if ('speechSynthesis' in window){
+    const u = new SpeechSynthesisUtterance(text);
+    const voices = speechSynthesis.getVoices();
+    const ng = voices.find(v=>v.lang.includes('en-NG') || v.name.includes('Nigeria'));
+    if (ng) u.voice = ng;
+    if (code.includes('FEMALE')) u.pitch = 1.2;
+    if (code.includes('MALE2')) u.pitch = 0.8;
+    speechSynthesis.speak(u);
+  } else {
+    alert(text);
+  }
+}
+function pickVoice(code, lang){
+  alert(`Picked ${code} (${lang}) — staff auditioned and picked ${code}. In full version, saves to TV preferred_voice_id.`);
+}
+
+// Recording Studio — FIXED for webm
+let mediaRecorder, audioChunks=[], recStart, timerInterval, audioContext, analyser, waveCanvas, waveCtx;
+async function toggleRec(){
+  const btn = document.getElementById('rec-btn');
+  if (mediaRecorder && mediaRecorder.state === 'recording'){
+    mediaRecorder.stop();
+    btn.textContent = '● Record';
+    clearInterval(timerInterval);
+    return;
+  }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({audio:true});
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const source = audioContext.createMediaStreamSource(stream);
+    analyser = audioContext.createAnalyser();
+    analyser.fftSize = 2048;
+    source.connect(analyser);
+    waveCanvas = document.getElementById('rec-wave');
+    waveCtx = waveCanvas.getContext('2d');
+    drawWave();
+
+    // Choose mimeType supported by this browser
+    let mime = 'audio/webm;codecs=opus';
+    if (!MediaRecorder.isTypeSupported(mime)){
+      mime = 'audio/webm';
+    }
+    if (!MediaRecorder.isTypeSupported(mime)){
+      mime = 'audio/ogg;codecs=opus';
+    }
+    if (!MediaRecorder.isTypeSupported(mime)){
+      mime = ''; // let browser pick
+    }
+    mediaRecorder = mime ? new MediaRecorder(stream, {mimeType: mime}) : new MediaRecorder(stream);
+    audioChunks = [];
+    mediaRecorder.ondataavailable = e=>{ if(e.data.size>0) audioChunks.push(e.data); };
+    mediaRecorder.onstop = ()=>{
+      const blob = new Blob(audioChunks, {type: mediaRecorder.mimeType || 'audio/webm'});
+      const url = URL.createObjectURL(blob);
+      const preview = document.getElementById('rec-preview');
+      preview.src = url;
+      preview.style.display = 'block';
+      document.getElementById('rec-save').style.display = 'inline-block';
+      document.getElementById('rec-status').style.display = 'block';
+      document.getElementById('rec-status').textContent = `Recorded ${(blob.size/1024).toFixed(1)} KB, type ${blob.type}. Tap Play to hear, then Save.`;
+      stream.getTracks().forEach(t=>t.stop());
+      if (audioContext) { try{ audioContext.close(); }catch(e){} audioContext=null; analyser=null; }
+    };
+    mediaRecorder.start();
+    recStart = Date.now();
+    btn.textContent = '■ Stop (max 10s)';
+    timerInterval = setInterval(()=>{
+      const elapsed = Math.floor((Date.now()-recStart)/1000);
+      const m = String(Math.floor(elapsed/60)).padStart(2,'0');
+      const s = String(elapsed%60).padStart(2,'0');
+      document.getElementById('rec-timer').textContent = `${m}:${s}`;
+      if (elapsed>=10){ toggleRec(); }
+    }, 200);
+    document.getElementById('rec-status').style.display = 'block';
+    document.getElementById('rec-status').textContent = 'Recording... speak clearly near mic';
+  } catch(e){
+    alert('Mic error: '+e+' — Allow microphone in browser. On Android Chrome, tap lock icon → Site settings → Mic Allow. Don\'t use Facebook in-app browser.');
+  }
+}
+function drawWave(){
+  if (!analyser || !waveCtx) return;
+  const bufferLength = analyser.frequencyBinCount;
+  const dataArray = new Uint8Array(bufferLength);
+  function draw(){
+    if (!analyser) return;
+    requestAnimationFrame(draw);
+    analyser.getByteTimeDomainData(dataArray);
+    waveCtx.fillStyle = '#000';
+    waveCtx.fillRect(0,0,waveCanvas.width,waveCanvas.height);
+    waveCtx.lineWidth = 2;
+    waveCtx.strokeStyle = '#1a7f37';
+    waveCtx.beginPath();
+    const sliceWidth = waveCanvas.width / bufferLength;
+    let x=0;
+    for(let i=0;i<bufferLength;i++){
+      const v = dataArray[i]/128.0;
+      const y = v * waveCanvas.height/2;
+      if(i===0) waveCtx.moveTo(x,y);
+      else waveCtx.lineTo(x,y);
+      x+=sliceWidth;
+    }
+    waveCtx.lineTo(waveCanvas.width,waveCanvas.height/2);
+    waveCtx.stroke();
+  }
+  draw();
+}
+async function saveRec(){
+  const voiceId = document.getElementById('rec-voice').value;
+  const key = document.getElementById('rec-key').value.trim();
+  const lang = document.getElementById('rec-lang').value;
+  const text = document.getElementById('rec-text').value;
+  const preview = document.getElementById('rec-preview');
+  const statusEl = document.getElementById('rec-status');
+  if (!preview.src || preview.src === window.location.href){ alert('No recording — tap Record first'); return; }
+  if (!key){ alert('Enter phrase key e.g. queue_waiting'); return; }
+  statusEl.style.display = 'block';
+  statusEl.textContent = 'Saving... please wait (slow internet)';
+  const saveBtn = document.getElementById('rec-save');
+  saveBtn.disabled = true;
+  saveBtn.textContent = 'Saving...';
+  try {
+    const blob = await fetch(preview.src).then(r=>r.blob());
+    if (blob.size < 200){ statusEl.textContent = 'Recording too small — speak louder, closer to mic, at least 1 sec'; saveBtn.disabled=false; saveBtn.textContent='💾 Save Recording to Bank'; return; }
+    const form = new FormData();
+    form.append('voice_id', voiceId);
+    form.append('key', key);
+    form.append('language', lang);
+    form.append('text_template', text);
+    const ext = blob.type.includes('ogg') ? 'ogg' : (blob.type.includes('mp4') || blob.type.includes('m4a') ? 'm4a' : 'webm');
+    form.append('audio', blob, `${key}_${lang}_${voiceId}.${ext}`);
+    const csrf = document.querySelector('input[name=_csrf]')?.value || '';
+    form.append('_csrf', csrf);
+    const resp = await fetch('/admin/native-voice/phrase/upload', {
+      method:'POST',
+      body:form,
+      headers: {'X-Requested-With':'XMLHttpRequest', 'Accept':'application/json'}
+    });
+    const data = await resp.json().catch(async ()=>{ const t=await resp.text(); return {ok: resp.ok, text:t}; });
+    if (resp.ok && (data.ok || data.ok===undefined)){
+      statusEl.textContent = '✅ Saved! ' + (data.message || 'Phrase saved');
+      statusEl.style.background = '#e6f4ea';
+      statusEl.style.padding = '8px';
+      statusEl.style.borderRadius = '8px';
+      setTimeout(()=>location.reload(), 1200);
+    } else {
+      statusEl.textContent = '❌ Save failed: ' + (data.error || data.text || resp.statusText).slice(0,300);
+      statusEl.style.background = '#fdeaea';
+      statusEl.style.padding = '8px';
+      statusEl.style.borderRadius = '8px';
+      saveBtn.disabled=false;
+      saveBtn.textContent='💾 Save Recording to Bank';
+    }
+  } catch(e){
+    statusEl.textContent = '❌ Save error: '+e+' — check internet, try again';
+    saveBtn.disabled=false;
+    saveBtn.textContent='💾 Save Recording to Bank';
+  }
+}
+</script>
+{% endblock %}

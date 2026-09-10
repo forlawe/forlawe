@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+{% block title %}Configuration{% endblock %}
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/leaflet/leaflet.css') }}">
+<style nonce="{{ csp_nonce }}">
+  .fence-map{height:280px;border-radius:12px;border:1px solid #d7e3ec;margin:10px 0}
+  .leaflet-container{font-family:inherit}
+</style>
+{% endblock %}
+{% block content %}
+<h1>Inspection &amp; Complaint Configuration</h1>
+
+<form class="card pad-lg mb" method="post" action="/admin/settings">
+  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+
+  <h2>⏱ Complaint SLA &amp; escalation</h2>
+  <div class="grid cols3">
+    <div><label>HOD resolution SLA (hours)</label>
+      <input type="number" name="sla_hours" min="1" max="336" value="{{ s.sla_hours }}">
+      <div class="hint">Complaints not resolved within this window are automatically escalated to the MD/CEO.</div></div>
+  </div>
+
+  <h2 class="mt">🔔 Duty reminders &amp; inspection deadline</h2>
+  <div class="grid cols4">
+    <div><label>Day-before reminder</label><input type="time" name="reminder_day_before_time" value="{{ s.reminder_day_before_time }}"></div>
+    <div><label>Duty-day reminder</label><input type="time" name="reminder_duty_day_time" value="{{ s.reminder_duty_day_time }}"></div>
+    <div><label>Inspection deadline</label><input type="time" name="inspection_deadline_time" value="{{ s.inspection_deadline_time }}"></div>
+    <div><label>Overdue alert to management</label><input type="time" name="overdue_notify_time" value="{{ s.overdue_notify_time }}"></div>
+  </div>
+
+  <h2 class="mt">📍 GPS verification (walk-round)</h2>
+  <select name="gps_mode">
+    <option value="mandatory" {{ 'selected' if s.gps_mode=='mandatory' }}>Mandatory — inspection blocked without GPS</option>
+    <option value="optional" {{ 'selected' if s.gps_mode=='optional' }}>Optional — captured when available</option>
+    <option value="disabled" {{ 'selected' if s.gps_mode=='disabled' }}>Disabled</option>
+  </select>
+
+  <h2 class="mt">🚪 Staff clock-in (gate check)</h2>
+  <p class="hint">This is <b>per hospital</b>, not a server switch. Drop the pin on the map (or do it on <a href="/attendance">I am here</a>). Voice reminders stay on.</p>
+  <div class="grid cols3">
+    <div>
+      <label>How strict</label>
+      <select name="attendance_mode">
+        <option value="off" {{ 'selected' if s.attendance_mode=='off' }}>Off — sign in without a place check</option>
+        <option value="optional" {{ 'selected' if s.attendance_mode=='optional' }}>Record place, still allow if outside</option>
+        <option value="required" {{ 'selected' if s.attendance_mode=='required' }}>Must be inside the circle</option>
+      </select>
+    </div>
+    <div>
+      <label>Default circle (metres)</label>
+      <input type="number" name="attendance_radius_m" id="cfg-rad" min="50" max="2000"
+             value="{{ s.attendance_radius_m or 200 }}">
+      <div class="hint">200 m covers a typical compound. Each site can set its own.</div>
+    </div>
+    <div>
+      <label>Grace after roster start (minutes)</label>
+      <input type="number" name="attendance_grace_minutes" min="0" max="240"
+             value="{{ s.attendance_grace_minutes or 60 }}">
+      <div class="hint">Late after this, counted from that person's own shift start.</div>
+    </div>
+  </div>
+  <input type="hidden" name="attendance_lat" id="cfg-lat" value="{{ s.attendance_lat or '' }}">
+  <input type="hidden" name="attendance_lng" id="cfg-lng" value="{{ s.attendance_lng or '' }}">
+  <p class="hint" id="cfg-map-label">Turn on Location. The pin will drop where you are standing.</p>
+  <div id="cfg-map" class="fence-map" role="img" aria-label="Map to drop the hospital gate pin"></div>
+  <button class="btn ghost small" type="button" id="cfg-here">Find me again</button>
+  <p class="hint">Each site can also have its own pin on <a href="/admin/branches">Admin → Sites</a>.</p>
+
+  <h2 class="mt">📡 WhatsApp report delivery</h2>
+  <div class="grid cols2">
+    <div><label>MD/CEO WhatsApp number (E.164, e.g. 2348012345678)</label>
+      <input type="text" name="whatsapp_md_number" value="{{ s.whatsapp_md_number }}" placeholder="2348012345678"></div>
+  </div>
+  <div class="hint">Provider credentials (Phone Number ID, access token) are configured via environment
+    variables — never stored in the browser. See <code>.env.example</code>. Current mode:
+    <b>{{ settings_mode if settings_mode else 'sandbox/cloud per server config' }}</b></div>
+
+  <h2 class="mt">🚨 Alert thresholds &amp; analytics</h2>
+  <div class="grid cols3">
+    <div><label>Multiple "score 2" alert when ≥</label>
+      <input type="number" name="multiple_two_threshold" min="1" max="5" value="{{ s.multiple_two_threshold }}"></div>
+    <div><label>Recurring-issue window (last N inspections)</label>
+      <input type="number" name="recurring_window" min="3" max="30" value="{{ s.recurring_window }}"></div>
+    <div><label>Recurring-issue threshold (poor scores ≥)</label>
+      <input type="number" name="recurring_threshold" min="2" max="15" value="{{ s.recurring_threshold }}"></div>
+  </div>
+
+  <h2 class="mt">📅 Patient booking</h2>
+  <div class="grid cols3">
+    <div><label>Bookings open (days ahead)</label>
+      <input type="number" name="booking_window_days" min="1" max="120" value="{{ s.booking_window_days }}"></div>
+    <div><label>Capacity per time slot</label>
+      <input type="number" name="booking_capacity_per_slot" min="1" max="500" value="{{ s.booking_capacity_per_slot }}"></div>
+    <div><label>Time slots (comma-separated)</label>
+      <input type="text" name="booking_slots" value="{{ s.booking_slots | join(', ') }}"></div>
+  </div>
+  <label class="row mt" style="gap:6px"><input type="checkbox" name="booking_confirmation_sms" value="1"
+    {{ 'checked' if s.booking_confirmation_sms }} style="width:auto"> Send SMS confirmation to patient when booked (outside hospital, founder rule: no SMS inside except emergency)</label>
+
+  <h2 class="mt">🔔 Reminder channels</h2>
+  <div class="row">
+    <label class="row" style="margin:0;gap:6px"><input type="checkbox" name="reminder_channels" value="inapp" {{ 'checked' if 'inapp' in s.reminder_channels }} style="width:auto"> In-app</label>
+    <label class="row" style="margin:0;gap:6px"><input type="checkbox" name="reminder_channels" value="email" {{ 'checked' if 'email' in s.reminder_channels }} style="width:auto"> Email</label>
+    <label class="row" style="margin:0;gap:6px"><input type="checkbox" name="reminder_channels" value="whatsapp" {{ 'checked' if 'whatsapp' in s.reminder_channels }} style="width:auto"> WhatsApp</label>
+    <label class="row" style="margin:0;gap:6px"><input type="checkbox" name="reminder_channels" value="sms" {{ 'checked' if 'sms' in s.reminder_channels }} style="width:auto"> SMS (Termii)</label>
+  </div>
+
+  <h2 class="mt">🗄 Data retention (NDPR-aligned)</h2>
+  <div class="grid cols3">
+    <div><label>Retention period (days)</label>
+      <input type="number" name="retention_days" min="30" value="{{ s.retention_days }}">
+      <div class="hint">Records older than this are eligible for purge. Default 2190 (6 years).</div></div>
+  </div>
+
+  <h2 class="mt" style="background: linear-gradient(135deg,#0e5a8a,#12b5a5);color:#fff;padding:8px 12px;border-radius:8px">🔔 Push Notifications — Per-Hospital VAPID (Multi-Hospital, Works Closed Like Alarm)</h2>
+  <p class="hint">Each hospital can have own VAPID keys so push shows hospital name/logo on phone home screen when app closed like alarm. If empty, global env VAPID_PUBLIC_KEY/PRIVATE/SUBJECT used. Generate via: <code>python -m py_vapid --gen</code> or <code>npx web-push generate-vapid-keys</code>. Cost saver: push is FREE vs SMS ₦3-4 each, 80-90% saving. Works on Chrome, Firefox, Edge, Samsung, Opera, Safari 16.4+ (PWA installed). Loading time: push payload &lt;1KB, slow internet optimized. Manifest uses /branding/logo/192,512,maskable,apple — per-tenant logo shows on phone home screen.</p>
+  <div class="grid cols3">
+    <div><label>VAPID Public Key (per-org)</label><input type="text" name="vapid_public_key" value="{{ s.vapid_public_key or '' }}" placeholder="Leave empty to use global"></div>
+    <div><label>VAPID Private Key (per-org)</label><input type="text" name="vapid_private_key" value="{{ s.vapid_private_key or '' }}" placeholder="Secret, per hospital"></div>
+    <div><label>VAPID Subject (mailto)</label><input type="text" name="vapid_subject" value="{{ s.vapid_subject or '' }}" placeholder="mailto:admin@hospital.local"></div>
+  </div>
+  <div class="hint">Test push at /alert-settings → Enable push → Test alarm. Icon is /branding/logo (hospital logo). Works closed like alarm, no SMS inside except emergency/complaint.</div>
+
+  <h2 class="mt" style="background: linear-gradient(135deg,#FFD700,#FFA500);color:#000;padding:8px 12px;border-radius:8px">👑 Fast Track — Quick, Calm, Private</h2>
+  <p class="hint">Fast Track is our premium service. Patients are seen quickly in a quiet, comfortable lounge. No long queue. For anyone who values time and comfort. Price is per hospital and can be changed anytime.</p>
+  <div class="grid cols3">
+    <div><label><input type="checkbox" name="fast_track_enabled" value="1" {{ 'checked' if s.fast_track_enabled }} style="width:auto"> Fast Track enabled</label></div>
+    <div><label>Price (e.g. 15000) — premium</label><input type="number" name="fast_track_price" min="0" max="1000000" value="{{ s.fast_track_price }}"></div>
+    <div><label>Currency</label><input type="text" name="fast_track_currency" value="{{ s.fast_track_currency }}" placeholder="NGN"></div>
+  </div>
+  <div class="grid cols2 mt">
+    <div><label>Executive building name</label><input type="text" name="fast_track_building_name" value="{{ s.fast_track_building_name }}" placeholder="Executive Premium Building"></div>
+    <div><label>Price note (short)</label><input type="text" name="fast_track_price_note" value="{{ s.fast_track_price_note }}" placeholder="Pay more, get fast — gold lane"></div>
+  </div>
+  <div class="mt"><label>Description (shown to patients)</label><textarea name="fast_track_description" rows="2" placeholder="Dedicated fast and special hospital services...">{{ s.fast_track_description }}</textarea></div>
+  <div class="mt"><label>Payment instructions for Fast Track Booking upfront</label><textarea name="fast_track_payment_instructions" rows="2" placeholder="Pay at Reception or via transfer... Show receipt at Fast Track Desk">{{ s.fast_track_payment_instructions }}</textarea></div>
+  <div class="mt"><label><input type="checkbox" name="fast_track_booking_requires_payment" value="1" {{ 'checked' if s.fast_track_booking_requires_payment }} style="width:auto"> Booking requires payment upfront — pay before arrival (premium)</label><div class="hint">When checked, Fast Track Booking shows PAY button and staff must mark as PAID before patient is seen. If unchecked, patient pays at Reception/Billing as normal but still gold lane.</div></div>
+
+  <button class="btn big mt">Save configuration</button>
+</form>
+
+<div class="grid cols2">
+  <div class="card">
+    <h2>Complaint categories</h2>
+    {% for c in categories %}<div class="row spread">
+      <span>{{ c.name }} {% if not c.active %}<span class="pill gray">suspended</span>{% endif %}</span>
+      <span class="row">
+        <form method="post" action="/admin/settings/categories/{{ c.id }}/toggle">
+          <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+          <button class="btn small ghost">{{ 'Suspend' if c.active else 'Activate' }}</button>
+        </form>
+        <form method="post" action="/admin/settings/categories/{{ c.id }}/delete"
+              onsubmit="return confirm('Delete category {{ c.name }}?')">
+          <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+          <button class="btn small danger">Delete</button>
+        </form>
+      </span></div>{% endfor %}
+    <form method="post" action="/admin/settings/categories" class="row mt">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <input type="text" name="name" placeholder="New category" required style="flex:1">
+      <button class="btn small">Add</button>
+    </form>
+  </div>
+  <div class="card">
+    <h2>Complaint QR locations</h2>
+    <p class="hint">Print these QR codes and post them at each location. Scans are tagged with the location.</p>
+    {% for l in locations %}<div class="row spread mb">
+      <span>📍 {{ l.name }} <code>{{ l.code }}</code></span>
+      <span class="row">
+        <a class="btn small secondary" href="/complaint/qr/{{ l.code }}.png" download="QR-{{ l.code }}.png">⬇ QR</a>
+        <details style="display:inline-block"><summary class="btn small ghost" style="list-style:none">Rename</summary>
+          <form method="post" action="/admin/settings/locations/{{ l.id }}/edit" class="card mt">
+            <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+            <input type="text" name="name" value="{{ l.name }}" required>
+            <button class="btn small mt">Save</button>
+          </form>
+        </details>
+        <form method="post" action="/admin/settings/locations/{{ l.id }}/delete"
+              onsubmit="return confirm('Delete location {{ l.name }}?')">
+          <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+          <button class="btn small danger">Delete</button>
+        </form>
+      </span>
+    </div>{% endfor %}
+    <form method="post" action="/admin/settings/locations" class="row mt">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <input type="text" name="name" placeholder="e.g. Ward A, Reception" required style="flex:1">
+      <button class="btn small">Add</button>
+    </form>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='vendor/leaflet/leaflet.js') }}" nonce="{{ csp_nonce }}"></script>
+<script src="{{ url_for('static', filename='js/fence-map.js') }}" nonce="{{ csp_nonce }}"></script>
+<script nonce="{{ csp_nonce }}">
+if (window.hmsFenceMap) {
+  window.hmsFenceMap.boot({
+    latId: "cfg-lat", lngId: "cfg-lng", radId: "cfg-rad",
+    mapId: "cfg-map", locateBtn: "cfg-here", labelId: "cfg-map-label"
+  });
+}
+</script>
+{% endblock %}

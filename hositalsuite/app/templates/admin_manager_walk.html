@@ -1,0 +1,197 @@
+{% extends "base.html" %}
+{% block title %}Walk-round — Admin Manager{% endblock %}
+{% block content %}
+<h1>🚶 Hospital walk-round</h1>
+<p class="muted">Every area, one page. Tap an area to open it, score the five
+  criteria, and it closes itself when you are done. Score only the areas you
+  actually visited — the rest are simply left alone.</p>
+
+<div class="card pad-lg mb">
+  <div class="spread">
+    <div>
+      <div class="muted" style="font-size:.75rem;text-transform:uppercase;letter-spacing:.06em">
+        {{ today.strftime('%A, %d %B %Y') }}</div>
+      <div style="font-size:1.05rem;font-weight:800">
+        On duty: {{ duty.name if duty else "— no one assigned —" }}</div>
+    </div>
+    <div style="text-align:right">
+      <div style="font-size:1.6rem;font-weight:800" id="done-count">0</div>
+      <div class="muted" style="font-size:.75rem">areas scored</div>
+    </div>
+  </div>
+</div>
+
+<form method="post" action="/admin-manager/walk" id="walk-form">
+  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+
+  {% for c in cards %}
+  <div class="card mb area-card{% if c.done %} area-done{% endif %}" data-key="{{ c.key }}"
+       style="padding:0;overflow:hidden">
+
+    {# ---- i. the name of the area (always visible, tap to open) ---- #}
+    <button type="button" class="area-head" onclick="hmsWalk.toggle('{{ c.key }}')"
+            aria-expanded="false" aria-controls="body-{{ c.key }}"
+            style="width:100%;text-align:left;background:none;border:0;padding:14px 16px;
+                   display:flex;align-items:center;gap:12px;cursor:pointer">
+      <span class="chev" id="chev-{{ c.key }}" style="font-size:.9rem;transition:transform .15s">▶</span>
+      <span style="flex:1">
+        <span style="font-weight:800;font-size:1.02rem">{{ c.label }}</span>
+        {% if not c.dept %}
+          <span class="pill gray" style="margin-left:8px;font-size:.7rem">not in structure</span>
+        {% endif %}
+        {% if c.done %}
+          <span class="pill green" style="margin-left:8px;font-size:.7rem">✓ done today</span>
+        {% endif %}
+        {# ---- iii. who is on duty here, from the roster ---- #}
+        <div class="muted" style="font-size:.8rem;margin-top:3px">
+          {% if c.on_duty %}
+            👤 {{ c.on_duty | map(attribute='name') | join(', ') }}
+          {% elif c.dept %}
+            👤 <i>nobody rostered here today</i>
+          {% else %}
+            <i>add this department in Admin → Structure to score it</i>
+          {% endif %}
+        </div>
+      </span>
+      <span class="pill" id="tot-{{ c.key }}" style="display:none"></span>
+    </button>
+
+    {# ---- ii. the five criteria with scores ---- #}
+    <div class="area-body" id="body-{{ c.key }}" style="display:none;padding:0 16px 16px">
+      {% if c.done %}
+      <div class="notice" style="text-align:left">This area was already inspected
+        today. Scoring it again here will be ignored — use the amendment process
+        on the saved report instead.</div>
+      {% endif %}
+
+      {% for no, crit in criteria.items() %}
+      <div style="padding:10px 0;border-top:1px solid var(--line, #e5e7eb)">
+        <div style="font-weight:700;font-size:.92rem">{{ no }}. {{ crit.title }}</div>
+        <div class="hint" style="margin:2px 0 6px">{{ crit['items'] | join(' · ') }}</div>
+        <div class="score-row" role="radiogroup" aria-label="{{ c.label }} {{ crit.title }}">
+          {% for s in (1,2,3,4,5) %}
+          <label class="score-opt" data-s="{{ s }}">
+            <input type="radio" name="{{ c.key }}_score_{{ no }}" value="{{ s }}"
+                   onchange="hmsWalk.scored('{{ c.key }}',{{ no }},{{ s }})">
+            <span>{{ s }}</span>
+          </label>
+          {% endfor %}
+        </div>
+
+        {# ---- iv. justification box, appears automatically on a low score ---- #}
+        <div class="expl-box" id="expl-{{ c.key }}-{{ no }}" style="display:none">
+          <div class="tag">⚠ Why did {{ c.label }} score low on {{ crit.title }}?</div>
+          <textarea name="{{ c.key }}_explanation_{{ no }}" id="ta-{{ c.key }}-{{ no }}"
+                    rows="2" placeholder="Say what you found…"></textarea>
+          <button type="button" class="mic-btn" data-lang="en-NG"
+                  onclick="hmsVoice.start(this,'ta-{{ c.key }}-{{ no }}')">🎤 Speak</button>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endfor %}
+
+  {# ---------------- Overall hospital situation report ---------------- #}
+  <div class="card pad-lg mt mb">
+    <h2 style="margin-top:0">📝 Overall hospital situation report</h2>
+    <p class="muted" style="margin-top:0">Your own account of how the hospital is
+      today — what the scores alone cannot say. Type it, or press the microphone
+      and speak it.</p>
+    <textarea name="overall_report" id="overall_report" rows="6" maxlength="4000"
+              placeholder="e.g. The hospital was generally calm this morning. Power held
+                           all through the night on mains. The laundry is still short of
+                           two staff and linen is turning round slowly, which is starting
+                           to affect the male ward."></textarea>
+    <button type="button" class="mic-btn" data-lang="en-NG"
+            onclick="hmsVoice.start(this,'overall_report')">🎤 Speak your report</button>
+  </div>
+
+  <button class="btn big">✅ Submit walk-round</button>
+  <a class="btn secondary" href="/admin-manager">Single-department inspection</a>
+</form>
+
+<script nonce="{{ csp_nonce }}">
+// Collapsible, self-contained area cards. No framework, no network — this has
+// to work on a cheap Android phone on hospital wifi.
+var hmsWalk = (function () {
+  var scores = {};   // key -> {criterion: score}
+
+  function toggle(key) {
+    var body = document.getElementById('body-' + key);
+    var chev = document.getElementById('chev-' + key);
+    var open = body.style.display !== 'none';
+    body.style.display = open ? 'none' : 'block';
+    chev.style.transform = open ? 'rotate(0deg)' : 'rotate(90deg)';
+    var head = body.previousElementSibling;
+    if (head) { head.setAttribute('aria-expanded', open ? 'false' : 'true'); }
+  }
+
+  function scored(key, no, val) {
+    scores[key] = scores[key] || {};
+    scores[key][no] = val;
+
+    // A score of 1 or 2 must be justified — show the box and require it.
+    var box = document.getElementById('expl-' + key + '-' + no);
+    var ta  = document.getElementById('ta-' + key + '-' + no);
+    if (box) {
+      var low = (val <= 2);
+      box.style.display = low ? 'block' : 'none';
+      if (ta) { low ? ta.setAttribute('required', 'required')
+                    : ta.removeAttribute('required'); }
+    }
+
+    // Running total on the card header, so he sees the area's score without
+    // opening it again.
+    var vals = Object.keys(scores[key]).map(function (k) { return scores[key][k]; });
+    var pill = document.getElementById('tot-' + key);
+    if (pill && vals.length === 5) {
+      var t = vals.reduce(function (a, b) { return a + b; }, 0);
+      pill.textContent = t + '/25';
+      pill.className = 'pill ' + (t >= 18 ? 'green' : (t >= 13 ? 'amber' : 'red'));
+      pill.style.display = 'inline-block';
+    }
+    refreshCount();
+  }
+
+  function refreshCount() {
+    var n = 0;
+    for (var k in scores) {
+      if (Object.keys(scores[k]).length === 5) { n++; }
+    }
+    document.getElementById('done-count').textContent = n;
+  }
+
+  return { toggle: toggle, scored: scored };
+})();
+
+// Never let a walk-round be lost to a mis-tap or a dying battery.
+(function () {
+  var form = document.getElementById('walk-form');
+  var KEY = 'hms.walk.' + '{{ today.isoformat() }}';
+  try {
+    var saved = JSON.parse(localStorage.getItem(KEY) || '{}');
+    Object.keys(saved).forEach(function (name) {
+      var el = form.elements[name];
+      if (!el) { return; }
+      if (el.length && el[0] && el[0].type === 'radio') {
+        for (var i = 0; i < el.length; i++) {
+          if (el[i].value === saved[name]) { el[i].checked = true; el[i].onchange(); }
+        }
+      } else { el.value = saved[name]; }
+    });
+  } catch (e) { /* a corrupt draft must never block the page */ }
+
+  form.addEventListener('input', function () {
+    try {
+      var data = {};
+      new FormData(form).forEach(function (v, k) { if (k !== '_csrf') { data[k] = v; } });
+      localStorage.setItem(KEY, JSON.stringify(data));
+    } catch (e) { /* private mode / full storage — carry on regardless */ }
+  });
+  form.addEventListener('submit', function () {
+    try { localStorage.removeItem(KEY); } catch (e) {}
+  });
+})();
+</script>
+{% endblock %}

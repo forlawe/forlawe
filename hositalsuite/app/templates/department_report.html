@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}{{ dept.name }} performance{% endblock %}
+{% block content %}
+<div class="spread mb">
+  <h1 style="margin:0">{{ dept.name }} — Performance</h1>
+  <div class="row">
+    <a class="btn small secondary" href="/reports/departments/{{ dept.id }}?format=csv">⬇ CSV</a>
+    <a class="btn small" href="/reports/departments/{{ dept.id }}?format=pdf">⬇ PDF</a>
+  </div>
+</div>
+
+<div class="grid cols3 mb">
+  <div class="kpi info"><div class="v">{{ hist|length }}</div><div class="l">Inspections</div></div>
+  <div class="kpi"><div class="v">{{ weekly_avg or '—' }}</div><div class="l">Weekly avg /25</div></div>
+  <div class="kpi"><div class="v">{{ monthly_avg or '—' }}</div><div class="l">Monthly avg /25</div></div>
+</div>
+
+{% if recurring %}
+<div class="card mb">
+  <h2>🚨 Recurring problems (management attention)</h2>
+  {% for r in recurring %}<div class="notice red">{{ r }}</div>{% endfor %}
+</div>
+{% endif %}
+
+<div class="card mb">
+  <h2>Criterion averages</h2>
+  {% for no in (1,2,3,4,5) %}
+    {% set v = criterion_avgs.get(no) %}
+    <div class="row mb" style="justify-content:space-between">
+      <span>C{{ no }} {{ criteria[no].title }}</span>
+      <b>{{ v if v is not none else '—' }}</b>
+    </div>
+    {% if v is not none %}<div class="bar mb"><i style="width:{{ (v/5*100)|round }}%;
+      background:{{ '#c0262c' if v<2.5 else ('#b58900' if v<3.5 else '#1a7f37') }}"></i></div>{% endif %}
+  {% endfor %}
+</div>
+
+<div class="card">
+  <h2>Inspection history</h2>
+  <div class="table-wrap">
+  <table>
+    <tr><th>Date</th><th>Ref</th><th>Inspector</th><th>Total</th><th>Rating</th><th>Trend</th></tr>
+    {% set ns = namespace(prev=None) %}
+    {% for i in hist %}
+    <tr>
+      <td>{{ i.duty_date.strftime('%d %b %Y') }}</td>
+      <td><a href="/inspections/{{ i.id }}">{{ i.ref }}</a></td>
+      <td>{{ i.inspector.name }}</td>
+      <td><b>{{ i.total_score }}</b>/25</td>
+      <td><span class="pill {{ 'green' if i.rating in ('EXCELLENT','GOOD') else ('amber' if i.rating.startswith('FAIR') else 'red') }}">{{ i.rating }}</span></td>
+      <td>{% if ns.prev is not none %}{% if i.total_score > ns.prev %}⬆{% elif i.total_score < ns.prev %}⬇{% else %}→{% endif %}{% else %}—{% endif %}</td>
+    </tr>
+    {% set ns.prev = i.total_score %}
+    {% endfor %}
+  </table>
+  </div>
+</div>
+{% endblock %}

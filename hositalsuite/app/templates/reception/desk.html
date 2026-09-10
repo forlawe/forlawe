@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+{% block title %}Reception{% endblock %}
+{% block content %}
+{% include "_emergency_banner.html" %}
+<h1>🛎️ Reception</h1>
+<p class="muted">Welcome patients, take their details, and guide them to the next step. Fast Track patients are marked gold and seen first. <a href="/fasttrack" style="background:#000;color:#FFD700;padding:4px 10px;border-radius:999px;font-weight:900;text-decoration:none">👑 Fast Track Desk →</a></p>
+
+<div class="grid cols4 mb">
+  <div class="card pad-lg" style="text-align:center">
+    <div style="font-size:1.7rem;font-weight:800">{{ counts.get('RECEPTION',0) }}</div>
+    <div class="muted" style="font-size:.8rem">At reception</div>
+    <div class="mt"><a href="/reception/" class="btn small">Reception</a></div>
+  </div>
+  <div class="card pad-lg" style="text-align:center">
+    <div style="font-size:1.7rem;font-weight:800">{{ counts.get('BILLING',0) }}</div>
+    <div class="muted" style="font-size:.8rem">At billing</div>
+    <div class="mt"><a href="/billing" class="btn small">Billing</a></div>
+  </div>
+  <div class="card pad-lg" style="text-align:center">
+    <div style="font-size:1.7rem;font-weight:800">{{ counts.get('PAYMENT',0) }}</div>
+    <div class="muted" style="font-size:.8rem">At pay point</div>
+    <div class="mt"><a href="/paypoint" class="btn small">Pay point</a></div>
+  </div>
+  <div class="card pad-lg" style="text-align:center">
+    <div style="font-size:1.7rem;font-weight:800">{{ counts.get('PAID',0) }}</div>
+    <div class="muted" style="font-size:.8rem">Paid — folder next</div>
+    <div class="mt"><a href="/hims/" class="btn small">HIMS desk</a></div>
+  </div>
+</div>
+
+<div class="card pad-lg mb" style="background:#FFFEF0;border-left:5px solid #FFD700">
+  <b>👑 Fast Track — quick, calm, private</b><br>
+  <span style="font-size:.88rem;line-height:1.5;color:#3a2a00">
+    Fast Track is our premium service. Patients who choose it are seen quickly in a quiet lounge. No long queue.<br>
+    How it works: patient books or joins queue → appears here and at Fast Track Desk right away, marked gold → goes through payment → registration → nurse → doctor → lab or pharmacy. Seen first at every desk.
+  </span>
+</div>
+
+<a class="btn big mb" href="/reception/new" style="background:#000;color:#FFD700;font-weight:900;border:none;border-radius:999px">➕ New patient arrived</a>
+<a class="btn big mb" href="/fasttrack" style="background:#FFD700;color:#000;font-weight:900;border:none;border-radius:999px;margin-left:8px">👑 Fast Track Desk</a>
+
+<h2 style="font-size:1.1rem;font-weight:900">New arrivals at reception ({{ waiting|length }})</h2>
+<p class="muted" style="font-size:.85rem">Patients who just walked in. Fast Track shows first, marked gold. After you send to billing, they move to billing desk.</p>
+
+{% if not waiting %}
+  <div class="card pad-lg"><p class="muted" style="margin:0">No one waiting at reception. Press "New patient arrived" when someone walks in. Fast Track from queue or booking appears here right away.</p></div>
+{% else %}
+  {% for i in waiting %}
+  <div class="card pad-lg mb" style="border-left:6px solid {% if i.is_fast_track %}#FFD700{% else %}#e6edf3{% endif %}; {% if i.is_fast_track %}background:#FFFEF0{% endif %}">
+    <div class="spread">
+      <div>
+        <div style="font-size:1.05rem;font-weight:800">{% if i.is_fast_track %}👑 {% endif %}{{ i.full_name|first_name }} {% if i.is_fast_track %}<span class="pill" style="background:#000;color:#FFD700;font-size:.7rem;font-weight:900">FAST TRACK</span>{% endif %}</div>
+        <div class="muted" style="font-size:.84rem">
+          {{ i.ref }} · {{ payer_labels.get(i.payer_type, i.payer_type) }}{% if i.payer_number %} · {{ i.payer_number }}{% endif %}
+          {%- if i.phone %} · {{ i.phone|mask_phone }}{% endif %}
+        </div>
+      </div>
+      <span class="pill" style="{% if i.is_fast_track %}background:#000;color:#FFD700{% endif %}">{{ i.stage_label }}</span>
+    </div>
+
+    {% if i.care_flags %}
+    <div class="notice mt" style="text-align:left">
+      <b>Needs help:</b> {{ i.care_flags | join(' · ') }}
+    </div>
+    {% endif %}
+
+    <div class="btn-row grid cols2 mt">
+      <form method="post" action="/reception/{{ i.id }}/to-billing">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        <button class="btn small" style="{% if i.is_fast_track %}background:#000;color:#FFD700;font-weight:900;border-radius:999px{% endif %}">→ Send to billing</button>
+      </form>
+      <form method="post" action="/reception/{{ i.id }}/cancel" onsubmit="return confirm('Mark {{ i.full_name }} as left?')">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        <button class="btn small secondary">Left</button>
+      </form>
+    </div>
+  </div>
+  {% endfor %}
+{% endif %}
+
+{% if billing_q or payment_q or paid_q %}
+<div class="card pad-lg mt">
+  <h3 style="margin-top:0;font-size:1rem">Where are other patients?</h3>
+  <p class="muted" style="font-size:.85rem">These patients are at other desks. Click to go to that desk.</p>
+  {% if billing_q %}<div class="mb"><b>🧾 Billing ({{ billing_q|length }}) — <a href="/billing">Billing desk</a></b><br><span class="muted" style="font-size:.84rem">{% for i in billing_q[:5] %}{% if i.is_fast_track %}👑{% endif %}{{ i.full_name|first_name }} ({{ i.ref }}){% if not loop.last %}, {% endif %}{% endfor %}{% if billing_q|length > 5 %} +{{ billing_q|length - 5 }} more{% endif %}</span></div>{% endif %}
+  {% if payment_q %}<div class="mb"><b>💳 Pay point ({{ payment_q|length }}) — <a href="/paypoint">Pay point</a></b><br><span class="muted" style="font-size:.84rem">{% for i in payment_q[:5] %}{% if i.is_fast_track %}👑{% endif %}{{ i.full_name|first_name }} ({{ i.ref }}){% if not loop.last %}, {% endif %}{% endfor %}{% if payment_q|length > 5 %} +{{ payment_q|length - 5 }} more{% endif %}</span></div>{% endif %}
+  {% if paid_q %}<div class="mb"><b>📁 Paid — waiting for folder ({{ paid_q|length }}) — <a href="/hims/">HIMS desk</a></b><br><span class="muted" style="font-size:.84rem">{% for i in paid_q[:5] %}{% if i.is_fast_track %}👑{% endif %}{{ i.full_name|first_name }} ({{ i.ref }}){% if not loop.last %}, {% endif %}{% endfor %}{% if paid_q|length > 5 %} +{{ paid_q|length - 5 }} more{% endif %}</span></div>{% endif %}
+</div>
+{% endif %}
+
+<div class="card pad-lg mt" style="font-size:.9rem">
+  <b>Registered today: {{ registered_today }}</b> — folders opened and sent to nurse.
+</div>
+{% endblock %}

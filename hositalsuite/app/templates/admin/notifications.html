@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}Notifications & WhatsApp{% endblock %}
+{% block content %}
+<h1>Notifications &amp; WhatsApp</h1>
+<p class="muted">WhatsApp mode: <b>{{ mode }}</b>
+  {% if mode == 'sandbox' %} (delivery simulated — configure the Cloud API in environment variables for production){% endif %}
+  · MD/CEO number: <b>{{ md_number or 'not set' }}</b></p>
+
+<div class="card mb">
+  <h2>WhatsApp delivery pipeline</h2>
+  <p class="hint">Generated → Sending → Sent → Delivered. Failed messages keep the PDF in the archive and are flagged here for retry.</p>
+  <div class="table-wrap">
+  <table>
+    <tr><th>Created</th><th>To</th><th>Kind</th><th>Status</th><th>Attempts</th><th>Provider ID</th><th>Error</th><th></th></tr>
+    {% for m in wa %}
+    <tr>
+      <td>{{ m.created_at.strftime('%d %b %H:%M') }}</td>
+      <td>{{ m.to_number }}</td><td>{{ m.kind }}</td>
+      <td><span class="pill {{ 'green' if m.status in ('SENT','DELIVERED') else ('red' if m.status=='FAILED' else 'amber') }}">{{ m.status }}</span></td>
+      <td>{{ m.attempts }}</td><td class="muted">{{ m.provider_id or '—' }}</td>
+      <td class="muted">{{ m.last_error or '' }}</td>
+      <td>{% if m.status == 'FAILED' %}
+        <form method="post" action="/admin/notifications/whatsapp/{{ m.id }}/retry">
+          <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+          <button class="btn small">Retry</button>
+        </form>{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  </div>
+  {% if current_user.is_super %}
+  <form method="post" action="/admin/notifications/whatsapp/test" class="row mt">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <input type="text" name="number" placeholder="Test destination e.g. 2348012345678" style="max-width:280px">
+    <button class="btn small secondary">Send test message</button>
+  </form>
+  {% endif %}
+</div>
+
+<div class="card mb">
+  <h2>SMS delivery ({{ sms_mode }} mode — Termii primary / Twilio fallback in production)</h2>
+  <div class="table-wrap">
+  <table>
+    <tr><th>Created</th><th>To</th><th>Message</th><th>Provider</th><th>Status</th><th>Error</th></tr>
+    {% for m in sms %}
+    <tr>
+      <td>{{ m.created_at.strftime('%d %b %H:%M') }}</td>
+      <td>{{ m.to_number }}</td>
+      <td class="muted" style="max-width:300px">{{ m.body[:80] }}{% if m.body|length > 80 %}…{% endif %}</td>
+      <td>{{ m.provider or '—' }}</td>
+      <td><span class="pill {{ 'green' if m.status=='SENT' else ('red' if m.status=='FAILED' else 'amber') }}">{{ m.status }}</span></td>
+      <td class="muted">{{ m.last_error or '' }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  </div>
+</div>
+
+<div class="card">
+  <h2>All notification log (last 200)</h2>
+  <div class="table-wrap">
+  <table>
+    <tr><th>Time</th><th>User</th><th>Channel</th><th>Template</th><th>Subject</th><th>Status</th></tr>
+    {% for n in app %}
+    <tr><td>{{ n.created_at.strftime('%d %b %H:%M') }}</td>
+        <td>{{ n.user.name if n.user else '—' }}</td><td>{{ n.channel }}</td>
+        <td class="muted">{{ n.template_key }}</td><td>{{ n.subject }}</td>
+        <td><span class="pill {{ 'green' if n.status=='SENT' else ('red' if n.status=='FAILED' else 'gray') }}">{{ n.status }}</span></td></tr>
+    {% endfor %}
+  </table>
+  </div>
+</div>
+{% endblock %}

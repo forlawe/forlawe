@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Assign roles{% endblock %}
+{% block content %}
+<h1>👥 Give somebody another role</h1>
+<p class="muted">Everyone already has one main role on their staff record. This
+  page adds extra ones on top — for people who genuinely do two jobs.</p>
+
+<div class="notice mb">
+  <b>Powers add up; they never take away.</b> If you give a Theatre nurse the
+  HOD role for A&amp;E, she keeps everything she had in Theatre AND gains the
+  HOD powers in A&amp;E, and she can see both departments.
+</div>
+
+<div class="card mb">
+  <form method="post" action="/admin/roles/assign">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <label>Member of staff <span class="req">*</span></label>
+    <select name="user_id" required>
+      <option value="">— choose —</option>
+      {% for u in users %}
+      <option value="{{ u.id }}">{{ u.name }} ({{ u.role_name }}{% if u.department %} · {{ u.department.name }}{% endif %})</option>
+      {% endfor %}
+    </select>
+    <label class="mt">Extra role <span class="req">*</span></label>
+    <select name="role_id" required>
+      <option value="">— choose —</option>
+      {% for r in roles %}<option value="{{ r.id }}">{{ r.name }} — {{ r.scope_label }}</option>{% endfor %}
+    </select>
+    <label class="mt">In which department? (leave blank for their own)</label>
+    <select name="department_id">
+      <option value="">— their own department —</option>
+      {% for d in depts %}<option value="{{ d.id }}">{{ d.name }}</option>{% endfor %}
+    </select>
+    <button class="btn mt">Give this role</button>
+  </form>
+</div>
+
+<div class="card">
+  <h2>Extra roles currently granted</h2>
+  {% if grants %}
+  <div class="table-wrap" style="padding:0">
+  <table>
+    <tr><th>Who</th><th>Extra role</th><th>Where</th><th>Given</th><th></th></tr>
+    {% for g in grants %}
+    <tr>
+      <td>{{ g.user.name if g.user else '—' }}</td>
+      <td>{{ g.role.name if g.role else '—' }}</td>
+      <td>{{ g.department.name if g.department else 'their own department' }}</td>
+      <td>{{ g.granted_at.strftime('%d %b %Y') if g.granted_at else '—' }}</td>
+      <td class="right">
+        <form method="post" action="/admin/roles/assign/{{ g.id }}/remove" style="display:inline">
+          <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+          <button class="btn small secondary">Take back</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+  </div>
+  <p class="hint">Taking a role back keeps a record that it was once given —
+    an account that quietly loses a power with no trace cannot be investigated
+    months later.</p>
+  {% else %}
+  <p class="muted">Nobody has an extra role yet.</p>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,122 @@
+# One-click Render Blueprint — https://render.com/docs/blueprint-spec
+# FIX 2026-08-27 (expert review): Free tier is NOT for production — it sleeps after 15 min,
+# causes 30 sec cold start, and caused 15 Aug outage (Supabase pause). Upgrade to starter minimum.
+# IMPORTANT: workers=1 on purpose for PILOT. The app runs an in-process scheduler
+# (reminders, SLA escalation, WhatsApp/SMS retries, nightly backup). With more
+# than one worker those jobs would run once per worker and double-send.
+# Scale horizontally later by moving scheduler to its own service (see below) and
+# setting DISABLE_SCHEDULER=1 on web workers + adding REDIS_URL for shared rate limiting.
+# For 5,000 concurrent users (50-150 rps), you need 2-4 web instances + separate scheduler + Redis.
+# For 5,000 req/sec (Twitter-scale), you need different architecture — don't build now.
+services:
+  - type: web
+    name: hospital-suite
+    runtime: python
+    plan: starter                # FIX: was free — free is not for production per Render docs
+    region: frankfurt            # closest to Lagos patients
+    buildCommand: pip install --upgrade pip && pip install -r requirements.txt
+    # 1 worker, 4 threads = scheduler runs exactly once, still handles concurrency for pilot
+    # For >1 instance, set DISABLE_SCHEDULER=1 here and use background worker below
+    startCommand: gunicorn --bind 0.0.0.0:$PORT --workers 1 --threads 4 --timeout 120 "app:create_app()"
+    healthCheckPath: /api/v1/health
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.7            # matches runtime.txt; app is 3.11+ compatible
+      - key: SECRET_KEY
+        generateValue: true      # Render generates a strong random key
+      - key: DATABASE_URL        # paste your Supabase connection string + ?sslmode=require
+        sync: false
+      - key: PUBLIC_BASE_URL     # set AFTER first deploy to https://<your-app>.onrender.com
+        sync: false
+      - key: TIMEZONE
+        value: Africa/Lagos
+      - key: AUTO_SEED
+        value: "1"               # seeds ONLY an empty database; prints initial
+                                 # logins once to the deploy log (free plan has no shell)
+      - key: WHATSAPP_MODE
+        value: sandbox           # switch to 'cloud' + credentials when Meta is approved
+      - key: SMS_MODE
+        value: sandbox           # switch to 'termii' when ready — see
+                                 # docs/SMS_AND_WHATSAPP_SETUP.md
+      - key: RESEND_API_KEY      # free mail van — https://resend.com (HTTPS, not SMTP)
+        sync: false
+      - key: MAIL_FROM           # must be a sender you verified at Resend, e.g. Hospital <beth.t@example.com>
+        sync: false
+      - key: BREVO_API_KEY       # optional spare mail van
+        sync: false
+      - key: SENDGRID_API_KEY    # optional spare mail van
+        sync: false
+      - key: TERMII_API_KEY      # from accounts.termii.com -> Settings -> API
+        sync: false
+      - key: TERMII_SENDER_ID    # e.g. GHIJEDE (must be approved by Termii)
+        sync: false
+      - key: TWILIO_ACCOUNT_SID  # WhatsApp fallback when Meta Cloud fails
+        sync: false
+      - key: TWILIO_AUTH_TOKEN
+        sync: false
+      - key: TWILIO_WHATSAPP_FROM  # e.g. +14155238886 — keep the leading +
+        sync: false
+      - key: STORAGE_BACKEND
+        value: db                # uploads/PDFs in the database — Render's disk is
+                                 # WIPED on every deploy/restart. Do not set to
+                                 # 'disk' unless a persistent volume is mounted.
+                                 # For production >1000 files, set to 's3' + S3_ vars (Supabase Storage / R2)
+      - key: COOKIE_SECURE
+        value: "1"               # session cookie only ever sent over HTTPS
+      - key: TRUSTED_PROXY_COUNT
+        value: "1"               # Render/Cloudflare sit in front — needed so rate
+                                 # limits and audit logs see the real client IP
+      - key: LOGIN_MAX_FAILURES
+        value: "10"              # then the account locks for LOGIN_LOCKOUT_MINUTES
+      - key: LOGIN_LOCKOUT_MINUTES
+        value: "15"
+      - key: LOG_LEVEL
+        value: INFO
+      # --- Phase 1 hardening (expert review S5, D3, G3, G5) ---
+      - key: REDIS_URL           # e.g. redis://red-xxx:6379 — enables shared rate limiting across workers
+        sync: false
+      - key: SENTRY_DSN          # e.g. https://xxx@yyy.ingest.sentry.io/zzz — error tracking
+        sync: false
+      - key: DB_POOL_SIZE        # explicit pool sizing — was implicit 5, now visible
+        value: "5"
+      - key: DB_MAX_OVERFLOW
+        value: "10"
+      - key: S3_BUCKET           # for STORAGE_BACKEND=s3 — Supabase Storage or R2 bucket name
+        sync: false
+      - key: S3_REGION
+        sync: false
+      - key: S3_ACCESS_KEY
+        sync: false
+      - key: S3_SECRET_KEY
+        sync: false
+      - key: S3_ENDPOINT         # e.g. https://xxx.supabase.co/storage/v1/s3 or https://xxx.r2.cloudflarestorage.com
+        sync: false
+      - key: DPO_NAME            # G3: named Data Protection Officer
+        value: "Hospital Admin"
+      - key: DPO_EMAIL           # G3: contact for data-subject requests
+        sync: false
+      - key: DATA_RESIDENCY      # G5: explicit data-residency statement
+        value: "Frankfurt, EU (Render) / AWS EU-West (Supabase) — see privacy notice"
+      - key: RETENTION_DAYS      # G6: 6 years default = 2190, floor 30 enforced in job_retention_purge
+        value: "2190"
+  # Optional: separate scheduler worker for horizontal scaling (Phase 3)
+  # Uncomment when you run >1 web instance to avoid double-send
+  # - type: worker
+  #   name: hospital-suite-scheduler
+  #   runtime: python
+  #   plan: starter
+  #   region: frankfurt
+  #   buildCommand: pip install -r requirements.txt
+  #   startCommand: python run.py tick-loop
+  #   envVars:
+  #     - key: DATABASE_URL
+  #       sync: false
+  #     - key: SECRET_KEY
+  #       sync: false
+  #     - key: REDIS_URL
+  #       sync: false
+  #     - key: DISABLE_SCHEDULER
+  #       value: "0"
+  # Note: Render Postgres does NOT ship PgBouncer — add PgBouncer sidecar or use Supabase pooler
+  # before running >1 web worker/instance. See docs/RENDER_DB_MIGRATION.md

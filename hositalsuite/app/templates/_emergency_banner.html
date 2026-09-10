@@ -1,0 +1,61 @@
+{# Emergency banner — founder rules:
+   - Reception/Triage: 8am-4pm only (working hours)
+   - HIMS and Accident & Emergency: always 24/7
+   - Must have voice alarm to all desks
+   Usage:
+     {% include "_emergency_banner.html" %}  -> 8am-4pm only
+     {% set show_always=True %}{% include "_emergency_banner.html" %} -> always 24/7
+#}
+{% set show_always = show_always|default(False) %}
+<div id="emergency-banner" class="emergency-banner" style="display:none;margin:10px 0;padding:12px 14px;border-radius:14px;background:linear-gradient(135deg,#fdecec,#fff3cd);border:2px solid #c62828;border-left:7px solid #c62828;color:#8c1d1d;font-weight:700;font-size:.88rem;line-height:1.4;box-shadow:0 4px 14px rgba(198,40,40,.18)">
+  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+    <span style="font-size:1.5rem;animation:emerg-pulse 1s infinite">🚨</span>
+    <div style="flex:1;min-width:180px">
+      <b style="font-size:.95rem">Emergency — Accident & Emergency Unit — open 24/7</b><br>
+      <span style="font-weight:500;font-size:.82rem;color:#6b1a1a">Go straight to A&E now. Tell reception it's an emergency. You will be seen immediately. Do not wait for queue.</span>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <a class="btn small" href="/queue/join?emergency=1" style="background:#c62828;color:#fff;font-weight:900;border-radius:999px;padding:7px 14px;text-decoration:none">🚑 Emergency Number → A&E</a>
+      <button type="button" class="btn small secondary" style="border-radius:999px;padding:7px 12px;font-size:.8rem" onclick="try{if(window.hmsVoice&&hmsVoice.speak){hmsVoice.speak('Emergency — Accident and Emergency patient needs immediate attention. Team, please respond now. Go to Accident and Emergency, you will be seen immediately.', 'emergency');} if(navigator.vibrate) navigator.vibrate([500,200,500,200,1000]);}catch(e){}">🔊 Voice alarm to all</button>
+    </div>
+  </div>
+  <div style="margin-top:8px;font-size:.75rem;font-weight:500;color:#6b1a1a;display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+    <span>🔔 Voice alarm to all desks active — team notified</span>
+    <span>· 📍 A&E open 24/7</span>
+    <span>· 📞 If outside, call help desk or nearest hospital</span>
+  </div>
+</div>
+<style nonce="{{ csp_nonce }}">@keyframes emerg-pulse{0%{transform:scale(1)}50%{transform:scale(1.15)}100%{transform:scale(1)}}</style>
+<script nonce="{{ csp_nonce }}">
+(function(){
+  var banner = document.getElementById('emergency-banner');
+  if(!banner) return;
+  var showAlways = {{ 'true' if show_always else 'false' }};
+  var now = new Date();
+  var hour = now.getHours();
+  var isWorkingHours = hour >= 8 && hour < 16; // 8am-4pm per founder
+  var shouldShow = showAlways || isWorkingHours;
+  if(shouldShow){
+    banner.style.display = 'block';
+    // Voice alarm to all — browser speech + vibrate, once per day per desk to avoid spam but still alarm
+    try{
+      if(window.hmsVoice && window.hmsVoice.speak){
+        var key = 'emergency-voice-' + now.toDateString() + (showAlways ? '-always' : '-work');
+        if(!sessionStorage.getItem(key)){
+          setTimeout(function(){
+            try{
+              hmsVoice.speak('Emergency — Accident and Emergency patient needs immediate attention. Team, please respond now. Accident and Emergency is open twenty four seven.', 'emergency');
+              sessionStorage.setItem(key, '1');
+            }catch(e){}
+          }, 1200);
+        }
+      }
+    }catch(e){}
+    try{ if(navigator.vibrate) navigator.vibrate([500,200,500,200,1000]); }catch(e){}
+    // If showAlways (HIMS / A&E), also flash title for attention
+    if(showAlways){
+      try{ document.title = '🚨 EMERGENCY — ' + document.title; }catch(e){}
+    }
+  }
+})();
+</script>
