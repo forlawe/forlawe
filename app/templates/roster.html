@@ -1,0 +1,314 @@
+{% extends "base.html" %}
+{% block title %}Roster{% endblock %}
+{% block content %}
+
+<div class="spread mb">
+  <h1 style="margin:0">🗓 Roster</h1>
+  <div style="display:flex;gap:8px">
+    <a class="btn small" href="{{ url_for('roster.leave_list') }}">🌴 Leave Requests</a>
+    <a class="btn small ghost" href="/roster/export?range={{ range_key }}&from={{ start }}&to={{ end }}&scope={{ place.scope }}{% if place.department_id %}&department_id={{ place.department_id }}{% endif %}{% if place.section_id %}&section_id={{ place.section_id }}{% endif %}{% if place.unit_id %}&unit_id={{ place.unit_id }}{% endif %}">⬇ Download / print list</a>
+  </div>
+</div>
+
+<p class="muted">One roster for the whole hospital — the Admin Manager duty roster, every
+department, section and unit, and staff leave, all on this page. Leave now has request → approval → balance tracking.</p>
+
+<!-- ---------------------------------------------------------- choose what to see -->
+<form class="card mb" method="get">
+  <div class="grid cols2">
+    <div>
+      <label>Who does this roster belong to?</label>
+      <select name="scope" onchange="rosterScope(this.form)">
+        {% for code, label in scope_labels.items() %}
+        <option value="{{ code }}" {{ 'selected' if place.scope == code }}>{{ label }}</option>
+        {% endfor %}
+      </select>
+
+      <div id="pick-dept" style="{{ 'display:none' if place.scope == 'ORG' }}">
+        <label class="mt">Department</label>
+        <select name="department_id" onchange="this.form.submit()">
+          <option value="">— choose a department —</option>
+          {% for d in depts %}
+          <option value="{{ d.id }}" {{ 'selected' if place.department_id == d.id }}>{{ d.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div id="pick-section" style="{{ 'display:none' if place.scope not in ('SECTION','UNIT') }}">
+        <label class="mt">Section</label>
+        <select name="section_id" onchange="this.form.submit()">
+          <option value="">— choose a section —</option>
+          {% for s in sections %}
+          <option value="{{ s.id }}" {{ 'selected' if place.section_id == s.id }}>{{ s.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div id="pick-unit" style="{{ 'display:none' if place.scope != 'UNIT' }}">
+        <label class="mt">Unit</label>
+        <select name="unit_id" onchange="this.form.submit()">
+          <option value="">— choose a unit —</option>
+          {% for u in units %}
+          <option value="{{ u.id }}" {{ 'selected' if place.unit_id == u.id }}>{{ u.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <div>
+      <label>Which dates?</label>
+      <select name="range" onchange="rosterRange(this.form)">
+        {% for key, label, _n in presets %}
+        <option value="{{ key }}" {{ 'selected' if range_key == key }}>{{ label }}</option>
+        {% endfor %}
+      </select>
+      <div id="pick-dates" class="row mt" style="{{ 'display:none' if range_key != 'custom' }}">
+        <div style="flex:1"><label>From</label><input type="date" name="from" value="{{ start }}"></div>
+        <div style="flex:1"><label>To</label><input type="date" name="to" value="{{ end }}"></div>
+      </div>
+      <button class="btn mt">Show roster</button>
+    </div>
+  </div>
+
+  <p class="hint mt" style="margin-bottom:0">
+    <b>{{ range_label }}</b> ·
+    {% if place.scope == 'ORG' %}Admin Manager duty roster
+    {% else %}Working pattern: <b>{{ mode_label }}</b>{% endif %}
+  </p>
+</form>
+
+<!-- ---------------------------------------------------------- summary -->
+<div class="grid cols3 mb">
+  <div class="card center"><h2 style="margin:0">{{ duty_count }}</h2><span class="muted">people placed on duty</span></div>
+  <div class="card center"><h2 style="margin:0">{{ leave_count }}</h2><span class="muted">leave days recorded</span></div>
+  <div class="card center"><h2 style="margin:0">{{ gap_count }}</h2><span class="muted">day{{ '' if gap_count == 1 else 's' }} with a gap — nobody on duty</span></div>
+</div>
+
+<!-- ---------------------------------------------------------- the roster -->
+<div class="table-wrap card mb" style="padding:0">
+<table>
+  <tr><th style="width:120px">Date</th><th>On duty</th><th>On leave</th>{% if can_edit %}<th></th>{% endif %}</tr>
+  {% for d in by_day %}
+  <tr style="{% if d.today %}background:#f0f7ff{% elif d.weekend %}background:#fafafa{% endif %}">
+    <td>
+      <b>{{ d.date.strftime('%a %d %b') }}</b>
+      {% if d.today %}<br><span class="pill blue">TODAY</span>{% endif %}
+    </td>
+    <td>
+      {% for e in d.duty %}
+        <div><span class="pill {{ 'amber' if e.shift in ('NIGHT','24H') else 'blue' }}">{{ e.label }}</span>
+          <b>{{ e.person }}</b>
+          {% if e.place != place_label %}<span class="muted"> · {{ e.place }}</span>{% endif %}
+          {% if e.note %}<span class="muted"> — {{ e.note }}</span>{% endif %}
+        </div>
+      {% else %}
+        {% if d.weekend and mode == 'office' %}
+          <span class="muted">Weekend — office department, not working</span>
+        {% else %}
+          <span class="muted">— nobody on duty —</span>
+        {% endif %}
+      {% endfor %}
+    </td>
+    <td>
+      {% for e in d.leave %}
+        <div><span class="pill gray">{{ e.label }}</span> {{ e.person }}</div>
+      {% else %}<span class="muted">—</span>{% endfor %}
+    </td>
+    {% if can_edit %}
+    <td class="right">
+      {% for e in d.duty + d.leave %}
+      {% if e.table == 'duty_roster' and can_reassign %}
+      <form method="post" action="/roster/{{ e.id }}/reassign" style="display:inline-block;vertical-align:middle">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        <select name="user_id" aria-label="Reassign {{ e.person }} on {{ d.date }} to" style="max-width:120px;padding:2px 4px">
+          {% for a in admins %}<option value="{{ a.id }}">{{ a.name }}</option>{% endfor %}
+        </select>
+        <button class="btn small" aria-label="Reassign {{ e.person }} on {{ d.date }}" title="Reassign {{ e.person }} on {{ d.date }}">⇄</button>
+      </form>
+      {% endif %}
+      <form method="post"
+            action="{{ '/roster/' ~ e.id ~ '/delete' if e.table == 'duty_roster' else '/roster/entry/' ~ e.id ~ '/delete' }}"
+            style="display:inline" onsubmit="return confirm('Remove {{ e.person }} from {{ d.date }}?')">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        <button class="btn small danger" aria-label="Remove {{ e.person }} from {{ d.date }}" title="Remove {{ e.person }}">✕</button>
+      </form>
+      {% endfor %}
+    </td>
+    {% endif %}
+  </tr>
+  {% endfor %}
+</table>
+</div>
+
+{% if can_edit %}
+<div class="grid cols2">
+
+  <!-- ------------------------------------------------ place one person -->
+  <div class="card">
+    <h2>➕ Place someone on the roster</h2>
+    <form method="post" action="/roster/add">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <input type="hidden" name="scope" value="{{ place.scope }}">
+      <input type="hidden" name="department_id" value="{{ place.department_id or '' }}">
+      <input type="hidden" name="section_id" value="{{ place.section_id or '' }}">
+      <input type="hidden" name="unit_id" value="{{ place.unit_id or '' }}">
+
+      <label>Duty or leave?</label>
+      <select name="kind" onchange="rosterKind(this)">
+        <option value="DUTY">On duty</option>
+        <option value="LEAVE">On leave</option>
+      </select>
+
+      <label class="mt">Staff member <span class="req">*</span></label>
+      <select name="user_id" required>
+        <option value="">— choose —</option>
+        {% for u in staff %}<option value="{{ u.id }}">{{ u.name }}</option>{% endfor %}
+      </select>
+
+      <div class="row mt">
+        <div style="flex:1"><label>From date <span class="req">*</span></label>
+          <input type="date" name="duty_date" required></div>
+        <div style="flex:1"><label>To date <span class="hint">(leave blank for one day)</span></label>
+          <input type="date" name="end_date"></div>
+      </div>
+
+      <div id="row-shift" style="{{ 'display:none' if place.scope == 'ORG' }}">
+        <label class="mt">Shift</label>
+        <select name="shift">
+          {% for code, hours in shifts %}<option value="{{ code }}">{{ code }} ({{ hours }})</option>{% endfor %}
+        </select>
+      </div>
+
+      <div id="row-leave" style="display:none">
+        <label class="mt">Type of leave</label>
+        <select name="leave_type">
+          {% for code, label in leave_types %}<option value="{{ code }}">{{ label }}</option>{% endfor %}
+        </select>
+      </div>
+
+      <label class="mt">Note (optional)</label>
+      <input type="text" name="note" maxlength="200" placeholder="e.g. covering for Mrs Oba">
+      <button class="btn mt">Save to roster</button>
+    </form>
+    <p class="hint mt">The system will refuse to place somebody on duty on a day they are
+      already recorded as being on leave.</p>
+  </div>
+
+  <!-- ------------------------------------------------ bulk upload -->
+  <div class="card">
+    <h2>⬆ Upload a roster file</h2>
+    <p class="hint">Nominal roll, department, section or unit roster — a
+      <b>.csv</b> or <b>.xlsx</b> with columns
+      <b>Name, Date, End Date, Shift, Leave Type, Section, Unit, Note</b>.
+      Only <b>Name</b> and <b>Date</b> are required. Nothing is saved until you have
+      seen and approved the preview.</p>
+    <div class="row mb">
+      {% for m, label in all_modes.items() %}
+      <a class="btn small ghost" href="/roster/template?mode={{ m }}">⬇ {{ label.split('(')[0] }}</a>
+      {% endfor %}
+    </div>
+    <form method="post" action="/roster/upload" enctype="multipart/form-data">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <input type="hidden" name="scope" value="{{ place.scope }}">
+      <input type="hidden" name="department_id" value="{{ place.department_id or '' }}">
+      <input type="hidden" name="section_id" value="{{ place.section_id or '' }}">
+      <input type="hidden" name="unit_id" value="{{ place.unit_id or '' }}">
+      <input type="file" name="file" accept=".csv,.xlsx" required>
+      <button class="btn mt">Check the file</button>
+    </form>
+    <p class="hint mt">{{ nominal_hint }}</p>
+  </div>
+
+  <!-- ------------------------------------------------ auto-fill next week -->
+  <div class="card">
+    <h2>🔁 Auto-fill next week</h2>
+    <p class="hint">Copy last week's roster to next week — saves typing same pattern. Skips leave days and already-rostered slots.</p>
+    <form method="post" action="{{ url_for('roster.roster_autofill') }}">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <input type="hidden" name="scope" value="{{ place.scope }}">
+      <input type="hidden" name="department_id" value="{{ place.department_id or '' }}">
+      <input type="hidden" name="section_id" value="{{ place.section_id or '' }}">
+      <input type="hidden" name="unit_id" value="{{ place.unit_id or '' }}">
+      <label>Source week start (copy FROM)</label>
+      <input type="date" name="source_start" required>
+      <label class="mt">Target week start (copy TO)</label>
+      <input type="date" name="target_start" required>
+      <button class="btn mt">Auto-fill next week</button>
+    </form>
+  </div>
+
+  <!-- ------------------------------------------------ admin manager quick add -->
+  {% if current_user.is_super or current_user.role == 'HEAD_ADMIN_HR' %}
+  <div class="card">
+    <h2>👤 Admin Manager on duty</h2>
+    <p class="hint">One Admin Manager per day, hospital-wide. This is the entry the system
+      uses to send duty reminders and to chase an overdue daily inspection.</p>
+    <form method="post" action="/roster/manual">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <label>Date</label><input type="date" name="date" required>
+      <label>Admin Manager</label>
+      <select name="user_id" required>
+        {% for a in admins %}<option value="{{ a.id }}">{{ a.name }}</option>{% endfor %}
+      </select>
+      <label>Note (optional)</label><input type="text" name="note" maxlength="200">
+      <button class="btn mt">Add duty day</button>
+    </form>
+  </div>
+  {% endif %}
+
+  <!-- ------------------------------------------------ working pattern -->
+  {% if current_user.is_super and place.department_id %}
+  <div class="card">
+    <h2>⚙ Working pattern for this department</h2>
+    <p class="hint">Wards run shifts. Procurement, Internal Audit, Finance &amp; Accounts,
+      ICT and Admin/HR work office hours Monday to Friday — set that here and the roster
+      stops asking for night shifts and warns you about weekends.</p>
+    <form method="post" action="/admin/structure/department">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <input type="hidden" name="department_id" value="{{ place.department_id }}">
+      {% set d = depts | selectattr('id', 'equalto', place.department_id) | first %}
+      {% if d %}
+      <input type="hidden" name="name" value="{{ d.name }}">
+      <input type="hidden" name="hod_user_id" value="{{ d.hod_user_id or '' }}">
+      <input type="hidden" name="hod_name" value="{{ d.hod_name or '' }}">
+      <input type="hidden" name="hod_phone" value="{{ d.hod_phone or '' }}">
+      {% endif %}
+      <label>Working pattern</label>
+      <select name="roster_mode">
+        {% for m, label in all_modes.items() %}
+        <option value="{{ m }}" {{ 'selected' if mode == m }}>{{ label }}</option>
+        {% endfor %}
+      </select>
+      <label class="mt">Staff on duty per shift <span class="hint">(guide only — you may roster more)</span></label>
+      <select name="roster_staff_per_shift">
+        {% for n in [1,2,3,4,5,6,8,10] %}<option value="{{ n }}">{{ n }}</option>{% endfor %}
+      </select>
+      <button class="btn mt">Save working pattern</button>
+    </form>
+  </div>
+  {% endif %}
+
+</div>
+{% endif %}
+
+<script nonce="{{ csp_nonce }}">
+function rosterScope(form){
+  var v = form.scope.value;
+  document.getElementById('pick-dept').style.display    = (v === 'ORG') ? 'none' : '';
+  document.getElementById('pick-section').style.display = (v === 'SECTION' || v === 'UNIT') ? '' : 'none';
+  document.getElementById('pick-unit').style.display    = (v === 'UNIT') ? '' : 'none';
+  if (v === 'ORG') form.submit();
+}
+function rosterRange(form){
+  var custom = form.range.value === 'custom';
+  document.getElementById('pick-dates').style.display = custom ? '' : 'none';
+  if (!custom) form.submit();
+}
+function rosterKind(sel){
+  var leave = sel.value === 'LEAVE';
+  var s = document.getElementById('row-shift'), l = document.getElementById('row-leave');
+  if (s) s.style.display = leave ? 'none' : '{{ 'none' if place.scope == 'ORG' else '' }}';
+  if (l) l.style.display = leave ? '' : 'none';
+}
+</script>
+{% endblock %}

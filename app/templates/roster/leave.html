@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}Leave Requests — Roster{% endblock %}
+{% block content %}
+<div class="page">
+  <h1>🌴 Leave Requests</h1>
+  <p style="color:#666">Request leave, track balance, approve team leave. When approved, roster updates automatically so nobody rosters you while on leave.</p>
+
+  <div style="margin:16px 0">
+    <a class="btn primary" href="{{ url_for('roster.leave_request_form') }}">+ Request Leave</a>
+    <a class="btn" href="{{ url_for('roster.roster_view') }}">← Back to Roster</a>
+  </div>
+
+  {% if balances %}
+  <h3>Your Leave Balance — {{ year }}</h3>
+  <table class="table">
+    <tr><th>Type</th><th>Entitled</th><th>Used</th><th>Left</th></tr>
+    {% for b in balances %}
+    <tr><td>{{ b.leave_type }}</td><td>{{ b.entitled }}</td><td>{{ b.used }}</td><td><strong>{{ b.remaining }}</strong></td></tr>
+    {% endfor %}
+  </table>
+  {% endif %}
+
+  <h3>My Requests</h3>
+  {% if my_reqs %}
+  <table class="table">
+    <tr><th>Date</th><th>Type</th><th>Days</th><th>Period</th><th>Status</th><th>Reason</th></tr>
+    {% for r in my_reqs %}
+    <tr>
+      <td>{{ r.requested_at.strftime('%d %b %Y') if r.requested_at else '' }}</td>
+      <td>{{ r.label }}</td>
+      <td>{{ r.days_requested }}</td>
+      <td>{{ r.start_date }} → {{ r.end_date }}</td>
+      <td><span class="badge {{ r.status|lower }}">{{ r.status }}</span></td>
+      <td>{{ r.reason or '' }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <p>No leave requests yet.</p>
+  {% endif %}
+
+  {% if pending is defined and pending %}
+  <h3>Pending Approval (HOD/HR)</h3>
+  <table class="table">
+    <tr><th>Staff</th><th>Type</th><th>Days</th><th>Period</th><th>Reason</th><th>Action</th></tr>
+    {% for r in pending %}
+    <tr>
+      <td>{{ r.user.name if r.user else r.user_id }}</td>
+      <td>{{ r.label }}</td>
+      <td>{{ r.days_requested }}</td>
+      <td>{{ r.start_date }} → {{ r.end_date }}</td>
+      <td>{{ r.reason or '' }}</td>
+      <td>
+        <form method="post" action="{{ url_for('roster.leave_approve', rid=r.id) }}" style="display:inline">
+          <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+          <button class="btn small primary">Approve</button>
+        </form>
+        <form method="post" action="{{ url_for('roster.leave_reject', rid=r.id) }}" style="display:inline">
+          <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+          <input type="text" name="review_note" placeholder="Reason if rejecting" style="width:140px">
+          <button class="btn small">Reject</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% endif %}
+</div>
+{% endblock %}

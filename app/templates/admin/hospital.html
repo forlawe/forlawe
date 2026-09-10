@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block title %}Hospital setup{% endblock %}
+{% block content %}
+<h1>Hospital Setup</h1>
+<p class="muted">This name, logo and contact details appear on every page — staff screens, patient portals, home-screen icon when staff add to phone, and printed reports.</p>
+<form class="card pad-lg" method="post" action="/admin/hospital" enctype="multipart/form-data" style="max-width:720px">
+  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+
+  <div style="background:linear-gradient(135deg,#e8f2f8,#e6f6f1);border:1.5px solid #b8d8ec;border-radius:14px;padding:16px 18px;margin-bottom:18px">
+    <h2 style="margin:0 0 6px;font-size:1.05rem">🏥 Main App Logo — Shows on Phone Home Screen</h2>
+    <p class="hint" style="margin:0 0 10px;line-height:1.5">This is the logo that shows when staff tap <b>Add to Home Screen</b> on Android/iPhone. Also shows in top bar and login. Use a <b>square</b> logo (512×512 PNG) — not a QR code. Max 5 MB. It auto-compresses to &lt;100 KB for slow internet.</p>
+    <div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap">
+      <div style="flex:1;min-width:220px">
+        <label style="margin-top:0">Upload logo — square PNG/JPG/WebP</label>
+        <input type="file" name="logo" accept="image/jpeg,image/png,image/webp" style="background:#fff">
+        <div class="hint" style="margin-top:6px">Tip: Use a clear logo with white background. We make it square and small for fast loading on slow internet in Africa.</div>
+      </div>
+      <div style="text-align:center;background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px;min-width:140px">
+        <div style="font-size:.75rem;font-weight:800;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:6px">Current</div>
+        {% if org.logo_path %}
+          <img src="/branding/logo" alt="Hospital logo" style="height:96px;width:96px;object-fit:contain;background:#fff;border-radius:10px;display:block;margin:0 auto">
+          <div style="font-size:.78rem;color:#0e5a8a;margin-top:8px;font-weight:700">✅ Logo active</div>
+          <div style="font-size:.7rem;color:var(--muted);margin-top:2px">Shows on home screen, PWA icons 192/512/maskable</div>
+        {% else %}
+          <div style="height:96px;width:96px;background:#f2f5f8;border-radius:10px;display:flex;align-items:center;justify-content:center;margin:0 auto;font-size:2rem">🏥</div>
+          <div style="font-size:.78rem;color:#9a7400;margin-top:8px;font-weight:700">⚠ No logo yet — using default</div>
+          <div style="font-size:.7rem;color:var(--muted);margin-top:2px">Upload to brand this hospital</div>
+        {% endif %}
+        <div style="margin-top:10px;display:flex;gap:6px;justify-content:center;flex-wrap:wrap">
+          <a href="/branding/logo" target="_blank" style="font-size:.75rem">View full</a>
+          <span style="color:var(--line)">·</span>
+          <a href="/branding/logo/192" target="_blank" style="font-size:.75rem">192</a>
+          <a href="/branding/logo/512" target="_blank" style="font-size:.75rem">512</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <label>Hospital name</label>
+  <input type="text" name="name" value="{{ org.name }}" required>
+  <label>Reference prefix (used in report &amp; complaint numbers)</label>
+  <input type="text" name="code" value="{{ org.code }}" maxlength="12"
+         pattern="[A-Za-z0-9]+" title="Letters and numbers only">
+  <div class="hint">e.g. HOSP produces refs like HOSP-INS-2026-000001 and HOSP-CMP-2026-000001</div>
+
+  <label>Email address</label>
+  <input type="email" name="email" value="{{ org.email or '' }}" placeholder="info@hospital.ng">
+  <label>Phone number</label>
+  <input type="tel" name="phone" value="{{ org.phone or '' }}" placeholder="e.g. 08012345678">
+  <label>Other phone (optional)</label>
+  <input type="tel" name="phone_alt" value="{{ org.phone_alt or '' }}" placeholder="e.g. 014611000">
+  <label>Location / address</label>
+  <input type="text" name="address" value="{{ org.address or '' }}"
+         placeholder="e.g. 12 Marina Road, Lagos Island, Lagos">
+
+  <h2 class="mt">Colours — how the suite looks</h2>
+  <p class="hint">These colours appear on every staff screen for this hospital only.
+    Another hospital on the same software keeps their own.</p>
+  <div class="grid cols3" style="grid-template-columns:repeat(auto-fit,minmax(140px,1fr))">
+    <div>
+      <label>Main colour</label>
+      <input type="color" name="brand_primary" value="{{ (brand.brand_primary if brand else settings.brand_primary) or '#0e5a8a' }}">
+    </div>
+    <div>
+      <label>Accent</label>
+      <input type="color" name="brand_accent" value="{{ (brand.brand_accent if brand else settings.brand_accent) or '#12b5a5' }}">
+    </div>
+    <div>
+      <label>Fast Track gold</label>
+      <input type="color" name="brand_gold" value="{{ (brand.brand_gold if brand else settings.brand_gold) or '#ffd700' }}">
+    </div>
+  </div>
+  <h2 class="mt">Name on SMS</h2>
+  <p class="hint">This is the first word on every text the hospital sends (3–11 letters, no spaces).
+    Termii allows 11. Example: <code>GHIJEDE</code>.</p>
+  <input type="text" name="sms_sender_tag" maxlength="11"
+         value="{{ brand.sms_sender_tag or org.code or '' }}"
+         placeholder="GHIJEDE" pattern="[A-Za-z0-9]{3,11}"
+         title="3 to 11 letters or numbers, no spaces"
+         style="text-transform:uppercase;max-width:220px">
+
+  <button class="btn mt">Save</button>
+</form>
+<p class="mt"><a class="btn ghost" href="/admin/branches">🏢 Manage hospital sites (Main / Annex) →</a></p>
+
+<div class="card pad mt" style="max-width:720px;background:#fffbe6;border-left:5px solid #f59e0b">
+  <h2 style="margin-top:0">📱 How logo works — for every browser (Chrome, Samsung Internet, Firefox, Safari)</h2>
+  <ul style="line-height:1.6;font-size:.9rem">
+    <li><b>Android Chrome:</b> Staff → Menu → Add to Home Screen → Your logo shows as app icon</li>
+    <li><b>iPhone Safari:</b> Share → Add to Home Screen → Logo shows</li>
+    <li><b>Slow internet:</b> We compress to &lt;100KB, 512×512 max, loads fast even on 2G</li>
+    <li><b>Multi-hospital:</b> Each hospital has its own logo — IJD shows IJD logo, other hospital shows theirs</li>
+    <li><b>TV screens:</b> Logo also shows on TV /public/tv</li>
+  </ul>
+</div>
+{% endblock %}

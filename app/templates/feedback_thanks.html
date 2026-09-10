@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Thank you{% endblock %}
+{% block content %}
+{% with back_to="/welcome" %}{% include "_patient_nav.html" %}{% endwith %}
+<div class="card pad-lg center" style="max-width:560px;margin:30px auto">
+  {% if rating <= 2 %}
+    <div style="font-size:3rem">🙏</div>
+    <h1>{{ _('sorry') }}</h1>
+    <p>Your feedback has been sent <b>immediately</b> to the responsible team and hospital management.</p>
+    {% if ref %}
+    <div class="notice" style="text-align:left"><b>Follow-up reference:</b><br>
+      <span style="font-size:1.2rem;font-weight:800">{{ ref }}</span><br>
+      <small>Use it to track progress at the complaint status page.</small></div>
+    {% endif %}
+    <a class="btn secondary mt" href="/complaint/status?ref={{ ref }}">Track this issue</a>
+  {% else %}
+    <div style="font-size:3rem">💚</div>
+    <h1>{{ _('thanks_good') }}</h1>
+    <p>Thank you — feedback like yours helps {{ org.name if org else 'the hospital' }} keep improving.</p>
+    <div class="btn-row grid cols2 mt">
+      <a class="btn" href="/book">📅 {{ _('book_again') }}</a>
+      {% if referral and share_url %}
+      <a class="btn secondary" href="{{ share_url }}"
+         onclick="if (navigator.share) { navigator.share({title:'{{ org.name if org else 'Our hospital' }}', text:'I had a great experience at {{ org.name if org else 'this hospital' }} — book your visit here:', url:'{{ share_url }}'}); return false; }">
+        💌 {{ _('refer') }}</a>
+      {% else %}
+      <a class="btn secondary" href="#" onclick="navigator.share ? navigator.share({title:'{{ org.name if org else 'Our hospital' }}', text:'I had a great experience at {{ org.name if org else 'this hospital' }} — book your visit here:', url: location.origin + '/book'}) : prompt('Share this link with friends & family:', location.origin + '/book'); return false">
+        💌 {{ _('refer') }}</a>
+      {% endif %}
+    </div>
+    {% if referral and share_url %}
+    <div class="card mt" style="text-align:left;box-shadow:none">
+      <h3 style="margin-top:0">{{ _('refer_share_hint') }}</h3>
+      <div class="center">
+        <img src="/r/{{ referral.code }}.png" alt="Your share QR"
+             width="160" height="160"
+             style="border:1px solid var(--line);border-radius:12px;background:#fff;padding:8px">
+      </div>
+      <p class="hint center">{{ _('refer_qr_hint') }}</p>
+      <label>{{ _('refer_copy') }}</label>
+      <input id="share-link" type="text" readonly value="{{ share_url }}" onclick="this.select()">
+      <div class="btn-row grid cols2 mt">
+        <button type="button" class="btn small" onclick="var e=document.getElementById('share-link'); if(navigator.clipboard){navigator.clipboard.writeText(e.value);} else {e.select();document.execCommand('copy');} this.textContent='Copied';">Copy link</button>
+        {% if wa %}<a class="btn small secondary" href="{{ wa }}" target="_blank" rel="noopener">WhatsApp</a>{% endif %}
+      </div>
+      <p class="hint mt">{{ _('refer_no_pressure') }}</p>
+    </div>
+    {% else %}
+    <p class="hint mt">Loved the care? Tell your friends and family — it helps more people find good care.</p>
+    {% endif %}
+  {% endif %}
+</div>
+{% include "_help_desk.html" %}
+{% endblock %}

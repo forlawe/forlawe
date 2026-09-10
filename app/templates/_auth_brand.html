@@ -1,0 +1,9 @@
+<div class="center mb auth-brand">
+  {% if hospital and hospital.logo_path %}
+    <img src="/branding/logo" alt="{{ hospital.name }}" class="auth-logo" width="64" height="64">
+  {% else %}
+    <img src="{{ url_for('static', filename='icons/icon-192.png') }}" alt="" class="auth-logo">
+  {% endif %}
+  <h1>{{ hospital.name if hospital else 'Hospital Suite' }}</h1>
+  <div class="muted">{{ subtitle }}</div>
+</div>

@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Check roster upload{% endblock %}
+{% block content %}
+
+<h1>Check before saving</h1>
+<p class="muted">File: <b>{{ filename }}</b> · Roster for: <b>{{ place_label }}</b>
+  · Pattern: <b>{{ mode_label }}</b></p>
+<p class="muted"><b>Nothing has been saved yet.</b> Read the list below, then press
+  “Save to the roster” at the bottom — or cancel and fix your file first.</p>
+
+<div class="grid cols3 mb">
+  <div class="card center"><h2 style="margin:0" class="ok">{{ valid_count }}</h2>
+    <span class="muted">line{{ '' if valid_count == 1 else 's' }} ready to save</span></div>
+  <div class="card center"><h2 style="margin:0">{{ day_count }}</h2>
+    <span class="muted">roster day{{ '' if day_count == 1 else 's' }} this creates</span></div>
+  <div class="card center"><h2 style="margin:0" class="{{ 'danger' if error_count else '' }}">{{ error_count }}</h2>
+    <span class="muted">line{{ '' if error_count == 1 else 's' }} that will be skipped</span></div>
+</div>
+
+{% if error_count %}
+<div class="flash error">{{ error_count }} line{{ '' if error_count == 1 else 's' }} cannot be
+  saved. They are listed below with the reason. You can save the good lines now and fix the
+  rest later — the skipped lines are never guessed at.</div>
+{% endif %}
+
+<div class="table-wrap card mb" style="padding:0">
+<table>
+  <tr><th>Line</th><th>Staff</th><th>Dates</th><th>Duty / Leave</th><th>Result</th></tr>
+  {% for r in rows %}
+  <tr style="{{ 'background:#fff5f5' if not r.ok }}">
+    <td class="muted">{{ r.line }}</td>
+    <td>{{ r.person_name }}{% if r.person_name != r.name %}<br><span class="muted">file said: {{ r.name }}</span>{% endif %}</td>
+    <td>{{ r.date }}{% if r.end %} → {{ r.end }}<br><span class="muted">{{ r.days }} days</span>{% endif %}</td>
+    <td>
+      {% if r.kind == 'LEAVE' %}<span class="pill gray">{{ r.label }}</span>
+      {% else %}<span class="pill {{ 'amber' if r.shift in ('NIGHT','24H') else 'blue' }}">{{ r.label }}</span>{% endif %}
+      {% if r.note %}<br><span class="muted">{{ r.note }}</span>{% endif %}
+    </td>
+    <td>
+      {% if r.ok %}<span class="pill green">Will be saved</span>{% else %}<span class="pill red">Skipped</span>{% endif %}
+      {% for e in r.errors %}<div class="muted">✗ {{ e }}</div>{% endfor %}
+      {% for w in r.warnings %}<div class="muted">⚠ {{ w }}</div>{% endfor %}
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+</div>
+
+<div class="row">
+  <form method="post" action="/roster/upload/confirm">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <input type="hidden" name="token" value="{{ token }}">
+    <button class="btn" {{ 'disabled' if not valid_count }}>✔ Save {{ valid_count }} line{{ '' if valid_count == 1 else 's' }} to the roster</button>
+  </form>
+  <form method="post" action="/roster/upload/discard">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <input type="hidden" name="token" value="{{ token }}">
+    <button class="btn ghost">Cancel — save nothing</button>
+  </form>
+</div>
+{% endblock %}

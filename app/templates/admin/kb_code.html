@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}Correction code{% endblock %}
+{% block content %}
+<h1>✏️ Correction code</h1>
+<p class="muted">Fix a wrong answer <b>from inside the chat</b>, the moment you
+  spot it. No forms, no hunting through the answer book.</p>
+
+<div class="card pad-lg mb">
+  <h2 style="margin-top:0">How to use it</h2>
+  <p>When the assistant gives a bad answer, type this into the same chat box:</p>
+
+  <div class="card" style="background:#f6f9fc">
+    <code style="font-size:.95rem">
+      YOURCODE cafeteria :: Our cafeteria serves hot meals all day. Ask at
+      reception and they will point you to it.
+    </code>
+  </div>
+
+  <p class="mt">That corrects the answer <b>for this hospital only</b> — the
+    safe default. To change it for <b>every hospital</b> using the suite, add
+    the word <b>global</b>:</p>
+
+  <div class="card" style="background:#f6f9fc">
+    <code style="font-size:.95rem">
+      YOURCODE global cafeteria :: Our cafeteria serves hot meals all day.
+    </code>
+  </div>
+
+  <p class="hint">The name in the middle (<code>cafeteria</code>) is the answer's
+    short name — you can see them all in the
+    <a href="/admin/kb">Answer book</a>. The <code>::</code> separates the name
+    from the new wording.</p>
+</div>
+
+<div class="card pad-lg mb">
+  <h2 style="margin-top:0">{{ 'Change your code' if has_code else 'Set your code' }}</h2>
+  {% if has_code %}
+    <div class="notice" style="text-align:left">A code is already set. Typing a
+      new one here replaces it. I cannot show you the old one — it is stored
+      scrambled, exactly like a password.</div>
+  {% endif %}
+  <form method="post" action="/admin/kb/code">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <label>Your one-word code</label>
+    <input name="code" required minlength="4" autocomplete="off"
+           placeholder="e.g. {{ suggestion }}">
+    <p class="hint">One word, no spaces, at least 4 characters. Pick something
+      nobody would type into a chat by accident.</p>
+    <button class="btn big mt">Save my code</button>
+  </form>
+</div>
+
+<div class="card pad-lg" style="border-left:6px solid #b58900">
+  <h2 style="margin-top:0">⚠️ Two locks, not one — and why</h2>
+  <p>You asked for a secret code. I built that, but I also added a second lock,
+    and I want you to know why.</p>
+  <p><b>The chat box is open to the whole internet.</b> Anyone can send messages
+    to it without signing in — that is what makes it useful to patients. If the
+    code were the <i>only</i> lock, then anyone who guessed it could rewrite what
+    your hospital tells sick people about medicines, fees and emergencies.
+    A word can be guessed, read over your shoulder, or left behind on a shared
+    computer.</p>
+  <p>So a correction needs <b>both</b>:</p>
+  <ul>
+    <li>you are <b>signed in as the Super Administrator</b> in that browser, and</li>
+    <li>you type the <b>code</b>.</li>
+  </ul>
+  <p style="margin-bottom:0">The code still does the job you wanted: an ordinary
+    sentence is never mistaken for an edit, and a colleague borrowing your
+    signed-in tablet cannot change an answer by accident. But a stranger who
+    guesses the code gets nothing, because they are not signed in. Every
+    correction is recorded with your name and the previous wording is kept.</p>
+</div>
+{% endblock %}

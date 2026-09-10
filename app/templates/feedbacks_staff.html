@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+{% block title %}How patients rated us{% endblock %}
+{% block content %}
+<h1>⭐ How patients rated the visit</h1>
+<p class="muted">{{ board.scope }} · Last {{ days }} days
+  ({{ board.start.strftime('%d %b') }} – {{ board.end.strftime('%d %b') }}).
+  Voice reminders stay on.</p>
+
+<form class="card mb row" method="get" action="/feedbacks" style="gap:10px;flex-wrap:wrap">
+  <label>Period
+    <select name="days" onchange="this.form.submit()">
+      <option value="7" {{ 'selected' if days==7 }}>Last 7 days</option>
+      <option value="30" {{ 'selected' if days==30 }}>Last 30 days</option>
+      <option value="90" {{ 'selected' if days==90 }}>Last 90 days</option>
+    </select>
+  </label>
+  <label>Department
+    <select name="dept" onchange="this.form.submit()">
+      <option value="">All I may see</option>
+      {% for d in depts %}
+      <option value="{{ d.id }}" {{ 'selected' if dept==d.id }}>{{ d.name }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <a class="btn ghost" href="/feedbacks.csv?days={{ days }}">Download table</a>
+  <a class="btn small secondary" href="/feedback">Public rating page</a>
+</form>
+
+<div class="grid cols4 mb">
+  <div class="kpi {{ 'good' if avg and avg >= 4 else ('warn' if avg and avg >= 3 else ('bad' if avg else 'gray')) }}">
+    <div class="v">{{ avg if avg else '—' }}<span style="font-size:1rem">/5</span></div>
+    <div class="l">Average satisfaction</div>
+  </div>
+  <div class="kpi info">
+    <div class="v">{{ total }}</div>
+    <div class="l">Ratings this period</div>
+  </div>
+  <div class="kpi {{ 'good' if board.happy_pct >= 70 else ('warn' if board.total else 'gray') }}">
+    <div class="v">{{ board.happy_pct }}%</div>
+    <div class="l">Happy (4 or 5 stars)</div>
+  </div>
+  <div class="kpi {{ 'bad' if board.low else 'good' }}">
+    <div class="v">{{ board.low }}</div>
+    <div class="l">Low scores (1–2 stars)</div>
+  </div>
+</div>
+
+<div class="card mb">
+  <h2>{{ board.word }}
+    {% if board.trend is not none %}
+      <span class="muted" style="font-weight:500">
+        {% if board.trend > 0 %}· up {{ board.trend }} from the {{ days }} days before
+        {% elif board.trend < 0 %}· down {{ board.trend|abs }} from the {{ days }} days before
+        {% else %}· same as the {{ days }} days before{% endif %}
+      </span>
+    {% elif board.prev_avg is none and board.total %}
+      <span class="muted" style="font-weight:500">· first ratings in this window</span>
+    {% endif %}
+  </h2>
+  <p class="hint">{{ board.spoken }}
+    {% if board.routed %} {{ board.routed }} low score(s) already sent to recovery.{% endif %}
+  </p>
+</div>
+
+<div class="grid cols2 mb">
+  <div class="card">
+    <h2>Stars given</h2>
+    <div class="table-wrap">
+    <table>
+      <tr><th>Stars</th><th>How many</th><th></th></tr>
+      {% for n in [5,4,3,2,1] %}
+      <tr>
+        <td>{{ '⭐' * n }}</td>
+        <td>{{ board.stars[n] }}</td>
+        <td style="width:45%">
+          <div class="bar"><i style="width:{{ (100 * board.stars[n] / board.total)|round if board.total else 0 }}%;background:{{ '#1a7f37' if n>=4 else ('#b58900' if n==3 else '#c0262c') }}"></i></div>
+        </td>
+      </tr>
+      {% endfor %}
+    </table>
+    </div>
+  </div>
+  <div class="card">
+    <h2>Each department</h2>
+    <div class="table-wrap">
+    <table>
+      <tr><th>Department</th><th>Average</th><th>Word</th><th>Ratings</th><th>Low</th></tr>
+      {% for d in board.departments %}
+      <tr>
+        <td><b>{{ d.name }}</b></td>
+        <td>{{ d.avg if d.avg else '—' }}</td>
+        <td><span class="pill {{ 'green' if d.avg and d.avg>=4 else ('amber' if d.avg and d.avg>=3 else 'red') }}">{{ d.word }}</span></td>
+        <td>{{ d.n }}</td>
+        <td>{{ d.low }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="5" class="muted">No ratings in this period.</td></tr>
+      {% endfor %}
+    </table>
+    </div>
+  </div>
+</div>
+
+<div class="card mb">
+  <h2>Last 14 days</h2>
+  <div class="table-wrap">
+  <table>
+    <tr><th>Day</th><th>Ratings</th><th>Average</th></tr>
+    {% for d in board.day_bars %}
+    <tr>
+      <td>{{ d.day.strftime('%a %d %b') }}</td>
+      <td>{{ d.n }}</td>
+      <td>
+        {% if d.avg %}
+          {{ d.avg }}
+          <div class="bar"><i style="width:{{ (d.avg/5*100)|round }}%"></i></div>
+        {% else %}
+          <span class="muted">—</span>
+        {% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+  </div>
+</div>
+
+{% if board.open_low %}
+<div class="card mb" style="border-left:6px solid #c0262c">
+  <h2>Low scores not yet sent to recovery</h2>
+  <p class="hint">A 1 or 2 star rating should become a recovery ticket. These did not — check the department is set.</p>
+  {% for f in board.open_low %}
+  <div class="list-item">
+    <div class="spread">
+      <span class="t">{{ '⭐' * f.rating }} <span class="muted">({{ f.rating }}/5)</span></span>
+      <span class="muted">{{ f.created_at.strftime('%d %b %H:%M') }}</span>
+    </div>
+    {% if f.department %}<div class="muted">{{ f.department.name }}</div>{% endif %}
+    {% if f.comment %}<div class="mt">{{ f.comment }}</div>{% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="card">
+  <h2>Latest comments</h2>
+  {% for f in items %}
+  <div class="list-item">
+    <div class="spread">
+      <span class="t">{{ '⭐' * f.rating }} <span class="muted">({{ f.rating }}/5)</span></span>
+      <span class="muted">{{ f.created_at.strftime('%d %b %H:%M') }}</span>
+    </div>
+    {% if f.department %}<div class="muted">{{ f.department.name }}</div>{% endif %}
+    {% if f.comment %}<div class="mt">{{ f.comment }}</div>{% endif %}
+    <div class="mt">
+      {% if f.status == 'ROUTED' and f.complaint %}
+        <a class="pill red" href="/complaints/{{ f.complaint.id }}">→ Recovery ticket {{ f.complaint.ref }}</a>
+      {% elif f.rating <= 2 %}
+        <span class="pill amber">low rating</span>
+      {% else %}<span class="pill green">positive</span>{% endif %}
+    </div>
+  </div>
+  {% else %}<div class="center muted">No feedback yet.</div>{% endfor %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script nonce="{{ csp_nonce }}">
+(function () {
+  var line = {{ board.spoken|tojson }};
+  if (window.hmsVoice && window.hmsVoice.speak && line) window.hmsVoice.speak(line);
+})();
+</script>
+{% endblock %}

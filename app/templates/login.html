@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="{{ lang if lang else 'en' }}">
+<head>
+{% include "_auth_head.html" %}
+<title>Sign in{% if hospital %} — {{ hospital.name }}{% endif %}</title>
+</head>
+<body>
+<div class="login-wrap">
+  <div class="card login-card pad-lg">
+    {% set subtitle = "Sign in" %}
+    {% include "_auth_brand.html" %}
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for cat, msg in messages %}<div class="flash {{ cat }}">{{ msg }}</div>{% endfor %}
+    {% endwith %}
+    <form method="post" action="/login">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <input type="hidden" name="next" value="{{ next }}">
+      <label for="username">Username or email</label>
+      <input type="text" id="username" name="username" value="{{ username or '' }}"
+             autocomplete="username" required autofocus autocapitalize="none">
+      {% with name="password", id="login-password", label="Password", autocomplete="current-password" %}
+        {% include "_pw_field.html" %}
+      {% endwith %}
+      <div class="mt">
+        <button class="btn big" type="submit" style="width:100%">Sign in</button>
+      </div>
+    </form>
+    <nav class="auth-links">
+      <a href="/signup">Sign up</a>
+      <a href="/forgot-password">Forgot password</a>
+    </nav>
+  </div>
+</div>
+<script src="{{ url_for('static', filename='js/auth.js') }}?v={{ app_version }}" nonce="{{ csp_nonce }}"></script>
+{% include "_install.html" %}
+</body>
+</html>

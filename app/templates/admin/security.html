@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Security check{% endblock %}
+{% block content %}
+<h1>🔒 Security check</h1>
+<p class="muted">These are the same questions a reviewer asks. Green is locked.
+  Amber is a recommendation. Red must be fixed today. This is a self-check,
+  not a paid penetration test.</p>
+
+<div class="grid cols3 mb">
+  <div class="kpi good"><div class="v">{{ tally.pass }}</div><div class="l">Locked</div></div>
+  <div class="kpi {{ 'bad' if tally.warn else '' }}"><div class="v">{{ tally.warn }}</div><div class="l">Recommended</div></div>
+  <div class="kpi {{ 'bad' if tally.fail else 'good' }}"><div class="v">{{ tally.fail }}</div><div class="l">Must fix</div></div>
+</div>
+
+<div class="card mb">
+  <table>
+    <tr><th></th><th>Check</th><th>What this means</th></tr>
+    {% for c in checks %}
+    <tr>
+      <td>{% if c.level == 'pass' %}<span class="pill green">OK</span>
+          {% elif c.level == 'warn' %}<span class="pill amber">Look</span>
+          {% else %}<span class="pill red">Fix</span>{% endif %}</td>
+      <td><b>{{ c.title }}</b></td>
+      <td>{{ c.detail }}{% if c.how %}<div class="hint">{{ c.how }}</div>{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</div>
+
+<div class="card mb" style="max-width:640px">
+  <h2>Who must use a phone code</h2>
+  <p class="hint">Phone-code lock is <b>paused</b> so nobody is locked out of
+    the hospital. You can still turn it on for yourself under 🔐. Ticking jobs
+    here is saved, but the lock will not trap anyone until we switch it back on.</p>
+  <form method="post" action="/admin/security/policy">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    {% for code, label in role_choices %}
+    <label style="display:flex;gap:8px;align-items:center;margin:6px 0">
+      <input type="checkbox" name="mfa_required_roles" value="{{ code }}"
+             {% if code in required %}checked{% endif %}>
+      {{ label }}
+    </label>
+    {% endfor %}
+    <button class="btn mt">Save this rule</button>
+  </form>
+</div>
+
+<div class="card mb">
+  <h2>Staff phone-code status</h2>
+  <div class="table-wrap">
+  <table>
+    <tr><th>Name</th><th>Job</th><th>Phone code</th></tr>
+    {% for u in staff %}
+    <tr>
+      <td>{{ u.name }}</td>
+      <td>{{ u.role_name }}</td>
+      <td>{% if u.mfa_enabled %}<span class="pill green">On</span>
+          {% else %}<span class="pill amber">Off</span>{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  </div>
+  <p class="mt"><a class="btn" href="/mfa/setup">Protect my own sign-in →</a></p>
+</div>
+
+<div class="card mb" style="max-width:640px">
+  <h2>Open another hospital</h2>
+  <p class="hint">This site can run more than one hospital. The new hospital
+    gets its own staff, patients and colours. They need a one-time setup code.
+    The code works once and expires in 48 hours.</p>
+  <form method="post" action="/admin/onboard-invite">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <button class="btn">Make a setup code</button>
+  </form>
+  <p class="hint mt">They open <a href="/start">/start</a> and type the code.
+    Do not reuse a code. Do not post it in a public group.</p>
+</div>
+{% endblock %}

@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Bookings{% endblock %}
+{% block content %}
+<div class="spread mb"><h1 style="margin:0">Patient Bookings</h1>
+  <a class="btn small secondary" href="/book">➕ Public booking page</a></div>
+
+<div class="card pad-lg mb" style="background:#FFFEF0;border-left:5px solid #FFD700">
+  <b>👑 Fast Track — Quick, calm, private</b><br>
+  <span style="font-size:.85rem;line-height:1.5">All bookings here are Fast Track. If "Payment upfront" is turned on in Settings, please mark as PAID before check-in. Price is set per hospital in Settings. We send confirmation by WhatsApp first, then SMS if needed.</span>
+</div>
+
+<form class="card mb row" method="get">
+  <input type="date" name="date" value="{{ args.get('date','') }}" style="width:auto">
+  <select name="status" style="width:auto">
+    <option value="">All statuses</option>
+    {% for s in ('BOOKED','ARRIVED','CANCELLED','NO_SHOW') %}
+    <option {{ 'selected' if args.get('status')==s }}>{{ s }}</option>{% endfor %}
+  </select>
+  <button class="btn small">Filter</button>
+</form>
+
+<div class="table-wrap card" style="padding:0">
+<table>
+  <tr><th>Date</th><th>Time</th><th>Patient</th><th>Service</th><th>Phone</th><th>Fast Track</th><th>Payment</th><th>Status</th><th></th></tr>
+  {% for a in items %}
+  <tr style="{{ 'background:#FFFEF0' if a.is_fast_track else '' }}; {{ 'border-left:4px solid #FFD700' if a.is_fast_track }}">
+    <td>{{ a.appointment_date.strftime('%a %d %b') }}</td>
+    <td><b>{{ a.appointment_time }}</b></td>
+    <td>👑 {{ a.patient_name }}
+      {% if a.is_repeat %}<span class="pill amber">returning</span>{% endif %}
+      {% if a.referral_id %}<span class="pill blue">referred</span>{% endif %}
+      {% if a.is_fast_track %}<br><span style="background:#000;color:#FFD700;padding:2px 8px;border-radius:999px;font-size:.65rem;font-weight:900">FAST TRACK</span>{% endif %}
+    </td>
+    <td>{{ a.department.name }}</td>
+    <td><span title="Full number for contact, masked for privacy">{{ a.phone|mask_phone }}</span></td>
+    <td>{% if a.is_fast_track %}<span style="background:#FFD700;color:#000;padding:2px 8px;border-radius:999px;font-size:.7rem;font-weight:900">Gold</span>{% else %}—{% endif %}</td>
+    <td>
+      {% if a.is_fast_track %}
+        {% if a.fast_track_payment_status == 'PAID' %}<span class="pill green">✅ PAID</span><br><small>{{ a.fast_track_payment_ref or '' }}</small>
+        {% elif a.fast_track_payment_status == 'PENDING' %}<span class="pill amber">⏳ Pay needed</span>
+          <form method="post" action="/bookings/{{ a.id }}/mark-paid-fasttrack" style="margin-top:4px">
+            <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+            <input type="text" name="payment_ref" placeholder="Receipt ref" style="font-size:.75rem;padding:4px;width:120px;border-radius:6px;border:1px solid #dbe4ec">
+            <button class="btn small" style="background:#000;color:#FFD700;font-size:.7rem;border-radius:999px">Mark PAID</button>
+          </form>
+        {% else %}<span class="pill gray">{{ a.fast_track_payment_status or 'WAIVED' }}</span>{% endif %}
+      {% else %}—{% endif %}
+    </td>
+    <td><span class="pill {{ 'green' if a.status=='BOOKED' else ('blue' if a.status=='ARRIVED' else 'gray') }}">{{ a.status }}</span></td>
+    <td>{% if a.status == 'BOOKED' %}
+      <form method="post" action="/bookings/{{ a.id }}/checkin-queue">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        <button class="btn small" style="background:#000;color:#FFD700;border-radius:999px">Check in → Reception</button>
+      </form>{% endif %}</td>
+  </tr>
+  {% endfor %}
+</table>
+</div>
+{% endblock %}

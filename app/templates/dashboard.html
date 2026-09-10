@@ -1,0 +1,241 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — Hospital Suite{% endblock %}
+{% block content %}
+
+{% if onboard_guide and current_user.role == 'SUPER_ADMIN' %}
+<div class="card pad-lg mb" style="border-left:6px solid var(--accent)">
+  <h2 style="margin:0">Your hospital is new — do these next</h2>
+  <p class="muted">Booking → Register → Triage → Doctor → next desk. Voice stays on.</p>
+  <div class="btn-row grid cols2">
+    <a class="btn" href="/admin/users">Add staff</a>
+    <a class="btn secondary" href="/admin/posters">Print posters</a>
+    <a class="btn secondary" href="/admin/security">Phone code</a>
+    <a class="btn secondary" href="/welcome">Patient view</a>
+  </div>
+  <form method="post" action="/start/guide-done" class="mt">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <button class="btn ghost small" type="submit">Hide this card</button>
+  </form>
+</div>
+{% endif %}
+
+{# ---------------- your own department, first ---------------- #}
+{% set can = nav_permissions() %}
+{% if can.dept_desk and not can.admin %}
+<a class="card pad-lg mb" href="/my-department" style="display:block;border-left:6px solid #1a7f37">
+  <h2 style="margin:0">🏥 My Department →</h2>
+  <p class="muted" style="margin:.3rem 0 0">Today's patients coming to your
+    department, who is working on what right now, and how you are keeping up.</p>
+</a>
+{% endif %}
+
+{# ---------------- patient flow at a glance ---------------- #}
+{% if flow %}
+<div class="card pad-lg mb" style="border-left:6px solid #0e5a8a">
+  <div class="spread">
+    <h2 style="margin:0">📊 Patient flow — last 7 days</h2>
+    <a class="btn small secondary" href="/tracking">See the detail →</a>
+  </div>
+  <div class="grid cols4 mt">
+    <div style="text-align:center">
+      <div style="font-size:1.5rem;font-weight:800">{{ (flow.head.median_journey)|hm }}</div>
+      <div class="muted" style="font-size:.75rem">Typical visit</div></div>
+    <div style="text-align:center">
+      <div style="font-size:1.5rem;font-weight:800">{{ flow.head.patients_completed }}</div>
+      <div class="muted" style="font-size:.75rem">Finished</div></div>
+    <div style="text-align:center">
+      <div style="font-size:1.5rem;font-weight:800">{{ flow.head.in_hospital_now }}</div>
+      <div class="muted" style="font-size:.75rem">Here now</div></div>
+    <div style="text-align:center">
+      <div style="font-size:1.5rem;font-weight:800;{{ 'color:#c0262c' if flow.head.stuck_now }}">
+        {{ flow.head.stuck_now }}</div>
+      <div class="muted" style="font-size:.75rem">Waiting too long</div></div>
+  </div>
+  {% if not flow.head.reliable %}
+    <p class="hint" style="margin-bottom:0">Not enough finished visits yet to
+      trust these averages — they fill in as the system is used.</p>
+  {% endif %}
+  {% if flow.advice %}
+  <ul style="margin:.6rem 0 0;padding-left:1.1rem">
+    {% for tip in flow.advice %}<li style="margin:3px 0">{{ tip }}</li>{% endfor %}
+  </ul>
+  {% endif %}
+</div>
+{% endif %}
+
+{# ---------------- TODAY strip ---------------- #}
+<div class="card pad-lg mb">
+  <div class="spread">
+    <div>
+      <div class="muted" style="font-size:.75rem;text-transform:uppercase;letter-spacing:.06em">Today</div>
+      <div style="font-size:1.15rem;font-weight:800">
+        Admin Manager on duty: {{ kpi.today.duty.name if kpi.today.duty else "—" }}
+      </div>
+      <div class="muted">{{ kpi.today.deadline.strftime('Inspection deadline: %H:%M') }}</div>
+    </div>
+    <div class="right">
+      {% if kpi.today.state == 'completed' %}
+        <span class="pill green" style="font-size:.95rem;padding:8px 16px">🟢 Completed</span>
+        {% if kpi.today.inspection %}<div class="hint mt">
+          {{ kpi.today.inspection.ref }} · {{ kpi.today.inspection.total_score }}/25 · {{ kpi.today.inspection.rating }}</div>{% endif %}
+      {% elif kpi.today.state == 'pending' %}
+        <span class="pill amber" style="font-size:.95rem;padding:8px 16px">🔴 Pending</span>
+      {% elif kpi.today.state == 'overdue' %}
+        <span class="pill red" style="font-size:.95rem;padding:8px 16px">⚠️ Overdue</span>
+      {% else %}
+        <span class="pill gray" style="font-size:.95rem;padding:8px 16px">No duty assigned</span>
+      {% endif %}
+    </div>
+  </div>
+  {% if current_user.is_am and kpi.today.duty and kpi.today.duty.id == current_user.id and kpi.today.state != 'completed' %}
+    <a class="btn big mt" href="/inspections#today">▶ Start Today's Inspection</a>
+  {% endif %}
+</div>
+
+{# ---------------- quick actions (Admin Manager UX: 4 big buttons) ---------------- #}
+{% if current_user.role in ('ADMIN_MANAGER',) %}
+<div class="btn-row grid cols2 mb">
+  <a class="btn" href="/inspections#today">📋 TODAY'S INSPECTION</a>
+  <a class="btn secondary" href="/roster">🗓 DUTY ROSTER</a>
+  <a class="btn secondary" href="/inspections#history">📁 PREVIOUS INSPECTIONS</a>
+  <a class="btn secondary" href="/corrective-actions?mine=1">🛠 CORRECTIVE ACTIONS</a>
+</div>
+{% endif %}
+
+{# ---------------- KPI grid — v1.7.18: HOD/APEX/STAFF see only own dept, management sees whole hospital ---------------- #}
+{% if kpi.is_limited %}
+<div class="grid cols4 mb">
+  <div class="kpi info"><div class="v">{{ kpi.total_inspections }}</div><div class="l">Inspections (your dept)</div></div>
+  <div class="kpi {{ 'good' if kpi.avg_score >= 18 else ('warn' if kpi.avg_score >= 13 else 'bad') }}">
+    <div class="v">{{ kpi.avg_score }}</div><div class="l">Avg score /25 (your dept)</div></div>
+  <div class="kpi {{ 'bad' if kpi.critical_findings_30d else 'good' }}">
+    <div class="v">{{ kpi.critical_findings_30d }}</div><div class="l">Critical findings (30d) your dept</div></div>
+  <div class="kpi info"><div class="v">{{ kpi.bookings_today }}</div><div class="l">Bookings today (your dept)</div></div>
+  <div class="kpi {{ 'warn' if kpi.queue_waiting > 10 else 'info' }}">
+    <div class="v">{{ kpi.queue_waiting }}</div><div class="l">In queue now (your dept)</div></div>
+</div>
+<div class="card pad-lg mb" style="border-left:6px solid #1a7f37">
+  <p class="muted" style="margin:0">You are seeing <strong>your department only</strong> — per v1.7.18 least privilege. Hospital-wide metrics (compliance, complaints, satisfaction, referrals) are for Management and System Admin. System Admin can upgrade your sight via Role Management if needed.</p>
+</div>
+{% else %}
+<div class="grid cols4 mb">
+  <div class="kpi info"><div class="v">{{ kpi.total_inspections }}</div><div class="l">Inspections</div></div>
+  <div class="kpi {{ 'good' if kpi.avg_score >= 18 else ('warn' if kpi.avg_score >= 13 else 'bad') }}">
+    <div class="v">{{ kpi.avg_score }}</div><div class="l">Avg score /25</div></div>
+  <div class="kpi {{ 'good' if kpi.compliance_rate >= 90 else 'warn' }}">
+    <div class="v">{{ kpi.compliance_rate }}%</div><div class="l">Inspection compliance</div></div>
+  <div class="kpi {{ 'good' if kpi.resolution_rate >= 70 else 'warn' }}">
+    <div class="v">{{ kpi.resolution_rate }}%</div><div class="l">Complaint resolution</div></div>
+  <div class="kpi"><div class="v">{{ kpi.complaints_open }}</div><div class="l">Open complaints</div></div>
+  <div class="kpi {{ 'bad' if kpi.complaints_escalated else 'good' }}">
+    <div class="v">{{ kpi.complaints_escalated }}</div><div class="l">Escalated</div></div>
+  <div class="kpi {{ 'bad' if kpi.sla_breaches else 'good' }}">
+    <div class="v">{{ kpi.sla_breaches }}</div><div class="l">SLA breaches</div></div>
+  <div class="kpi {{ 'bad' if kpi.critical_findings_30d else 'good' }}">
+    <div class="v">{{ kpi.critical_findings_30d }}</div><div class="l">Critical findings (30d)</div></div>
+  <div class="kpi info"><div class="v">{{ kpi.bookings_today }}</div><div class="l">Bookings today</div></div>
+  <div class="kpi {{ 'warn' if kpi.queue_waiting > 10 else 'info' }}">
+    <div class="v">{{ kpi.queue_waiting }}</div><div class="l">In queue now</div></div>
+  <a class="kpi {{ 'good' if kpi.satisfaction_avg and kpi.satisfaction_avg >= 4 else ('warn' if kpi.satisfaction_avg else 'gray') }}" href="/feedbacks" style="text-decoration:none;color:inherit">
+    <div class="v">{{ kpi.satisfaction_avg if kpi.satisfaction_avg else '—' }}</div>
+    <div class="l">Satisfaction /5 ({{ kpi.feedback_count }}) →</div></a>
+  <div class="kpi {{ 'good' if kpi.referral_books_30d else 'info' }}">
+    <div class="v">{{ kpi.referral_books_30d }}</div><div class="l">Referred bookings (30d)</div></div>
+  <div class="kpi info">
+    <div class="v">{{ kpi.repeat_visits_30d }}</div>
+    <div class="l">Repeat visits (30d)</div></div>
+</div>
+{% endif %}
+
+{# ---------------- Management Attention ---------------- #}
+{% if attention %}
+<div class="card mb">
+  <h2>🚨 Management Attention</h2>
+  {% for it in attention %}
+    <a class="list-item" href="{{ it.href }}">
+      <span class="pill {{ 'red' if it.level == 'high' else 'amber' }}">{{ it.kind }}</span>
+      <div class="t mt">{{ it.text }}</div>
+    </a>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if not kpi.is_limited %}
+<div class="grid cols2 mb">
+  {# lowest departments — management only, hospital-wide #}
+  <div class="card">
+    <h2>Lowest-scoring departments (30 days)</h2>
+    {% if kpi.lowest_depts %}
+      {% for r in kpi.lowest_depts %}
+        <div class="row mb" style="justify-content:space-between">
+          <a href="/reports/departments/{{ r.dept.id }}">{{ r.dept.name }}</a>
+          <span class="pill {{ 'red' if r.avg < 13 else ('amber' if r.avg < 18 else 'green') }}">{{ r.avg }}/25</span>
+        </div>
+        <div class="bar mb"><i style="width:{{ (r.avg/25*100)|round }}%;background:{{ '#c0262c' if r.avg<13 else ('#b58900' if r.avg<18 else '#1a7f37') }}"></i></div>
+      {% endfor %}
+    {% else %}<p class="muted">No inspections yet.</p>{% endif %}
+  </div>
+
+  {# heatmap — management only #}
+  <div class="card">
+    <h2>Performance heatmap (14 days)</h2>
+    <div class="heat" style="grid-template-columns: 110px repeat({{ kpi.heatmap.days }}, 1fr)">
+      {% for name, row in kpi.heatmap.grid.items() %}
+        <div class="lbl">{{ name }}</div>
+        {% for v in row %}
+          {# F-085: heatmap colours are CSS token classes, not raw hex values #}
+          <div class="cell {{ 'h-exc' if v and v >= 22 else ('h-good' if v and v >= 18 else ('h-fair' if v and v >= 13 else ('h-poor' if v and v >= 8 else ('h-crit' if v is not none else 'h-none')))) }}"
+               title="{{ name }} — {{ v if v else 'no inspection' }}">
+            {{ v if v is not none else '' }}</div>
+        {% endfor %}
+      {% endfor %}
+    </div>
+    <p class="hint mt">Green = Excellent/Good · Amber = Fair · Orange/Red = Poor/Critical · Grey = no inspection</p>
+  </div>
+</div>
+{% else %}
+<div class="card pad-lg mb">
+  <h2>Your department — last 30 days</h2>
+  {% if kpi.lowest_depts %}
+    {% for r in kpi.lowest_depts %}
+      <div class="row mb" style="justify-content:space-between">
+        <span>{{ r.dept.name }} (your dept)</span>
+        <span class="pill {{ 'red' if r.avg < 13 else ('amber' if r.avg < 18 else 'green') }}">{{ r.avg }}/25</span>
+      </div>
+      <div class="bar mb"><i style="width:{{ (r.avg/25*100)|round }}%;background:{{ 'var(--red)' if r.avg<13 else ('var(--amber)' if r.avg<18 else 'var(--green)') }}"></i></div>
+    {% endfor %}
+  {% else %}<p class="muted">No inspections for your department yet.</p>{% endif %}
+</div>
+{% endif %}
+
+{# ---------------- HOD: open complaints ---------------- #}
+{% if current_user.is_hod and recent_complaints %}
+<div class="card mb">
+  <h2>Complaints needing your attention</h2>
+  {% for c in recent_complaints %}
+    <a class="list-item" href="/complaints/{{ c.id }}">
+      <div class="spread">
+        <span class="t">{{ c.ref }} · {{ c.department.name }}</span>
+        <span class="pill {{ 'red' if c.escalated else ('amber' if c.status=='NEW' else 'blue') }}">{{ c.status }}</span>
+      </div>
+      <div class="muted">{{ c.category }} · SLA deadline {{ c.sla_deadline_at.strftime('%d %b %H:%M') }}</div>
+    </a>
+  {% endfor %}
+</div>
+{% endif %}
+
+{# ---------------- my corrective actions ---------------- #}
+{% if my_cas %}
+<div class="card mb">
+  <h2>My outstanding corrective actions</h2>
+  {% for ca in my_cas %}
+    <div class="list-item">
+      <div class="spread"><span class="t">{{ ca.finding[:90] }}</span>
+        <span class="pill {{ 'red' if ca.status=='OVERDUE' else 'amber' }}">{{ ca.status }}</span></div>
+      <div class="muted">Due {{ ca.deadline.strftime('%d %b %Y') }}</div>
+    </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% endblock %}

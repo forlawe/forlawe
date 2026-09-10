@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}Admin Control Center{% endblock %}
+{% block content %}
+<h1>⚙ Administrator Control Center</h1>
+<p class="muted">{{ org.name }} ({{ org.code }})</p>
+
+<div class="grid cols4 mb">
+  <div class="kpi info"><div class="v">{{ counts.users }}</div><div class="l">Users</div></div>
+  <div class="kpi info"><div class="v">{{ counts.departments }}</div><div class="l">Departments</div></div>
+  <div class="kpi info"><div class="v">{{ counts.roster }}</div><div class="l">Roster days</div></div>
+  <div class="kpi info"><div class="v">{{ counts.reports }}</div><div class="l">Reports archived</div></div>
+  <div class="kpi {{ 'bad' if counts.wa_failed else 'good' }}"><div class="v">{{ counts.wa_failed }}</div><div class="l">WhatsApp failed</div></div>
+  <div class="kpi"><div class="v">{{ counts.wa_queue }}</div><div class="l">WhatsApp queued</div></div>
+</div>
+
+<div class="grid cols3 mb">
+  <a class="card" href="/admin/hospital"><h2>🏥 Hospital Setup</h2><p class="muted">Name, logo, colours, reference prefix</p></a>
+  <a class="card" href="/admin/security" style="border:2px solid #1a7f37"><h2>🔒 Security</h2><p class="muted">Phone codes, headers, self-check — lock the doors</p></a>
+  <a class="card" href="/admin/branches" style="border:2px solid #0e5a8a"><h2>🏢 Sites (branches)</h2><p class="muted">Main building + annex. Pin the gate here for staff clock-in</p></a>
+  <a class="card" href="/attendance" style="border:2px solid #1a7f37"><h2>📍 I am here</h2><p class="muted">Staff clock-in. Drop the gate pin on the map here. HOD signs their own staff.</p></a>
+  <a class="card" href="/start"><h2>🧙 Set up another hospital</h2><p class="muted">Or mint a setup code on the Security page</p></a>
+  <a class="card" href="/admin/users"><h2>👥 Users</h2><p class="muted">Create, deactivate, reset passwords</p></a>
+  <a class="card" href="/admin/roles"><h2>🔐 Roles &amp; permissions</h2><p class="muted">Decide exactly who may do what — no developer needed</p></a>
+  <a class="card" href="/admin/hospital-structure" style="border:2px solid #0ea5e9"><h2>🏥 Hospital Structure — Departments + Clinics + Rooms + TV</h2><p class="muted"><b>NEW merged admin — one page, all tabs.</b> Departments (who you work for), Clinics (where patient goes), Rooms, Destinations, TV screens. Old pages still work below.</p></a>
+  <a class="card" href="/admin/structure"><h2>🏬 Departments / Units</h2><p class="muted">Sections, units &amp; HOD assignments (old — use merged above)</p></a>
+  <a class="card" href="/admin/servicepoints"><h2>🩺 Clinics, Rooms &amp; Destinations</h2><p class="muted">Dental, ANC, O&G, Eye, 8 rooms, wards — where doctors send patients (old — use merged above)</p></a>
+  <a class="card" href="/admin/tv"><h2>📺 TV Display Screens</h2><p class="muted">Waiting area Main TV shows MORE, Nigeria voices 2M2F daily, EN+YO, full name + stats (also inside merged)</p></a>
+  <a class="card" href="/admin/native-voice/" style="border:2px solid #7A1F7A"><h2>🎙 Native Voice Bank — Phrase, Not Clone</h2><p class="muted"><b>NEW v1.7.16 — real human recordings, dynamic time/name/place/count, 2M2F daily, en,yo,ha,ig. Chrome/Google foreign fixed. FIXED v1.8.1: webm from Android Chrome now saves.</b></p></a>
+  <a class="card" href="/admin/settings"><h2>🎛 Inspection &amp; Complaint Config</h2><p class="muted">SLA, reminders, GPS, categories, QR locations</p></a>
+  <a class="card" href="/admin/posters"><h2>🖨 QR Poster Pack</h2><p class="muted">Printable posters for reception, wards &amp; departments</p></a>
+  <a class="card" href="/admin/kb"><h2>💬 Dialogue Library (KB)</h2><p class="muted">Global master + tenant chatbot dialogues, approvals &amp; learning loop</p></a>
+  <a class="card" href="/chat"><h2>🤖 Patient Assistant</h2><p class="muted">Live chatbot preview</p></a>
+  <a class="card" href="/referrals"><h2>💌 Referrals</h2><p class="muted">Trackable share-links, QR codes &amp; repeat visits</p></a>
+  <a class="card" href="/roster"><h2>🗓 Duty Roster</h2><p class="muted">Manual entry &amp; Excel/CSV import</p></a>
+  <a class="card" href="/admin/notifications"><h2>📡 Notifications &amp; WhatsApp</h2><p class="muted">Delivery logs, retries, test message</p></a>
+  <a class="card" href="/reports"><h2>📊 Reports &amp; Archive</h2><p class="muted">All exports + digital archive</p></a>
+  <a class="card" href="/admin/audit"><h2>🧾 Audit Logs</h2><p class="muted">Tamper-evident, hash-chained
+      {% if chain_ok %}<span class="pill green">verified</span>{% else %}<span class="pill red">BROKEN CHAIN</span>{% endif %}</p></a>
+  <a class="card" href="/admin/data-requests"><h2>🔐 Patient Data Requests</h2><p class="muted">NDPA access &amp; erasure requests</p></a>
+  <a class="card" href="/admin/health"><h2>💚 System Health &amp; Backups</h2><p class="muted">Database, disk, backups</p></a>
+</div>
+
+<div class="card">
+  <h2>Backups</h2>
+  {% if backups %}
+    {% for b in backups %}<div class="row spread">
+      <span><code>{{ b.name }}</code> <span class="muted">· {{ b.size_kb }} KB ·
+        {{ b.at.strftime('%d %b %Y %H:%M') if b.at else '' }}</span></span>
+      <a class="btn small ghost" href="/admin/backup/download/{{ b.name }}">Download</a>
+    </div>{% endfor %}
+  {% else %}<p class="muted">No backups yet — they run nightly at 02:00.</p>{% endif %}
+  <p class="hint mt">Backups cover every table and work on both SQLite and PostgreSQL.
+    Download one at least monthly and keep it somewhere outside this server —
+    and restore one into a test database once a quarter, because an untested
+    backup is not a backup.</p>
+  <form method="post" action="/admin/backup" class="mt">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <button class="btn secondary">⬇ Create backup now</button>
+  </form>
+</div>
+{% endblock %}

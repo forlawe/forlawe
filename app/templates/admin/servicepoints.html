@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+{% block title %}Clinics, Rooms & Destinations{% endblock %}
+{% block content %}
+<h1>🩺 Clinics, Consulting Rooms &amp; Where Patients Go Next</h1>
+<p class="muted">Per-hospital. Add Dental, ANC, O&G, Eye, Wards, etc. Suspend instead of deleting when in use. Clinic determines what destinations a doctor sees.</p>
+
+<nav class="mt mb" style="display:flex;gap:8px;flex-wrap:wrap">
+  <a href="#clinics" class="btn small secondary">Clinics ({{ clinics|length }})</a>
+  <a href="#rooms" class="btn small secondary">Rooms ({{ rooms|length }})</a>
+  <a href="#destinations" class="btn small secondary">Destinations ({{ destinations|length }})</a>
+</nav>
+
+{# ---------------- Clinics ---------------- #}
+<div class="card pad-lg mb" id="clinics">
+<h2 style="margin-top:0">Clinics — where triage places patients</h2>
+<p class="hint">Examples: OPD, SOPD, MOPD, Emergency, Dental Clinic, ANC Clinic, O&G Clinic, Ophthalmology/Eye, Pediatrics, Physiotherapy, MSSD/Welfare, etc. Code is what the system stores (e.g. DENTAL), name is what staff see.</p>
+
+<table class="table">
+<tr><th>Code</th><th>Name</th><th>Description</th><th>Status</th><th>Actions</th></tr>
+{% for c in clinics %}
+<tr>
+  <td><code>{{ c.code }}</code></td>
+  <td><b>{{ c.name }}</b></td>
+  <td class="muted" style="font-size:.85rem">{{ c.description or '' }}</td>
+  <td>{% if c.active %}<span class="pill green">active</span>{% else %}<span class="pill red">suspended</span>{% endif %}</td>
+  <td style="white-space:nowrap">
+    <a class="btn small ghost" href="/admin/servicepoints/clinics/{{ c.id }}/shortlist">Shortlist</a>
+    <form method="post" action="/admin/servicepoints/clinics/{{ c.id }}/toggle" style="display:inline">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <button class="btn small secondary">{{ 'Suspend' if c.active else 'Activate' }}</button>
+    </form>
+  </td>
+</tr>
+<tr>
+  <td colspan="5">
+    <details><summary class="muted">Edit {{ c.code }}</summary>
+      <form method="post" action="/admin/servicepoints/clinics/{{ c.id }}/edit" class="grid cols3 mt">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        <div><label>Code</label><input name="code" value="{{ c.code }}" required maxlength="20"></div>
+        <div><label>Name</label><input name="name" value="{{ c.name }}" required maxlength="120"></div>
+        <div><label>Description</label><input name="description" value="{{ c.description or '' }}" maxlength="300"></div>
+        <div><button class="btn small">Save</button></div>
+      </form>
+      <form method="post" action="/admin/servicepoints/clinics/{{ c.id }}/delete" class="mt" onsubmit="return confirm('Delete {{ c.code }}? Use Suspend if it has history.')">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        <button class="btn small secondary" style="color:#b91c1c">Delete</button>
+      </form>
+    </details>
+  </td>
+</tr>
+{% endfor %}
+</table>
+
+<h3 class="mt">Add a new clinic</h3>
+<form method="post" action="/admin/servicepoints/clinics/create" class="grid cols3">
+  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+  <div><label>Code (e.g. DENTAL)</label><input name="code" required maxlength="20" placeholder="DENTAL"></div>
+  <div><label>Name</label><input name="name" required maxlength="120" placeholder="Dental Clinic"></div>
+  <div><label>Description</label><input name="description" maxlength="300" placeholder="Dental / Oral Health"></div>
+  <div><button class="btn">Add clinic</button></div>
+</form>
+</div>
+
+{# ---------------- Rooms ---------------- #}
+<div class="card pad-lg mb" id="rooms">
+<h2 style="margin-top:0">Consulting Rooms — up to 8, admin editable</h2>
+<p class="hint">Room 1 … Room 8 + Emergency Room by default. You can link a room to a clinic (e.g. Room 5 → Dental Clinic) so triage sees it grouped, or leave unlinked to show for every clinic.</p>
+
+<table class="table">
+<tr><th>Code</th><th>Name</th><th>Clinic link</th><th>Status</th><th>Actions</th></tr>
+{% for r in rooms %}
+<tr>
+  <td><code>{{ r.code }}</code></td>
+  <td>{{ r.name }}</td>
+  <td class="muted">{{ r.clinic.name if r.clinic else '— any clinic —' }}</td>
+  <td>{% if r.active %}<span class="pill green">active</span>{% else %}<span class="pill red">suspended</span>{% endif %}</td>
+  <td>
+    <form method="post" action="/admin/servicepoints/rooms/{{ r.id }}/toggle" style="display:inline">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <button class="btn small secondary">{{ 'Suspend' if r.active else 'Activate' }}</button>
+    </form>
+  </td>
+</tr>
+<tr>
+  <td colspan="5">
+    <details><summary class="muted">Edit {{ r.code }}</summary>
+      <form method="post" action="/admin/servicepoints/rooms/{{ r.id }}/edit" class="grid cols3 mt">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        <div><label>Code</label><input name="code" value="{{ r.code }}" required maxlength="20"></div>
+        <div><label>Name</label><input name="name" value="{{ r.name }}" required maxlength="120"></div>
+        <div><label>Clinic (optional)</label>
+          <select name="clinic_id">
+            <option value="">— any clinic —</option>
+            {% for c in clinics %}<option value="{{ c.id }}" {% if r.clinic_id==c.id %}selected{% endif %}>{{ c.name }} ({{ c.code }})</option>{% endfor %}
+          </select>
+        </div>
+        <div><button class="btn small">Save</button></div>
+      </form>
+      <form method="post" action="/admin/servicepoints/rooms/{{ r.id }}/delete" class="mt" onsubmit="return confirm('Delete {{ r.code }}?')">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        <button class="btn small secondary" style="color:#b91c1c">Delete</button>
+      </form>
+    </details>
+  </td>
+</tr>
+{% endfor %}
+</table>
+
+<h3 class="mt">Add a consulting room</h3>
+<form method="post" action="/admin/servicepoints/rooms/create" class="grid cols3">
+  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+  <div><label>Code (e.g. ROOM5)</label><input name="code" required maxlength="20" placeholder="ROOM5"></div>
+  <div><label>Name</label><input name="name" required maxlength="120" placeholder="Room 5"></div>
+  <div><label>Clinic (optional)</label>
+    <select name="clinic_id">
+      <option value="">— any clinic —</option>
+      {% for c in clinics %}<option value="{{ c.id }}">{{ c.name }} ({{ c.code }})</option>{% endfor %}
+    </select>
+  </div>
+  <div><button class="btn">Add room</button></div>
+</form>
+</div>
+
+{# ---------------- Destinations ---------------- #}
+<div class="card pad-lg mb" id="destinations">
+<h2 style="margin-top:0">Where does this patient go next? — destinations after consultation</h2>
+<p class="hint">Doctor finishes consultation and ticks where to send the patient: HIMS, MOPD, SOPD, OPD, O&G, MSSD/Welfare, Pediatrics, Physiotherapy, Radiology/Imaging, Dental, Nutrition &amp; Dietetics, Ophthalmology, Maternity, Casualty, Dressing Room, Theater, Male Ward, Female Ward, etc. Suspend instead of delete when used. Place field is what voice announces.</p>
+
+<table class="table">
+<tr><th>Code</th><th>Name</th><th>Place (voice)</th><th>Status</th><th>Actions</th></tr>
+{% for d in destinations %}
+<tr>
+  <td><code>{{ d.code }}</code></td>
+  <td>{{ d.name }}</td>
+  <td class="muted" style="font-size:.85rem">{{ d.place }}</td>
+  <td>{% if d.active %}<span class="pill green">active</span>{% else %}<span class="pill red">suspended</span>{% endif %}</td>
+  <td>
+    <form method="post" action="/admin/servicepoints/destinations/{{ d.id }}/toggle" style="display:inline">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <button class="btn small secondary">{{ 'Suspend' if d.active else 'Activate' }}</button>
+    </form>
+  </td>
+</tr>
+<tr>
+  <td colspan="5">
+    <details><summary class="muted">Edit {{ d.code }}</summary>
+      <form method="post" action="/admin/servicepoints/destinations/{{ d.id }}/edit" class="grid cols4 mt">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        <div><label>Code</label><input name="code" value="{{ d.code }}" required maxlength="20"></div>
+        <div><label>Name</label><input name="name" value="{{ d.name }}" required maxlength="120"></div>
+        <div><label>Place (voice)</label><input name="place" value="{{ d.place }}" maxlength="200"></div>
+        <div><label>Description</label><input name="description" value="{{ d.description or '' }}" maxlength="300"></div>
+        <div><button class="btn small">Save</button></div>
+      </form>
+      <form method="post" action="/admin/servicepoints/destinations/{{ d.id }}/delete" class="mt" onsubmit="return confirm('Delete {{ d.code }}?')">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        <button class="btn small secondary" style="color:#b91c1c">Delete</button>
+      </form>
+    </details>
+  </td>
+</tr>
+{% endfor %}
+</table>
+
+<h3 class="mt">Add a destination</h3>
+<form method="post" action="/admin/servicepoints/destinations/create" class="grid cols4">
+  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+  <div><label>Code (e.g. THEATER)</label><input name="code" required maxlength="20" placeholder="THEATER"></div>
+  <div><label>Name</label><input name="name" required maxlength="120" placeholder="Theater"></div>
+  <div><label>Place (voice)</label><input name="place" maxlength="200" placeholder="Theater"></div>
+  <div><label>Description</label><input name="description" maxlength="300" placeholder="surgery / theater"></div>
+  <div><button class="btn">Add destination</button></div>
+</form>
+</div>
+
+{% endblock %}

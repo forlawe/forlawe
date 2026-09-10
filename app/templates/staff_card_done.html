@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="{{ lang if lang else 'en' }}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+{% include "_pwa_head.html" %}
+<title>Waiting for approval — {{ hospital.name if hospital else 'Hospital' }}</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}?v={{ app_version }}">
+</head>
+<body>
+<div class="login-wrap">
+  <div class="card login-card pad-lg">
+    <div class="center mb">
+      <div style="font-size:2.4rem">⏳</div>
+      <h1 style="margin:4px 0 2px">Staff card sent</h1>
+      <div class="muted">The System Admin will look at your name, department
+      and the job you asked for. When they tap Approve, you can sign in
+      with the password you chose.</div>
+    </div>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for cat, msg in messages %}<div class="flash {{ cat }}">{{ msg }}</div>{% endfor %}
+    {% endwith %}
+    <p class="center mt"><a class="btn" href="/login">Back to sign in</a></p>
+  </div>
+</div>
+</body>
+</html>

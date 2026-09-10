@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+{% block title %}TV Screens{% endblock %}
+{% block content %}
+<h1>📺 TV Display Screens — Queue + Doctor Calls + 4 Languages + Brightness + Fast Track Executive</h1>
+<p class="muted">Multiple TVs, waiting area shows MORE, full name + queue stats, more than doctor calls, English + Yorùbá + Hausa + Igbo, Nigeria native voices 2 Male 2 Female recycled daily, brightness + night mode, <span style="background:#FFD700;padding:2px 6px;border-radius:999px;font-weight:900;color:#000">⭐ Fast Track Executive filter</span>. Friendly attractive design. Per-hospital, admin editable.</p>
+<div class="mb" style="display:flex;gap:10px;flex-wrap:wrap">
+  <a class="btn" href="/admin/tv/posters" target="_blank">🖨️ Print All QR Posters (A4 pack)</a>
+  <span class="muted" style="align-self:center">QR encodes /tv/CODE → patient can scan to follow queue on phone</span>
+  <a class="btn" href="/tv/FASTTRACK" target="_blank" style="background:#000;color:#FFD700">⭐ Open Fast Track Executive TV /tv/FASTTRACK</a>
+</div>
+
+<div class="card pad-lg mb">
+<h2 style="margin-top:0">How to set up TV with zero budget — including Executive Fast Track TV</h2>
+<ol style="margin-left:18px">
+  <li>Take any Android phone, open Chrome, go to <code>/tv/MAIN</code> for main waiting area, <code>/tv/FASTTRACK</code> for <b>Executive Fast Track TV (gold only)</b>, or <code>/tv/DENTAL</code> for Dental TV</li>
+  <li>Tap <b>Enable Voice</b> once — TV will shout every call in English then Yorùbá, Hausa, Igbo with today's Nigerian voice (2M2F recycled daily)</li>
+  <li>Adjust <b>🔆 Brightness</b> slider per TV — 10% dim for night, 100% bright day. Toggle <b>🌙 Night mode</b> auto dims 19:00-07:00</li>
+  <li>Connect phone to TV via HDMI cable or Cast / Miracast — TV now shows big live board. Executive TV shows only gold lane Fast Track</li>
+  <li>Leave phone plugged to power — it auto-refreshes every 5 seconds, pings every 30s to stay awake</li>
+</ol>
+<p class="hint">Waiting Area Main TV shows 8 stats, per-clinic counts, now serving, next 8, doctors ready, Lab/Pharmacy/Wards pending. Executive Fast Track TV shows ONLY Fast Track gold lane — for executive building lounge. Clinic TV shows only its clinic. All per-tenant. 4 languages inclusive.</p>
+</div>
+
+<table class="table">
+<tr><th>Code</th><th>Name / Location</th><th>Type</th><th>Filter</th><th>Voice</th><th>Display</th><th>Status</th><th>Open</th><th>Actions</th></tr>
+{% for s in screens %}
+<tr>
+  <td><code>{{ s.code }}</code> {% if s.is_executive %}<br><span style="background:#000;color:#FFD700;padding:2px 6px;border-radius:999px;font-size:.6rem;font-weight:900">⭐ EXECUTIVE</span>{% endif %}</td>
+  <td><b>{{ s.name }}</b><br><span class="muted" style="font-size:.8rem">{{ s.location }}</span></td>
+  <td>{{ s.screen_type }} {% if s.show_fast_track_only %}<br><span style="background:#FFD700;color:#000;padding:2px 6px;border-radius:999px;font-size:.6rem;font-weight:900">⭐ FAST ONLY</span>{% endif %}</td>
+  <td class="muted" style="font-size:.8rem">{{ s.clinic_code or '' }} {% if s.department %}· {{ s.department.name }}{% endif %}</td>
+  <td class="muted" style="font-size:.8rem">{{ 'ON' if s.voice_enabled else 'OFF' }} · {{ s.voice_languages }} · {{ '2M2F daily' if s.voice_rotate_daily else 'fixed' }} · Vol {{ s.voice_volume or 100 }}%</td>
+  <td class="muted" style="font-size:.8rem">🔆 {{ s.brightness if s.brightness is not none else 100 }}% {% if s.night_mode %}· 🌙 Night auto{% endif %}</td>
+  <td>{% if s.active %}<span class="pill green">active</span>{% else %}<span class="pill red">suspended</span>{% endif %}</td>
+  <td>
+    <a class="btn small ghost" href="/tv/{{ s.code }}" target="_blank">📺 Open /tv/{{ s.code }}</a>
+    <a class="btn small ghost" href="/admin/tv/{{ s.code }}/poster" target="_blank">🖨️ Poster</a>
+  </td>
+  <td>
+    <form method="post" action="/admin/tv/{{ s.id }}/toggle" style="display:inline"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="btn small secondary">{{ 'Suspend' if s.active else 'Activate' }}</button></form>
+  </td>
+</tr>
+<tr>
+  <td colspan="9">
+    <details><summary class="muted">Edit {{ s.code }}</summary>
+      <form method="post" action="/admin/tv/{{ s.id }}/edit" class="grid cols3 mt">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        <div><label>Name</label><input name="name" value="{{ s.name }}" required></div>
+        <div><label>Location</label><input name="location" value="{{ s.location or '' }}"></div>
+        <div><label>Type</label>
+          <select name="screen_type">
+            <option value="WAITING_MAIN" {% if s.screen_type=='WAITING_MAIN' %}selected{% endif %}>WAITING_MAIN — shows MORE</option>
+            <option value="CLINIC" {% if s.screen_type=='CLINIC' %}selected{% endif %}>CLINIC — filtered to one clinic</option>
+            <option value="DEPARTMENT" {% if s.screen_type=='DEPARTMENT' %}selected{% endif %}>DEPARTMENT — e.g. Pharmacy TV</option>
+            <option value="WARD" {% if s.screen_type=='WARD' %}selected{% endif %}>WARD — Male/Female Ward TV</option>
+            <option value="EXECUTIVE" {% if s.screen_type=='EXECUTIVE' %}selected{% endif %}>EXECUTIVE — Fast Track Executive Building (gold)</option>
+          </select>
+        </div>
+        <div><label>Clinic filter (e.g. DENTAL)</label>
+          <select name="clinic_code">
+            <option value="">— all clinics —</option>
+            {% for c in clinics %}<option value="{{ c.code }}" {% if s.clinic_code==c.code %}selected{% endif %}>{{ c.name }} ({{ c.code }})</option>{% endfor %}
+          </select>
+        </div>
+        <div><label>Department filter</label>
+          <select name="department_id">
+            <option value="">— all departments —</option>
+            {% for d in depts %}<option value="{{ d.id }}" {% if s.department_id==d.id %}selected{% endif %}>{{ d.name }}</option>{% endfor %}
+          </select>
+        </div>
+        <div><label>Voice languages (en,yo,ha,ig)</label><input name="voice_languages" value="{{ s.voice_languages }}" placeholder="en,yo,ha,ig"></div>
+        <div><label>Volume (0-100%) per TV</label>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input type="range" name="voice_volume" min="0" max="100" value="{{ s.voice_volume if s.voice_volume is not none else 100 }}" style="flex:1" oninput="this.nextElementSibling.textContent=this.value+'%'">
+            <span>{{ s.voice_volume if s.voice_volume is not none else 100 }}%</span>
+          </div>
+        </div>
+        <div><label>🔆 Brightness (10-100%) per TV</label>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input type="range" name="brightness" min="10" max="100" value="{{ s.brightness if s.brightness is not none else 100 }}" style="flex:1" oninput="this.nextElementSibling.textContent=this.value+'%'">
+            <span>{{ s.brightness if s.brightness is not none else 100 }}%</span>
+          </div>
+        </div>
+        <div><label><input type="checkbox" name="show_full_name" {% if s.show_full_name %}checked{% endif %}> Show full name</label></div>
+        <div><label><input type="checkbox" name="show_queue_stats" {% if s.show_queue_stats %}checked{% endif %}> Show queue stats</label></div>
+        <div><label><input type="checkbox" name="voice_enabled" {% if s.voice_enabled %}checked{% endif %}> Voice enabled (4 languages)</label></div>
+        <div><label><input type="checkbox" name="voice_rotate_daily" {% if s.voice_rotate_daily %}checked{% endif %}> 2M2F recycled daily</label></div>
+        <div><label><input type="checkbox" name="night_mode" {% if s.night_mode %}checked{% endif %}> 🌙 Night mode auto dim 19:00-07:00</label></div>
+        <div style="background:#FFFEF0;border:2px solid #FFD700;border-radius:8px;padding:6px"><label><input type="checkbox" name="show_fast_track_only" {% if s.show_fast_track_only %}checked{% endif %}> ⭐ Show Fast Track ONLY — gold lane</label><div class="hint">When ON, this TV shows only Fast Track executive patients — for executive building lounge</div></div>
+        <div style="background:#000;color:#FFD700;border-radius:8px;padding:6px"><label><input type="checkbox" name="is_executive" {% if s.is_executive %}checked{% endif %}> ⭐ Executive TV — gold theme, premium</label><div class="hint" style="color:#FFD700">Gold theme, shows in /tv/FASTTRACK — executive building</div></div>
+        <div><label><input type="checkbox" name="active" {% if s.active %}checked{% endif %}> Active</label></div>
+        <div><button class="btn small">Save</button></div>
+      </form>
+      <form method="post" action="/admin/tv/{{ s.id }}/delete" class="mt" onsubmit="return confirm('Delete {{ s.code }}?')"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="btn small secondary" style="color:#b91c1c">Delete</button></form>
+    </details>
+  </td>
+</tr>
+{% endfor %}
+</table>
+
+<h3 class="mt">Add new TV screen</h3>
+<form method="post" action="/admin/tv/create" class="grid cols3">
+  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+  <div><label>Code (e.g. FASTTRACK, ANC, THEATER)</label><input name="code" required maxlength="20" placeholder="FASTTRACK"></div>
+  <div><label>Name</label><input name="name" required placeholder="⭐ Fast Track Executive TV"></div>
+  <div><label>Location</label><input name="location" placeholder="Executive Building Lounge"></div>
+  <div><label>Type</label>
+    <select name="screen_type">
+      <option value="WAITING_MAIN">WAITING_MAIN — shows MORE</option>
+      <option value="CLINIC" selected>CLINIC</option>
+      <option value="DEPARTMENT">DEPARTMENT</option>
+      <option value="WARD">WARD</option>
+      <option value="EXECUTIVE">EXECUTIVE — Fast Track gold only</option>
+    </select>
+  </div>
+  <div><label>Clinic filter</label>
+    <select name="clinic_code">
+      <option value="">— all clinics —</option>
+      {% for c in clinics %}<option value="{{ c.code }}">{{ c.name }} ({{ c.code }})</option>{% endfor %}
+    </select>
+  </div>
+  <div><label>Department filter</label>
+    <select name="department_id">
+      <option value="">— all —</option>
+      {% for d in depts %}<option value="{{ d.id }}">{{ d.name }}</option>{% endfor %}
+    </select>
+  </div>
+  <div><label><input type="checkbox" name="show_fast_track_only" value="1"> ⭐ Fast Track ONLY</label></div>
+  <div><label><input type="checkbox" name="is_executive" value="1"> ⭐ Executive TV gold theme</label></div>
+  <div><button class="btn">Add TV screen</button></div>
+</form>
+
+<div class="card pad-lg mt">
+<h3>Nigeria Native Voices — 2 Male + 2 Female recycled daily — 4 Languages — How it works + Executive</h3>
+<table class="table">
+<tr><th>Day</th><th>Voice</th><th>Example Name</th><th>Languages Spoken</th></tr>
+<tr><td>Monday (Day %4 =0)</td><td>Female 1</td><td>Ada</td><td>English → Yorùbá → Hausa → Igbo</td></tr>
+<tr><td>Tuesday (1)</td><td>Male 1</td><td>Emeka</td><td>English → Yorùbá → Hausa → Igbo</td></tr>
+<tr><td>Wednesday (2)</td><td>Female 2</td><td>Folake</td><td>English → Yorùbá → Hausa → Igbo</td></tr>
+<tr><td>Thursday (3)</td><td>Male 2</td><td>Chinedu</td><td>English → Yorùbá → Hausa → Igbo</td></tr>
+<tr><td>Friday repeats Female 1...</td><td colspan="3">Automatically changes every day, no admin action needed. Patient's preferred language spoken first after English. Executive TV /tv/FASTTRACK shows only gold lane Fast Track patients — premium.</td></tr>
+</table>
+<p class="hint">Browser picks best available voice: prefers en-NG, yo-NG, ha-NG, ig-NG, then en-GB, en-US. Gender detected from voice name. If no Nigerian voice installed, uses best English voice but still rotates 4 slots. Zero budget — uses built-in phone/TTV voices, no server cost. Brightness slider per TV + night mode auto dims 19:00-07:00. Executive TV filter ⭐ shows only Fast Track — for executive building lounge.</p>
+</div>
+
+{% endblock %}

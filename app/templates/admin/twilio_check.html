@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+{% block title %}Twilio Check — Why SMS/WhatsApp not working{% endblock %}
+{% block content %}
+<h1>📱 Twilio Diagnostic — Why SMS/WhatsApp not working?</h1>
+<p class="muted">This page checks your Render environment variables and shows exactly what is wrong, with fixes. Only SUPER_ADMIN sees this.</p>
+
+<div class="card pad-lg mb" style="background:#fffbe6;border-left:5px solid #f59e0b">
+  <b>🔑 Important:</b> Twilio keys are secrets like ATM PIN. Never paste them in WhatsApp, never send to me. If a key leaks, go to twilio.com/console and roll it. After you fix env vars in Render, wait 2-3 minutes for restart.
+</div>
+
+<h2>Current config (masked)</h2>
+<div class="card pad-lg mb">
+<table>
+<tr><th>Key</th><th>Value (masked)</th><th>What it should be</th></tr>
+<tr><td><code>SMS_MODE</code></td><td><b>{{ data.SMS_MODE or 'not set' }}</b></td><td>sandbox (dev) or <b>twilio</b> (real SMS) or termii</td></tr>
+<tr><td><code>WHATSAPP_MODE</code></td><td><b>{{ data.WHATSAPP_MODE or 'not set' }}</b></td><td>sandbox or <b>twilio</b> (Twilio WhatsApp) or cloud (Meta)</td></tr>
+<tr><td><code>TWILIO_ACCOUNT_SID</code></td><td>{{ mask(data.TWILIO_ACCOUNT_SID) }}</td><td>Starts with AC... from twilio.com/console</td></tr>
+<tr><td><code>TWILIO_AUTH_TOKEN</code></td><td>{{ mask(data.TWILIO_AUTH_TOKEN) }}</td><td>Long token from console</td></tr>
+<tr><td><code>TWILIO_FROM</code></td><td>{{ data.TWILIO_FROM or '❌ NOT SET' }}</td><td>SMS From: +1415... number you own in Twilio, or alphanumeric sender ID</td></tr>
+<tr><td><code>TWILIO_WHATSAPP_FROM</code></td><td>{{ data.TWILIO_WHATSAPP_FROM or '❌ NOT SET' }}</td><td>WhatsApp From: <b>whatsapp:+14155238886</b> (Twilio sandbox) or whatsapp:+234... your approved number</td></tr>
+<tr><td><code>TERMII_API_KEY</code></td><td>{{ mask(data.TERMII_API_KEY) }}</td><td>Optional — Nigerian provider, cheaper than Twilio</td></tr>
+<tr><td><code>TERMII_SENDER_ID</code></td><td>{{ data.TERMII_SENDER_ID or 'not set' }}</td><td>e.g. HOSPITAL (must be approved)</td></tr>
+</table>
+</div>
+
+<h2>Checks — what's wrong?</h2>
+<div class="card pad-lg mb">
+{% for title, desc, level in checks %}
+<div style="padding:10px 0;border-bottom:1px solid #eef4f9;display:flex;gap:10px">
+  <span style="font-size:1.2rem">{% if level=='ok' %}✅{% elif level=='fail' %}❌{% elif level=='warn' %}⚠️{% else %}ℹ️{% endif %}</span>
+  <div style="flex:1">
+    <div style="font-weight:800">{{ title }}</div>
+    <div class="muted" style="font-size:.85rem;margin-top:2px;line-height:1.4">{{ desc }}</div>
+  </div>
+  <span class="pill {% if level=='ok' %}green{% elif level=='fail' %}red{% elif level=='warn' %}amber{% else %}blue{% endif %}" style="height:fit-content">{{ level }}</span>
+</div>
+{% endfor %}
+</div>
+
+<h2>How to fix — step by step (Render)</h2>
+<div class="card pad-lg mb">
+<h3 style="margin-top:0">For Twilio SMS (real SMS to patients)</h3>
+<ol style="margin-left:18px;line-height:1.6">
+  <li>Go to <b>twilio.com/console</b> → copy <b>Account SID</b> (starts AC) and <b>Auth Token</b></li>
+  <li>Buy a phone number in Twilio console → Phone Numbers → Buy → choose US number (SMS works to Nigeria, but needs verification if trial)</li>
+  <li>In Render Dashboard → hospital-suite → Environment → Add:
+    <br><code>SMS_MODE=twilio</code>
+    <br><code>TWILIO_ACCOUNT_SID=AC...</code>
+    <br><code>TWILIO_AUTH_TOKEN=...</code>
+    <br><code>TWILIO_FROM=+1415...</code> (your Twilio number)
+  </li>
+  <li>Save → wait 2-3 min</li>
+  <li>Test below with your own number +2348012345678 — must be verified in Twilio if trial account (Console → Verified Caller IDs)</li>
+</ol>
+
+<h3>For Twilio WhatsApp (real WhatsApp)</h3>
+<ol style="margin-left:18px;line-height:1.6">
+  <li>In Twilio console → Messaging → Try it out → WhatsApp sandbox → you see <b>whatsapp:+14155238886</b> and a code like <b>join bright-hour</b></li>
+  <li>On your phone, open WhatsApp, send message <b>join bright-hour</b> to <b>+14155238886</b> — you must do this, otherwise sandbox blocks you</li>
+  <li>In Render add:
+    <br><code>WHATSAPP_MODE=twilio</code>
+    <br><code>TWILIO_WHATSAPP_FROM=whatsapp:+14155238886</code> (sandbox) — for production, use your approved WhatsApp sender
+    <br>Keep SID, Token, FROM from above
+  </li>
+  <li>Save → wait 2-3 min → test below</li>
+  <li>For production WhatsApp (not sandbox), you need to request WhatsApp sender approval in Twilio — takes 1-2 days</li>
+</ol>
+
+<h3>Common mistakes in Nigeria</h3>
+<ul style="margin-left:18px;line-height:1.6">
+  <li><b>080... instead of +234...</b> — always use +2348012345678, not 08012345678, not +234080...</li>
+  <li><b>Trial account</b> — Twilio trial can only send to verified numbers. Add your number in Console → Phone Numbers → Verified Caller IDs → Add</li>
+  <li><b>WhatsApp sandbox not joined</b> — you MUST send "join &lt;code&gt;" to Twilio WhatsApp number first, otherwise every message fails with "not in sandbox"</li>
+  <li><b>FROM format wrong</b> — SMS FROM is +1415... , WhatsApp FROM is whatsapp:+1415... — don't mix</li>
+  <li><b>SMS_MODE still sandbox</b> — if you set SID but leave SMS_MODE=sandbox, no real SMS sent — set to twilio</li>
+  <li><b>Sender ID not approved</b> — for Nigeria, alphanumeric sender ID needs approval. Use Twilio number (+...) for testing, not HOSPITAL text</li>
+</ul>
+</div>
+
+<h2>Test now — send to your phone</h2>
+<div class="grid cols2" style="gap:14px">
+  <div class="card pad-lg">
+    <h3 style="margin-top:0">Test SMS via Twilio</h3>
+    <form method="post" action="/admin/twilio-check/test-sms">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <label>Your number (E.164)</label>
+      <input type="tel" name="to" placeholder="+2348012345678 or 08012345678" required>
+      <button class="btn mt" style="width:100%">📱 Send test SMS</button>
+    </form>
+    <p class="hint">Uses current SMS_MODE. If sandbox, you get fake ID SBX-... and no real SMS. Set SMS_MODE=twilio to send real.</p>
+  </div>
+  <div class="card pad-lg">
+    <h3 style="margin-top:0">Test WhatsApp via Twilio</h3>
+    <form method="post" action="/admin/twilio-check/test-whatsapp">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <label>Your number (E.164)</label>
+      <input type="tel" name="to" placeholder="+2348012345678" required>
+      <button class="btn mt" style="width:100%">💬 Send test WhatsApp</button>
+    </form>
+    <p class="hint">For Twilio sandbox, first send "join &lt;code&gt;" to whatsapp:+14155238886 in WhatsApp, otherwise fails.</p>
+  </div>
+</div>
+
+<h2 class="mt">Recent delivery logs (last 5)</h2>
+<div class="grid cols2" style="gap:14px">
+  <div class="card pad-lg">
+    <h3 style="margin-top:0">SMS last 5</h3>
+    {% if not recent_sms %}<p class="muted">No SMS yet</p>{% else %}
+    <table><tr><th>Time</th><th>To</th><th>Status</th><th>Error</th></tr>
+    {% for m in recent_sms %}
+    <tr><td class="muted" style="font-size:.75rem">{{ m.created_at.strftime('%d %b %H:%M') }}</td><td>{{ m.to_number }}</td><td><span class="pill {{ 'green' if m.status=='SENT' else ('red' if m.status=='FAILED' else 'amber') }}">{{ m.status }}</span></td><td class="muted" style="font-size:.75rem">{{ m.last_error or '' }}</td></tr>
+    {% endfor %}
+    </table>
+    {% endif %}
+  </div>
+  <div class="card pad-lg">
+    <h3 style="margin-top:0">WhatsApp last 5</h3>
+    {% if not recent_wa %}<p class="muted">No WhatsApp yet</p>{% else %}
+    <table><tr><th>Time</th><th>To</th><th>Status</th><th>Error</th></tr>
+    {% for m in recent_wa %}
+    <tr><td class="muted" style="font-size:.75rem">{{ m.created_at.strftime('%d %b %H:%M') }}</td><td>{{ m.to_number }}</td><td><span class="pill {{ 'green' if m.status in ('SENT','DELIVERED') else ('red' if m.status=='FAILED' else 'amber') }}">{{ m.status }}</span></td><td class="muted" style="font-size:.75rem">{{ m.last_error or '' }}</td></tr>
+    {% endfor %}
+    </table>
+    {% endif %}
+  </div>
+</div>
+
+<div class="card pad-lg mt">
+  <h3 style="margin-top:0">📋 Copy-Paste Templates (Termii & Twilio) — Ready</h3>
+  <p class="muted" style="line-height:1.5">All SMS must be ≤160 chars, no emoji, no ₦, DND channel for Termii. See file <code>SMS_WHATSAPP_TEMPLATES_COPY_PASTE.md</code> in repo for full list. Quick samples:</p>
+  <pre style="background:#f5f5f5;padding:10px;overflow:auto;font-size:.85rem">
+GHIJEDE: Visit booked Mon 24 Aug at 09:00, OPD. Ref BK24082401. Come 15 min early. Call 08031234567
+GHIJEDE: Your number is E-014 at OPD. Keep this SMS. We will text you when it is your turn.
+GHIJEDE: You are next. Ticket E-014, OPD. Please walk to the desk now.
+GHIJEDE received your complaint. Ref CP24082401. We are looking into it. Keep this number.
+GHIJEDE: Your sign-in code is 847291. It dies in 10 minutes.
+GHIJEDE: You are on duty TODAY Mon 28 Aug. Please finish today's walk-round.
+GHIJEDE: New patient report CP20260801, Lab. Reply within 24 hrs. Open Complaints.
+  </pre>
+  <p class="muted">WhatsApp (Twilio) — longer, can include PDF:</p>
+  <pre style="background:#f5f5f5;padding:10px;overflow:auto;font-size:.85rem">
+Test WhatsApp from Hospital Suite — mode twilio — your Twilio is working!
+Daily inspection report INSP20260801 for Laboratory submitted by Miss Okusanya. Overall rating: GOOD (20/25).
+[PDF attached]
+  </pre>
+  <p><a class="btn small secondary" href="/admin/twilio-templates" target="_blank">📄 Open Full Copy-Paste Templates Page</a></p>
+</div>
+
+<div class="card pad-lg mt">
+  <h3 style="margin-top:0">Need cheaper Nigeria SMS? Use Termii (recommended)</h3>
+  <p class="muted" style="line-height:1.5">Twilio SMS to Nigeria is expensive and sometimes blocked by DND. Termii is Nigerian, cheaper, delivers to MTN/Glo/Airtel/9mobile. Setup: accounts.termii.com → get API key + sender ID (e.g. HOSPITAL) → in Render set SMS_MODE=termii, TERMII_API_KEY=..., TERMII_SENDER_ID=HOSPITAL. Twilio remains fallback if Termii key missing.</p>
+</div>
+
+{% endblock %}

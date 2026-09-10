@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}Attendance week{% endblock %}
+{% block content %}
+<h1>📊 This week's attendance</h1>
+<p class="muted">{{ report.start.strftime('%a %d %b') }} – {{ report.end.strftime('%a %d %b %Y') }}
+  · Hospital grade <b>{{ report.hospital.grade }}</b>
+  ({{ report.hospital.score }})</p>
+<p class="hint">A is 90+, B 80+, C 70+, D 60+, E 50+, F below. Marks come off
+  for absent rostered days, late after the grace hour, cheat flags, and
+  helped clock-ins. Voice reminders stay on.</p>
+
+<form class="card mb row" method="get" action="/attendance/week" style="gap:10px">
+  <label>Any day in the week
+    <input type="date" name="date" value="{{ day.isoformat() }}">
+  </label>
+  <button class="btn">Show</button>
+</form>
+
+<div class="grid cols2">
+  <div class="card mb">
+    <h2>Hospital</h2>
+    <p style="font-size:2rem;margin:0"><b>{{ report.hospital.grade }}</b>
+      <span class="muted">{{ report.hospital.score }} · {{ report.hospital.people }} people</span></p>
+  </div>
+  <div class="card mb">
+    <h2>Departments</h2>
+    <div class="table-wrap">
+    <table>
+      <tr><th>Department</th><th>Grade</th><th>People</th><th>Absent</th><th>Late</th><th>Flags</th></tr>
+      {% for d in report.departments %}
+      <tr>
+        <td>{{ d.name }}</td>
+        <td><b>{{ d.grade }}</b> <span class="hint">{{ d.score }}</span></td>
+        <td>{{ d.people }}</td>
+        <td>{{ d.absent }}</td>
+        <td>{{ d.late }}</td>
+        <td>{{ d.flagged }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="6" class="muted">No attendance this week yet.</td></tr>
+      {% endfor %}
+    </table>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Each person</h2>
+  <div class="table-wrap">
+  <table>
+    <tr>
+      <th>Name</th><th>Department</th><th>Grade</th>
+      <th>Present</th><th>Absent</th><th>Late</th><th>Helped</th><th>Flags</th>
+    </tr>
+    {% for r in report.staff %}
+    <tr>
+      <td><b>{{ r.user.name }}</b></td>
+      <td>{{ r.department }}</td>
+      <td><b>{{ r.grade }}</b> <span class="hint">{{ r.score }}</span></td>
+      <td>{{ r.present }}/{{ r.expected }}</td>
+      <td>{{ r.absent }}</td>
+      <td>{{ r.late }}</td>
+      <td>{{ r.helped }}</td>
+      <td>{{ r.flagged }}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="8" class="muted">Nobody clocked in and nobody was rostered this week.</td></tr>
+    {% endfor %}
+  </table>
+  </div>
+</div>
+<p class="mt"><a href="/attendance/today">← Who is at work</a></p>
+{% endblock %}

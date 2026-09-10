@@ -1,0 +1,13 @@
+{# F-039: THE one Fast Track consent statement.
+
+   This is the legally/ethically load-bearing sentence the patient ticks to
+   agree to a paid premium service. It used to be hand-typed in both patient
+   forms with three different wordings ("quiet lounge" / "quiet, comfortable
+   lounge" / "quiet, private lounge"). Include this file — never retype it:
+
+       {% include "_fasttrack_consent.html" %}
+
+   The server still enforces the tick independently (queue.join_submit and
+   the booking portal save both reject Fast Track without fast_track_consent).
+ #}
+<span>👑 I choose Fast Track. I understand it is a premium service — I pay a little more and I am seen quickly in a quiet, private lounge. I agree to the extra fee.</span>

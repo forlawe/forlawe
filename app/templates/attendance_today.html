@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% block title %}Who is at work{% endblock %}
+{% block content %}
+<h1>👥 Who is at work</h1>
+<p class="muted">{{ day.strftime('%A %d %b %Y') }} · {{ in_now }} still here · {{ total }} signed in today
+  · {{ scope_note }}</p>
+
+<form class="card mb row" method="get" action="/attendance/today" style="gap:10px;flex-wrap:wrap">
+  <label>Day
+    <input type="date" name="date" value="{{ day.isoformat() }}">
+  </label>
+  <label>Site
+    <select name="branch_id">
+      <option value="">All sites</option>
+      {% for s in sites %}
+      <option value="{{ s.id }}" {{ 'selected' if branch_id == s.id }}>{{ s.name }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <button class="btn">Show</button>
+  <a class="btn ghost" href="/attendance/week?date={{ day.isoformat() }}">Week ratings</a>
+</form>
+
+{% if reviews %}
+<div class="card mb" style="border:2px solid #b45309">
+  <h2>Needs your sign-off</h2>
+  {% for r in reviews %}
+  <div class="row spread mb" style="border-bottom:1px solid #eef4f9;padding-bottom:8px">
+    <div>
+      <b>{{ r.user.name if r.user else 'Staff' }}</b>
+      · {{ r.clock_in_at.strftime('%H:%M') }}
+      {% if r.flag_note %}<div class="hint">{{ r.flag_note }}</div>{% endif %}
+    </div>
+    <form method="post" action="/attendance/review" class="row" style="gap:6px;align-items:center">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <input type="hidden" name="row_id" value="{{ r.id }}">
+      <input type="hidden" name="next" value="/attendance/today">
+      <input type="text" name="note" maxlength="200" placeholder="I saw them at the gate"
+             style="min-width:160px">
+      <button class="btn small">Accept</button>
+    </form>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="card mb">
+  <div class="table-wrap">
+  <table>
+    <tr>
+      <th>Name</th><th>Site</th><th>In</th><th>Out</th><th>Gate</th><th>Honest?</th>
+    </tr>
+    {% for r in rows %}
+    <tr>
+      <td><b>{{ r.user.name if r.user else '—' }}</b></td>
+      <td>{{ r.branch.name if r.branch else '—' }}</td>
+      <td>{{ r.clock_in_at.strftime('%H:%M') }}
+        {% if r.late_minutes and not r.in_grace %}
+          <div class="hint">late {{ r.late_minutes }} min</div>
+        {% elif r.in_grace and r.late_minutes %}
+          <div class="hint">grace ({{ r.late_minutes }} min)</div>
+        {% endif %}
+      </td>
+      <td>{{ r.clock_out_at.strftime('%H:%M') if r.clock_out_at else '—' }}</td>
+      <td>
+        {% if r.override_reason %}
+          <span class="pill">Helped</span>
+          <div class="hint">{{ r.override_reason }}
+            {% if r.evidence_path %} · photo kept{% endif %}
+          </div>
+        {% elif r.in_inside is sameas true %}
+          <span class="pill green">Inside</span>
+          {% if r.in_distance_m is not none %}<div class="hint">{{ r.in_distance_m }} m</div>{% endif %}
+        {% elif r.in_inside is sameas false %}
+          <span class="pill red">Outside</span>
+          {% if r.in_distance_m is not none %}<div class="hint">{{ r.in_distance_m }} m</div>{% endif %}
+        {% else %}
+          <span class="pill gray">No pin</span>
+        {% endif %}
+      </td>
+      <td>
+        {% if r.reviewed_at %}
+          <span class="pill green">Signed off</span>
+          {% if r.review_note %}<div class="hint">{{ r.review_note }}</div>{% endif %}
+        {% elif r.flagged or r.mocked %}
+          <span class="pill red">Review</span>
+          {% if r.flag_note %}<div class="hint">{{ r.flag_note }}</div>{% endif %}
+        {% else %}
+          <span class="pill green">Clean</span>
+        {% endif %}
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="6" class="muted">Nobody has signed in on this day.</td></tr>
+    {% endfor %}
+  </table>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Help a clock-in (photo + reason)</h2>
+  {% with staff=staff, next_url="/attendance/today" %}
+    {% include "_help_clockin.html" %}
+  {% endwith %}
+</div>
+<p class="mt"><a href="/attendance">← Back to I am here</a></p>
+{% endblock %}

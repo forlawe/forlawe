@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block title %}Dialogue Library (KB){% endblock %}
+{% block content %}
+<div class="spread mb">
+  <h1 style="margin:0">💬 Dialogue Library — global master + tenant</h1>
+  <div class="row">
+    <a class="btn small {{ 'secondary' if scope=='all' }}" href="/admin/kb">All</a>
+    <a class="btn small" href="/admin/kb/learning">🎓 What it has learned</a>
+    <a class="btn small" href="/admin/kb/code">✏️ Correction code</a>
+    <a class="btn small {{ 'secondary' if scope=='global' }}" href="/admin/kb?scope=global">Global master</a>
+    <a class="btn small {{ 'secondary' if scope=='tenant' }}" href="/admin/kb?scope=tenant">My hospital</a>
+    <a class="btn small {{ 'secondary' if scope=='pending' }}" href="/admin/kb?scope=pending">Pending approval</a>
+    {% if current_user.is_super %}
+    <form method="post" action="/admin/kb/sync" style="display:inline">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <button class="btn small" title="Add newly-shipped global dialogues">⬆ Update global library</button>
+    </form>
+    {% endif %}
+  </div>
+</div>
+
+{% for a in items %}
+<div class="card mb">
+  <div class="spread">
+    <span>
+      <span class="pill blue">{{ a.category }}</span>
+      <b>{{ a.intent }}</b>
+      {% if a.org_id is none %}<span class="pill green">global master</span>
+      {% else %}<span class="pill amber">tenant</span>{% endif %}
+      {% if a.status=='pending' %}<span class="pill orange">pending</span>{% endif %}
+    </span>
+    <span class="muted">👍 {{ a.thumbs_up or 0 }} · 👎 {{ a.thumbs_down or 0 }} · hits {{ a.hit_count or 0 }}</span>
+  </div>
+  <div class="muted mt" style="font-size:.78rem">{{ (a.keywords or '').splitlines()[:8] | join(', ') }}{% if (a.keywords or '').splitlines()|length > 8 %}…{% endif %}</div>
+  <p class="mt" style="font-size:.9rem">{{ a.en[:220] }}{% if a.en|length > 220 %}…{% endif %}</p>
+  {% if a.pidgin %}<p class="muted" style="font-size:.85rem"> {{ a.pidgin[:160] }}…</p>{% endif %}
+  <div class="row mt">
+    <details style="display:inline-block"><summary class="btn small ghost" style="list-style:none">Edit</summary>
+      <form method="post" action="/admin/kb/{{ a.id }}/edit?scope={{ scope }}" class="card mt" style="min-width:320px">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        <label>Category</label><input type="text" name="category" value="{{ a.category }}">
+        <label>Intent</label><input type="text" name="intent" value="{{ a.intent }}">
+        <label>Keywords (one per line / comma)</label>
+        <textarea name="keywords">{{ a.keywords }}</textarea>
+        <label>English (premium)</label><textarea name="en">{{ a.en }}</textarea>
+        <label>Pidgin</label><textarea name="pidgin">{{ a.pidgin or '' }}</textarea>
+        <label>Yorùbá</label><input type="text" name="yo" value="{{ a.yo or '' }}">
+        <label>Hausa</label><input type="text" name="ha" value="{{ a.ha or '' }}">
+        <label>Igbo</label><input type="text" name="ig" value="{{ a.ig or '' }}">
+        <label>Soft call-to-action</label><input type="text" name="cta" value="{{ a.cta or '' }}">
+        <button class="btn small mt">Save</button>
+      </form>
+    </details>
+    {% if a.status=='pending' and current_user.is_super %}
+    <form method="post" action="/admin/kb/{{ a.id }}/approve"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <button class="btn small" style="background:var(--green)">Approve</button></form>
+    {% endif %}
+    {% if current_user.is_super and a.org_id is not none %}
+    <form method="post" action="/admin/kb/{{ a.id }}/promote"><input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <button class="btn small secondary">⭐ Promote to global</button></form>
+    {% endif %}
+    <form method="post" action="/admin/kb/{{ a.id }}/delete" onsubmit="return confirm('Delete this dialogue?')">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <button class="btn small danger">Delete</button></form>
+  </div>
+</div>
+{% else %}
+<div class="card center muted">No dialogues in this view.</div>
+{% endfor %}
+
+<div class="card pad-lg mt">
+  <h2>➕ Add dialogue {% if not current_user.is_super %}(goes to approval){% endif %}</h2>
+  <form method="post" action="/admin/kb/add">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <div class="grid cols3">
+      <div><label>Category</label><input type="text" name="category" placeholder="e.g. laboratory"></div>
+      <div><label>Intent</label><input type="text" name="intent" required placeholder="e.g. lab_prep"></div>
+      {% if current_user.is_super %}
+      <div><label>Scope</label><select name="scope"><option value="global">Global master</option>
+        <option value="tenant">My hospital only</option></select></div>
+      {% endif %}
+    </div>
+    <label>Keywords / triggers (comma or one per line)</label>
+    <textarea name="keywords" required placeholder="fasting, blood test, do i fast, …"></textarea>
+    <label>English response (premium)</label><textarea name="en" required></textarea>
+    <label>Pidgin</label><textarea name="pidgin"></textarea>
+    <div class="grid cols3">
+      <div><label>Yorùbá</label><input type="text" name="yo"></div>
+      <div><label>Hausa</label><input type="text" name="ha"></div>
+      <div><label>Igbo</label><input type="text" name="ig"></div>
+    </div>
+    <label>Soft call-to-action</label><input type="text" name="cta">
+    <button class="btn mt">Add dialogue</button>
+  </form>
+</div>
+{% endblock %}

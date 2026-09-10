@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Inspections{% endblock %}
+{% block content %}
+<div class="spread mb"><h1 style="margin:0">Inspection History</h1>
+  <a class="btn small secondary" href="/reports/inspection-daily?format=csv&date={{ today if today else '' }}">⬇ CSV</a></div>
+
+<form class="card mb grid cols4" method="get" style="align-items:end">
+  <div><label style="margin-top:0">Department</label>
+    <select name="dept"><option value="">All</option>
+      {% for d in depts %}<option value="{{ d.id }}" {{ 'selected' if args.get('dept')==d.id|string }}>{{ d.name }}</option>{% endfor %}
+    </select></div>
+  <div><label style="margin-top:0">Admin Manager</label>
+    <select name="inspector"><option value="">All</option>
+      {% for u in inspectors %}<option value="{{ u.id }}" {{ 'selected' if args.get('inspector')==u.id|string }}>{{ u.name }}</option>{% endfor %}
+    </select></div>
+  <div><label style="margin-top:0">Rating</label>
+    <select name="rating"><option value="">All</option>
+      {% for r in ratings %}<option {{ 'selected' if args.get('rating')==r }}>{{ r }}</option>{% endfor %}
+    </select></div>
+  <div><label style="margin-top:0">From / To</label>
+    <div class="row"><input type="date" name="from" value="{{ args.get('from','') }}">
+    <input type="date" name="to" value="{{ args.get('to','') }}"></div></div>
+  <button class="btn small">Filter</button>
+</form>
+
+{% if items %}
+<div class="table-wrap card" style="padding:0">
+<table>
+  <tr><th>Date</th><th>Ref</th><th>Department</th><th>Admin Manager</th><th>Total</th><th>Rating</th><th></th></tr>
+  {% for i in items %}
+  <tr>
+    <td>{{ i.duty_date.strftime('%d %b %Y') }}</td>
+    <td><a href="/inspections/{{ i.id }}">{{ i.ref }}</a></td>
+    <td>{{ i.department.name }}{% if i.section %} / {{ i.section.name }}{% endif %}{% if i.unit %} / {{ i.unit.name }}{% endif %}</td>
+    <td>{{ i.inspector.name }}</td>
+    <td><b>{{ i.total_score }}</b>/25</td>
+    <td>{% set r = i.rating %}
+      <span class="pill {{ 'green' if r in ('EXCELLENT','GOOD') else ('amber' if r.startswith('FAIR') else ('orange' if r=='POOR' else 'red')) }}">{{ r }}</span></td>
+    <td>{% if i.critical_count %}<span class="pill red">{{ i.critical_count }} critical</span>{% endif %}
+        {% if i.status != 'SUBMITTED' %}<span class="pill gray">{{ i.status }}</span>{% endif %}</td>
+  </tr>
+  {% endfor %}
+</table>
+</div>
+{% else %}<div class="card center muted">No inspections match these filters.</div>{% endif %}
+{% endblock %}

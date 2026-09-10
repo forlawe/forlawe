@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Complaints{% endblock %}
+{% block content %}
+<div class="spread mb"><h1 style="margin:0">Patient Complaints</h1>
+  <a class="btn small secondary" href="/reports/complaints?format=pdf">⬇ PDF</a></div>
+
+{# Never let a short list be ambiguous between "quiet day" and "hidden". #}
+{% if scope_note %}<p class="muted" style="margin-top:-6px">{{ scope_note }}</p>{% endif %}
+
+<form class="card mb grid cols4" method="get" style="align-items:end">
+  <div><label style="margin-top:0">Status</label>
+    <select name="status">
+      <option value="">All</option>
+      {% for s in ('OPEN','NEW','ACKNOWLEDGED','IN_PROGRESS','ESCALATED','RESOLVED','CLOSED') %}
+      <option {{ 'selected' if args.get('status')==s }}>{{ s }}</option>{% endfor %}
+    </select></div>
+  <div><label style="margin-top:0">Department</label>
+    <select name="dept"><option value="">All</option>
+      {% for d in depts %}<option value="{{ d.id }}" {{ 'selected' if args.get('dept')==d.id|string }}>{{ d.name }}</option>{% endfor %}
+    </select></div>
+  <div><label style="margin-top:0">Search (ref/text/phone)</label>
+    <input type="text" name="q" value="{{ args.get('q','') }}"></div>
+  <div class="row">
+    <label class="row" style="margin:0;gap:6px;font-weight:500">
+      <input type="checkbox" name="escalated" value="1" {{ 'checked' if args.get('escalated') }} style="width:auto"> Escalated only</label>
+    <label class="row" style="margin:0;gap:6px;font-weight:500">
+      <input type="checkbox" name="sla" value="breached" {{ 'checked' if args.get('sla')=='breached' }} style="width:auto"> SLA breached</label>
+  </div>
+  <button class="btn small">Filter</button>
+</form>
+
+{% for c in items %}
+<a class="list-item" href="/complaints/{{ c.id }}">
+  <div class="spread">
+    <span class="t">{{ c.ref }}</span>
+    <span>
+      {% if c.escalated %}<span class="pill red">ESCALATED</span>{% endif %}
+      <span class="pill {{ 'green' if c.status in ('RESOLVED','CLOSED') else ('amber' if c.status=='NEW' else 'blue') }}">{{ c.status }}</span>
+    </span>
+  </div>
+  <div>{{ c.category }} — {{ c.department.name }}{% if c.qr_location %} <span class="pill gray">📍 {{ c.qr_location.name }}</span>{% endif %}</div>
+  <div class="muted">{{ c.description[:110] }}{% if c.description|length > 110 %}…{% endif %}</div>
+  <div class="muted">Submitted {{ c.submitted_at.strftime('%d %b %H:%M') }} ·
+    SLA {{ c.sla_deadline_at.strftime('%d %b %H:%M') }}
+    {% if c.sla_breached and c.status not in ('RESOLVED','CLOSED') %}<span class="pill red">SLA breached</span>
+    {% else %}<span class="pill gray">{{ ((c.sla_deadline_at - now).total_seconds()/3600)|round }}h left</span>{% endif %}
+  </div>
+</a>
+{% else %}
+<div class="card center muted">No complaints match these filters.</div>
+{% endfor %}
+{% endblock %}

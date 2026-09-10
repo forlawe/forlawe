@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+{% block title %}Triage{% endblock %}
+{% block content %}
+{% include "_emergency_banner.html" %}
+<h1>🩺 Triage</h1>
+<p class="muted" style="font-size:.85rem;background:#fff3cd;padding:8px 12px;border-radius:8px;border-left:4px solid #ffc107">🚨 Emergency shows here 8am-4pm only (working hours). On HIMS and Accident & Emergency page, emergency shows always (24/7) with voice alarm to all desks.</p>
+<p class="muted">Place each patient into a clinic and a doctor's room. Priority lane first: elderly 60+, pregnant, child under 5, wheelchair. Patient is called out loud by name, doctor told someone is coming. Journey time shown.</p>
+
+<div class="grid cols4 mb">
+  <div class="card pad-lg" style="text-align:center">
+    <div style="font-size:1.9rem;font-weight:800">{{ stats.waiting }}</div>
+    <div class="muted" style="font-size:.8rem">Waiting to be placed</div></div>
+  <div class="card pad-lg" style="text-align:center">
+    <div style="font-size:1.9rem;font-weight:800">{{ stats.placed }}</div>
+    <div class="muted" style="font-size:.8rem">Placed today</div></div>
+  <div class="card pad-lg" style="text-align:center">
+    <div style="font-size:1.9rem;font-weight:800">{{ (stats.longest_wait)|hm }}</div>
+    <div class="muted" style="font-size:.8rem">Longest wait</div></div>
+  <div class="card pad-lg" style="text-align:center">
+    <div style="font-size:1.9rem;font-weight:800">{{ sessions | length }}</div>
+    <div class="muted" style="font-size:.8rem">Doctors ready</div></div>
+</div>
+
+<div class="card pad-lg mb" style="background:#f3e8ff;border-left:4px solid #8b5cf6">
+  <b>💜 Priority Lane + Journey Time Active</b><br>
+  <span style="font-size:.9rem">⭐ Priority patients (elderly 60+, pregnant, child under 5, wheelchair) are shown first automatically at every desk — including here. Their wait time is half. Every patient now sees estimated total journey time: Triage → Doctor → Lab/Pharmacy → Home. TV shows same.</span>
+</div>
+
+{# ---------------- who is actually ready ---------------- #}
+<div class="card pad-lg mb">
+  <h2 style="margin-top:0">Doctors ready to consult now</h2>
+  {% if not sessions %}
+    <p class="muted" style="margin:0">No doctor has clicked <b>ready to consult</b> yet.
+      You can still place patients into a clinic — they will wait for a doctor.</p>
+  {% else %}
+    <div class="grid cols2">
+      {% for s in sessions %}
+      <div class="notice" style="text-align:left;margin:4px 0">
+        <b>{{ s.doctor.name }}</b> — {{ clinic_labels.get(s.clinic, s.clinic) }}<br>
+        <span class="muted">{{ s.consulting_room }} · {{ load.get(s.doctor_id, 0) }} waiting</span>
+      </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+</div>
+
+{% if stats.longest_wait >= long_wait %}
+<form method="post" action="/triage/call-long-waiters" class="mb">
+  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+  <button class="btn">📣 Call everyone waiting over {{ long_wait }} minutes</button>
+</form>
+{% endif %}
+
+<h2>Waiting to be placed — Priority first</h2>
+{% if not rows %}
+  <div class="card pad-lg"><p class="muted" style="margin:0">Nobody is waiting.
+    Patients appear here once HIMS has opened their folder.</p></div>
+{% else %}
+  {% for r in rows %}
+  <div class="card pad-lg mb" style="border-left:4px solid {% if r.visit.is_fast_track %}#8b5cf6{% else %}#0e5a8a{% endif %}; {% if r.visit.is_fast_track %}background:#f3e8ff{% endif %}">
+    <div class="spread">
+      <div>
+        <div style="font-size:1.1rem;font-weight:800">{% if r.visit.is_fast_track %}⭐ {% endif %}{{ r.patient.full_name }} {% if r.visit.is_fast_track %}<span class="pill" style="background:#8b5cf6;color:#fff;font-size:.7rem">⭐ {{ r.visit.fast_track_reason or 'Priority' }}</span>{% endif %}</div>
+        <div class="muted" style="font-size:.85rem">
+          {{ r.patient.hospital_number }} ·
+          {{ category_labels.get(r.patient.category, r.patient.category) }}
+          {%- if r.patient.age_years %} · {{ r.patient.age_years }} yrs{% endif %}
+          {% if r.visit.is_fast_track %} · ⭐ Priority Lane{% endif %}
+        </div>
+        {% if r.visit.is_fast_track %}
+        <div style="font-size:.85rem;margin-top:4px;color:#6b21a8;font-weight:700">⭐ Priority Lane: {{ r.visit.fast_track_reason }} — seen first, half wait time</div>
+        {% endif %}
+      </div>
+      <span class="pill {{ 'red' if r.waited >= long_wait else 'amber' }} {% if r.visit.is_fast_track %}purple{% endif %}">
+        waiting {{ (r.waited)|hm }} {% if r.visit.is_fast_track %}⭐{% endif %}</span>
+    </div>
+
+    {% if r.patient.care_flags %}
+    <div class="notice mt" style="text-align:left">
+      <b>⚠ Needs help:</b> {{ r.patient.care_flags | join(' · ') }}</div>
+    {% endif %}
+
+    <div class="notice mt" style="text-align:left;background:#f0f9ff;border-left:3px solid #0e5a8a">
+      <b>⏱ Estimated journey:</b> 
+      {% if r.journey_estimate %}
+        {{ (r.journey_estimate.total)|hm }} total — {% for st in r.journey_estimate.stages %}{{ st.label }} {{ (st.minutes)|hm }}{% if not loop.last %} → {% endif %}{% endfor %}
+        {% if r.journey_estimate.fast_track %}<span style="color:#8b5cf6;font-weight:800">· Priority lane (half time)</span>{% endif %}
+      {% else %}
+        Triage → Doctor → Lab/Pharmacy → Home (calculating...)
+      {% endif %}
+    </div>
+
+    <form method="post" action="/triage/{{ r.visit.id }}/place" class="mt">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <div class="grid cols2">
+        <div>
+          <label style="margin-top:0">Clinic</label>
+          <select name="clinic" required>
+            {% for code, label in clinics %}
+            <option value="{{ code }}" {{ 'selected' if code == r.suggest_clinic }}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label style="margin-top:0">Doctor / consulting room</label>
+          <select name="session_id">
+            {% for s in sessions %}
+            <option value="{{ s.id }}" {{ 'selected' if s.id == r.suggest_session_id }}>
+              {{ s.doctor.name }} — {{ s.consulting_room }}
+              ({{ load.get(s.doctor_id, 0) }} waiting)</option>
+            {% endfor %}
+            <option value="" {{ 'selected' if not r.suggest_session_id }}>
+              — no doctor yet, place in the clinic —</option>
+          </select>
+          {% if not r.suggest_session_id %}
+          <p class="hint" style="margin-bottom:0">No doctor is ready in that
+            clinic yet. They will wait there, and any doctor who opens that
+            clinic will see them.</p>
+          {% endif %}
+        </div>
+      </div>
+      <label style="font-weight:400;margin-top:10px">
+        <input type="checkbox" name="blood_sugar_done" value="1" style="width:auto">
+        Blood sugar test has been done
+      </label>
+      <p class="hint">We record only that the test was done — never the reading.
+        This is not a medical record.</p>
+      <button class="btn" style="{% if r.visit.is_fast_track %}background:#8b5cf6{% endif %}">➡ Place this patient {% if r.visit.is_fast_track %}⭐ Priority{% endif %}</button>
+    </form>
+  </div>
+  {% endfor %}
+{% endif %}
+
+{% if placed %}
+<h2 class="mt">Placed today</h2>
+<div class="table-wrap card" style="padding:0">
+<table>
+  <tr><th>Patient</th><th>Clinic</th><th>Room</th><th>Status</th><th>Priority</th></tr>
+  {% for v in placed %}
+  <tr {% if v.is_fast_track %}style="background:#f3e8ff"{% endif %}>
+    <td>{% if v.is_fast_track %}⭐ {% endif %}{{ v.patient.full_name if v.patient else '—' }}</td>
+    <td>{{ clinic_labels.get(v.clinic, v.clinic or '—') }}</td>
+    <td>{{ v.consulting_room or '— waiting for a doctor —' }}</td>
+    <td>{{ v.status }}</td>
+    <td>{% if v.is_fast_track %}<span style="background:#8b5cf6;color:#fff;padding:2px 8px;border-radius:999px;font-size:.75rem">⭐ {{ v.fast_track_reason }}</span>{% else %}—{% endif %}</td>
+  </tr>
+  {% endfor %}
+</table>
+</div>
+{% endif %}
+{% endblock %}

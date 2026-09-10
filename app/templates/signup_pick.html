@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="{{ lang if lang else 'en' }}">
+<head>
+{% include "_auth_head.html" %}
+<title>Sign up — Hospital Suite</title>
+</head>
+<body>
+<div class="login-wrap">
+  <div class="card login-card pad-lg">
+    {% set subtitle = "Sign up" %}
+    {% include "_auth_brand.html" %}
+    <p>This server looks after more than one hospital. A stranger cannot pick
+    one from the street.</p>
+    <p>Ask the System Admin at <b>your</b> hospital to send you their Sign up
+    link. It looks like <code>…/signup/GHE</code>.</p>
+    <nav class="auth-links">
+      <a href="/login">Sign in</a>
+    </nav>
+  </div>
+</div>
+</body>
+</html>

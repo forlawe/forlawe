@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Patient journey{% endblock %}
+{% block content %}
+<h1>🚶 One patient's journey</h1>
+
+<div class="card pad-lg mb">
+  <div class="spread">
+    <div>
+      <div style="font-size:1.15rem;font-weight:800">
+        {{ patient.full_name if patient else '—' }}</div>
+      <div class="muted" style="font-size:.85rem">
+        {{ patient.hospital_number if patient }} · visit {{ visit.visit_no }}</div>
+    </div>
+    <div style="text-align:right">
+      <div style="font-size:1.7rem;font-weight:800">{{ (total)|hm }}</div>
+      <div class="muted" style="font-size:.75rem">door to door</div>
+    </div>
+  </div>
+</div>
+
+{% if not segments %}
+  <div class="card pad-lg"><p class="muted" style="margin:0">
+    Nothing was recorded for this visit. Journeys are tracked from the moment
+    Reception takes a patient in — visits created before tracking was switched
+    on will be empty.</p></div>
+{% else %}
+<div class="table-wrap card" style="padding:0">
+<table>
+  <tr><th>Step</th><th>Arrived</th><th>Left</th><th>Took</th><th></th></tr>
+  {% for s in segments %}
+  <tr>
+    <td><b>{{ s.label }}</b>
+      {% if s.staff %}<br><span class="muted" style="font-size:.8rem">{{ s.staff.name }}</span>{% endif %}
+    </td>
+    <td>{{ s.entered_at.strftime('%H:%M') }}</td>
+    <td>{{ s.ended_at.strftime('%H:%M') if s.ended_at else '—' }}</td>
+    <td>{% if s.ended_at %}<b>{{ (s.minutes)|hm }}</b>{% else %}
+        <span class="muted">still there</span>{% endif %}</td>
+    <td>
+      {% set target = targets.get(s.stage) %}
+      {% if s.ended_at and target and s.minutes > target %}
+        <span class="pill" style="background:#c0262c;color:#fff">
+          {{ (s.minutes - target)|hm }} over</span>
+      {% elif s.ended_at and target %}
+        <span class="pill green">on time</span>
+      {% endif %}
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+</div>
+<p class="hint">Door to door is measured from the first arrival to the last
+  departure — the time the patient actually experienced, including the walking
+  and queueing between desks.</p>
+{% endif %}
+
+<a class="btn secondary mt" href="/tracking">← Back to patient flow</a>
+{% endblock %}

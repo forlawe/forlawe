@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Recording Script — Native Voice{% endblock %}
+{% block content %}
+<h1>📜 Recording Script — Phrase Bank, Not Clone</h1>
+<p class="muted">Give this to voice talents (Ada, Emeka, Folake, Chinedu, Bimpe, Tunde, Aisha, Musa, Ngozi, Obinna...). Each line is one recording. Speak naturally, Nigerian accent, warm, respectful. Pause 0.3s before/after.</p>
+<div class="card pad mb">
+  <button class="btn small" onclick="window.print()">🖨 Print Script</button>
+  <a class="btn secondary small" href="/admin/native-voice/">← Back</a>
+</div>
+<div class="card pad">
+  <h2>Instructions for Voice Talent (Expert)</h2>
+  <ul style="line-height:1.6">
+    <li>Record in quiet room, no echo, phone on airplane mode</li>
+    <li>Mic 6 inches from mouth, pop filter if possible</li>
+    <li>Speak at normal pace, not too fast, not shouting — like calling a patient in waiting area</li>
+    <li>Leave 0.3s silence at start and end — we auto-trim but need some silence</li>
+    <li>File naming: <code>key_lang_code.mp3</code> e.g., <code>queue_waiting_en_FEMALE1.mp3</code></li>
+    <li>Save as mp3 128k, mono, 44.1kHz</li>
+    <li>Example: For <code>queue_waiting</code>, say: "3 patients are waiting at the Laboratory" — count and place are separate recordings stitched, but record full sentence for reference, we will also need <code>number_3</code> and <code>place_laboratory</code> separately</li>
+  </ul>
+</div>
+<div class="card pad mt">
+  <h2>Script — {{ script|length }} phrases</h2>
+  <table class="table">
+    <tr><th>#</th><th>Key</th><th>Example Text to Say</th><th>Notes</th></tr>
+    {% for s in script %}
+      <tr>
+        <td>{{ loop.index }}</td>
+        <td><code>{{ s.key }}</code></td>
+        <td>{{ s.example }}</td>
+        <td class="muted" style="font-size:.8rem">
+          {% if s.key.startswith('greeting_') %}Time-based, changes via hour{% endif %}
+          {% if s.key.startswith('number_') %}Count, stitch with plural{% endif %}
+          {% if s.key.startswith('place_') %}Place, per language{% endif %}
+          {% if s.key.startswith('connector_') %}Stitching glue{% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+  </table>
+</div>
+{% endblock %}

@@ -1,0 +1,9 @@
+{# language pills: English / Yorùbá / Hausa / Igbo #}
+<div style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin:10px 0 2px">
+  {% for code, meta in langs.items() %}
+  <a href="/lang/{{ code }}?next={{ request.path }}"
+     style="padding:5px 12px;border-radius:999px;font-size:.78rem;font-weight:700;text-decoration:none;
+     {% if code == lang %}background:#fff;color:#0a4468;box-shadow:0 2px 8px rgba(0,0,0,.25){% else %}background:rgba(255,255,255,.14);color:#fff{% endif %}">
+     {{ meta.name }}</a>
+  {% endfor %}
+</div>

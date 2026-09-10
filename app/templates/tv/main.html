@@ -1,0 +1,365 @@
+{# TV Main - Premium clean, no voice details, no footer debug, no duplicate MEGALEX, patient-linked #}
+<!DOCTYPE html>
+<html lang="{{ lang if lang else 'en' }}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{{ screen.name if screen else 'Waiting Area' }} - Live</title>
+<style nonce="{{ csp_nonce }}">
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family: -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;background: linear-gradient(135deg,#0f172a 0%,#1e293b 50%,#0f4c75 100%);color:#fff;min-height:100vh;overflow-x:hidden;transition: filter 0.6s ease}
+  body.night{filter: brightness(0.55) contrast(0.95)}
+  .header{background: rgba(255,255,255,0.07);backdrop-filter: blur(12px);padding:16px 24px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(255,255,255,0.08)}
+  .header h1{font-size:1.5rem;font-weight:800;letter-spacing:-0.02em;display:flex;align-items:center;gap:10px}
+  .header .meta{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .pill{background: rgba(255,255,255,0.12);padding:6px 12px;border-radius:999px;font-size:.8rem;font-weight:600;backdrop-filter: blur(6px)}
+  .pill.green{background: #10b981;color:#fff}
+  .pill.blue{background: #0ea5e9;color:#fff}
+  .pill.purple{background: #8b5cf6;color:#fff}
+  .pill.gold{background: linear-gradient(135deg,#FFD700,#FFA500);color:#000;font-weight:900}
+  .main{display:grid;grid-template-columns: 1.4fr 0.9fr;gap:18px;padding:18px 22px}
+  @media(max-width:900px){.main{grid-template-columns:1fr}}
+  .now-card{background: linear-gradient(135deg,#10b981 0%,#059669 100%);border-radius:22px;padding:26px 28px;box-shadow: 0 18px 36px rgba(16,185,129,0.28);position:relative;overflow:hidden}
+  .now-card.fast{background: linear-gradient(135deg,#FFD700 0%,#FFA500 50%,#FF8C00 100%);color:#000;box-shadow: 0 18px 36px rgba(255,165,0,0.35)}
+  .now-card.empty{background: linear-gradient(135deg,#334155,#1e293b);box-shadow:none}
+  .now-card .label{font-size:.75rem;letter-spacing:0.1em;text-transform:uppercase;opacity:0.9;margin-bottom:6px;font-weight:700}
+  .now-card .name{font-size:2.8rem;font-weight:900;line-height:1.05;letter-spacing:-0.03em;margin-bottom:4px;text-shadow: 0 2px 10px rgba(0,0,0,0.18)}
+  @media(max-width:600px){.now-card .name{font-size:1.9rem}}
+  .now-card .room{font-size:1.4rem;font-weight:700;opacity:0.96;margin-top:6px}
+  .now-card .meta-line{margin-top:10px;display:flex;gap:8px;flex-wrap:wrap}
+  .code-pill{background: rgba(0,0,0,0.22);padding:5px 12px;border-radius:999px;font-size:.85rem;font-weight:700}
+  .now-card.fast .code-pill{background: rgba(0,0,0,0.85);color:#FFD700}
+  .badge-fast{background:#000;color:#FFD700;padding:5px 12px;border-radius:999px;font-size:.8rem;font-weight:900;border:2px solid #FFD700}
+  .journey{margin-top:14px;background: rgba(0,0,0,0.18);border-radius:12px;padding:12px 14px}
+  .journey .jt{font-size:.7rem;letter-spacing:0.08em;text-transform:uppercase;opacity:0.85;margin-bottom:4px;font-weight:700}
+  .journey .total{font-size:1.25rem;font-weight:900}
+  .journey .steps{font-size:.82rem;opacity:0.88;margin-top:3px;line-height:1.4}
+  .section{background: rgba(255,255,255,0.07);backdrop-filter: blur(10px);border-radius:14px;padding:16px 18px;border:1px solid rgba(255,255,255,0.08);margin-bottom:16px}
+  .section h2{font-size:.95rem;font-weight:800;margin-bottom:12px;display:flex;align-items:center;gap:8px;letter-spacing:0.02em}
+  .row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.06)}
+  .row:last-child{border:none}
+  .row .left{font-weight:600;font-size:.92rem}
+  .row .right{font-size:.8rem;opacity:0.75}
+  .stats-grid{display:grid;grid-template-columns: repeat(4,1fr);gap:10px;margin-top:10px}
+  @media(max-width:700px){.stats-grid{grid-template-columns: repeat(2,1fr)}}
+  .stat{background: rgba(255,255,255,0.08);border-radius:10px;padding:12px;text-align:center}
+  .stat .v{font-size:1.6rem;font-weight:900}
+  .stat .l{font-size:.68rem;text-transform:uppercase;letter-spacing:0.05em;opacity:0.75;margin-top:2px}
+  .next-list .item{background: rgba(255,255,255,0.05);border-radius:10px;padding:12px 14px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
+  .next-list .item.fast{border-left:5px solid #FFD700;background: linear-gradient(135deg,rgba(255,215,0,0.18),rgba(255,165,0,0.12))}
+  .wait-mini{background: rgba(0,0,0,0.22);padding:3px 8px;border-radius:999px;font-size:.72rem;font-weight:700}
+  .footer{padding:10px 22px;text-align:center;opacity:0.35;font-size:.7rem;letter-spacing:0.02em}
+  .clock{font-variant-numeric: tabular-nums;font-weight:700}
+  .qr-box{background:#fff;border-radius:12px;padding:10px;display:flex;flex-direction:column;align-items:center;gap:6px;color:#000}
+  .admin-bar{background: rgba(0,0,0,0.35);padding:10px 18px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;border-top:1px solid rgba(255,255,255,0.08)}
+  .admin-bar button{background:#fff;color:#000;border:none;padding:6px 14px;border-radius:999px;font-weight:700;font-size:.85rem;cursor:pointer}
+  .admin-bar input[type=range]{width:90px}
+  .tap-hint{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background: rgba(0,0,0,0.75);color:#fff;padding:10px 18px;border-radius:999px;font-size:.85rem;font-weight:700;backdrop-filter: blur(10px);z-index:100;animation: fadeIn 0.5s ease}
+  @keyframes fadeIn{from{opacity:0;transform:translateX(-50%) translateY(10px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>🏥 {{ screen.name if screen else 'Waiting Area' }}</h1>
+  <div class="meta">
+    <span class="pill clock" id="clock">--:--</span>
+    <span class="pill green">{{ feed.stats.total_today }} today</span>
+    {% if feed.stats.fast_track_waiting %}<span class="pill gold">⭐ {{ feed.stats.fast_track_waiting }} Fast Track</span>{% endif %}
+  </div>
+</div>
+
+{# Public TV is clean — no voice bar. Admin sees controls if logged in as SUPER_ADMIN #}
+{% if current_user.is_authenticated and current_user.role == 'SUPER_ADMIN' %}
+<div class="admin-bar" id="adminBar">
+  <b style="font-size:.85rem">Admin TV controls (only you see this)</b>
+  <span style="font-size:.8rem;opacity:0.8">{{ rotation.slot_name }} · {{ screen.voice_languages if screen else 'en,yo,ha,ig' }}</span>
+  <div style="display:flex;align-items:center;gap:6px;background:rgba(255,255,255,0.1);padding:5px 10px;border-radius:999px">
+    <span>🔉</span><input type="range" id="volSlider" min="0" max="100" value="{{ screen.voice_volume if screen and screen.voice_volume is not none else 100 }}" oninput="hmsTv.setVolume(this.value)" onchange="hmsTv.saveVolume(this.value)"><span id="volLabel" style="font-size:.8rem;font-weight:800">{{ screen.voice_volume if screen and screen.voice_volume is not none else 100 }}%</span><span>🔊</span>
+  </div>
+  <div style="display:flex;align-items:center;gap:6px;background:rgba(255,255,255,0.1);padding:5px 10px;border-radius:999px">
+    <span aria-hidden="true">🔅</span><input type="range" id="brightSlider" aria-label="Screen brightness" min="10" max="100" value="{{ screen.brightness if screen and screen.brightness is not none else 100 }}" oninput="hmsTv.setBrightness(this.value)" onchange="hmsTv.saveBrightness(this.value)"><span id="brightLabel" style="font-size:.8rem;font-weight:800">{{ screen.brightness if screen and screen.brightness is not none else 100 }}%</span><span>🔆</span>
+  </div>
+  <button type="button" class="tv-night-toggle" style="display:flex;align-items:center;gap:6px;background:rgba(255,255,255,0.1);padding:5px 10px;border-radius:999px;cursor:pointer;border:none;color:inherit;font:inherit" onclick="hmsTv.toggleNight()" aria-pressed="{{ 'true' if screen and screen.night_mode else 'false' }}"><span id="nightIcon">{{ '🌙' if screen and screen.night_mode else '☀️' }}</span><span id="nightLabel" style="font-size:.75rem">{{ 'Night ON' if screen and screen.night_mode else 'Night OFF' }}</span></button>
+  <button onclick="hmsTv.enableVoice()" id="voiceBtn">🔊 Voice</button>
+  <button onclick="hmsTv.testVoice()">🎤 Test</button>
+</div>
+{% endif %}
+
+<div class="main">
+  <div>
+    {% if feed.now_serving %}
+      {% set first = feed.now_serving[0] %}
+      <div class="now-card {% if first.is_fast_track %}fast{% endif %}">
+        <div class="label">Now Serving {% if first.is_fast_track %}· ⭐ FAST TRACK Executive{% endif %}</div>
+        <div class="name">{{ first.name }}</div>
+        <div class="room">{{ first.room }} {% if first.clinic %}· {{ first.clinic }}{% endif %} {% if first.doctor %}· {{ first.doctor }}{% endif %}</div>
+        <div class="meta-line">
+          <span class="code-pill">{{ first.code }}</span>
+          {% if first.is_fast_track %}<span class="badge-fast">⭐ FAST TRACK — {{ first.fast_track_reason or 'Premium' }}</span>{% endif %}
+        </div>
+        {% if first.journey_estimate and first.journey_estimate.total %}
+        <div class="journey">
+          <div class="jt">Estimated time left</div>
+          <div class="total">{{ first.journey_estimate.total }} min {% if first.journey_estimate.fast_track %}· priority{% endif %}</div>
+          <div class="steps">{% for st in first.journey_estimate.stages %}{{ st.label }} {{ (st.minutes)|hm }}{% if not loop.last %} → {% endif %}{% endfor %}</div>
+        </div>
+        {% endif %}
+      </div>
+    {% else %}
+      <div class="now-card empty">
+        <div class="label">Waiting</div>
+        <div class="name" style="font-size:2rem">No call yet</div>
+        <div class="room" style="font-size:1rem;opacity:0.7">Please wait, you will be called by name</div>
+      </div>
+    {% endif %}
+
+    <div class="section">
+      <h2>Next — ⭐ Fast Track Gold first</h2>
+      <div class="next-list">
+        {% for item in feed.next_up[:8] %}
+        <div class="item {% if item.is_fast_track %}fast{% endif %}">
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:800;font-size:.95rem;display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+              <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ item.name }}</span>
+              {% if item.is_fast_track %}<span class="pill gold" style="font-size:.65rem;padding:2px 8px">⭐ FAST TRACK — {{ item.fast_track_reason or 'Premium' }}</span>{% endif %}
+            </div>
+            <div style="font-size:.78rem;opacity:0.7;margin-top:2px">{{ item.code }} {% if item.clinic %}· {{ item.clinic }}{% endif %} {% if item.room %}→ {{ item.room }}{% endif %}</div>
+            {% if item.estimated_wait is defined %}
+            <div style="margin-top:4px;display:flex;gap:6px;flex-wrap:wrap">
+              <span class="wait-mini">⏱ ~{{ (item.estimated_wait)|hm }} wait</span>
+              {% if item.journey_estimate and item.journey_estimate.total %}<span class="wait-mini">🛣 {{ (item.journey_estimate.total)|hm }} total</span>{% endif %}
+            </div>
+            {% endif %}
+          </div>
+          <span class="wait-mini" style="margin-left:10px">#{{ item.position if item.position else loop.index }}</span>
+        </div>
+        {% else %}
+        <div class="row"><span class="left">No one waiting</span><span class="right">Well done</span></div>
+        {% endfor %}
+      </div>
+    </div>
+
+    {% if feed.reception_enriched %}
+    <div class="section">
+      <h2>At Reception / Billing / Pay Point</h2>
+      {% for enriched in feed.reception_enriched[:5] %}
+      {% set r = enriched.row %}
+      <div class="row" style="{% if enriched.is_fast_track %}border-left:5px solid #FFD700;padding-left:10px;background:linear-gradient(135deg,rgba(255,215,0,0.15),transparent){% endif %}">
+        <span class="left">{% if enriched.is_fast_track %}⭐ {% endif %}{{ enriched.display_name or r.full_name.split()[0] }}<br><small style="opacity:0.6;font-weight:400">{{ r.ref[:12] }} · {{ r.stage }}</small></span>
+        <span class="right"><span class="wait-mini">~{{ (enriched.estimated_wait)|hm }}</span></span>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+
+  <div>
+    <div class="section">
+      <h2>Live Today</h2>
+      <div class="stats-grid">
+        <div class="stat"><div class="v">{{ feed.stats.queue_waiting }}</div><div class="l">Queue</div></div>
+        <div class="stat"><div class="v">{{ feed.stats.triaged }}</div><div class="l">Triage</div></div>
+        <div class="stat"><div class="v">{{ feed.stats.in_consultation }}</div><div class="l">With Doctor</div></div>
+        <div class="stat"><div class="v">{{ feed.stats.reception_waiting }}</div><div class="l">Reception</div></div>
+        <div class="stat"><div class="v">{{ feed.stats.doctors_ready }}</div><div class="l">Doctors</div></div>
+        <div class="stat"><div class="v">{{ feed.stats.fast_track_waiting or 0 }}</div><div class="l">Fast Track ⭐</div></div>
+        <div class="stat"><div class="v">{{ feed.stats.onward_pending }}</div><div class="l">Lab/Pharm</div></div>
+        <div class="stat"><div class="v">{{ feed.stats.total_today }}</div><div class="l">Total</div></div>
+      </div>
+      {% if feed.clinic_counts %}
+      <div style="margin-top:14px">
+        {% for clinic, count in feed.clinic_counts.items() %}
+        <div class="row"><span class="left">{{ clinic }}</span><span class="right pill blue" style="padding:2px 10px">{{ count }}</span></div>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+
+    <div class="section">
+      <h2>Doctors Ready Now</h2>
+      {% for s in feed.sessions[:6] %}
+      <div class="row"><span class="left">{{ s.doctor.name if s.doctor else 'Doctor' }} · {{ s.consulting_room }} · {{ s.clinic }}</span><span class="right pill green" style="padding:2px 8px;font-size:.7rem">Ready</span></div>
+      {% else %}
+      <div class="row"><span class="left">No doctor ready yet</span></div>
+      {% endfor %}
+    </div>
+
+    {% if is_main and feed.onward_enriched %}
+    <div class="section">
+      <h2>Lab / Pharmacy / Billing — Waiting — Fast Track gold first ⭐</h2>
+      {% for item in feed.onward_enriched[:6] %}
+      <div class="row" style="{% if item.is_fast_track %}border-left:5px solid #FFD700;padding-left:10px;background:linear-gradient(135deg,rgba(255,215,0,0.15),transparent){% endif %}">
+        <span class="left">{% if item.is_fast_track %}⭐ {% endif %}{{ item.display_name or 'Patient' }}<br><small style="opacity:0.6;font-weight:400">{{ item.step.destination }}{% if item.is_fast_track %} · FAST TRACK{% endif %}</small></span>
+        <span class="right">{{ (item.waited)|hm }} ago</span>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="section" style="display:flex;gap:14px;align-items:center">
+      <div class="qr-box">
+        <div style="font-size:.7rem;font-weight:800;letter-spacing:0.05em;text-transform:uppercase">Scan to track your journey</div>
+        <div id="qrMain" style="width:110px;height:110px;background:#eee;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:.7rem">QR</div>
+        <div style="font-size:.65rem;opacity:0.7;text-align:center">Check your position<br>on your phone</div>
+      </div>
+      <div style="flex:1;font-size:.82rem;line-height:1.45;opacity:0.85">
+        <b>Your journey:</b> Reception → Billing → Pay → HIMS → Triage → Doctor → Lab/Pharmacy → Home<br>
+        <span style="opacity:0.7">⭐ FAST TRACK — Pay more, get fast — Executive building — Gold lane 60+, pregnant, child &lt;5, wheelchair — seen first.</span><br>
+        <span style="opacity:0.7">⏱ Estimated time shown for every patient, based on real hospital speed.</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="footer" id="footerMinimal">Live board · Auto refresh</div>
+
+<div class="tap-hint" id="tapHint" style="display:none">🔊 Tap anywhere to enable voice — 4 languages</div>
+
+<script nonce="{{ csp_nonce }}">
+// Clock
+function tickClock(){ const el=document.getElementById('clock'); if(el) el.textContent = new Date().toLocaleTimeString('en-NG',{hour:'2-digit',minute:'2-digit'}); }
+setInterval(tickClock,1000); tickClock();
+
+window.hmsTv = {
+  voices: [], enabled: false,
+  slot: {{ rotation.slot }},
+  slotName: "{{ rotation.slot_name }}",
+  volume: ({{ screen.voice_volume if screen and screen.voice_volume is not none else 100 }} / 100),
+  brightness: ({{ screen.brightness if screen and screen.brightness is not none else 100 }}),
+  nightMode: {{ 'true' if screen and screen.night_mode else 'false' }},
+  screenCode: "{{ screen.code if screen else 'MAIN' }}",
+  voiceLangs: "{{ screen.voice_languages if screen and screen.voice_languages else 'en,yo,ha,ig' }}",
+  lastKey: "",
+
+  init(){
+    const load = ()=>{ this.voices = window.speechSynthesis ? window.speechSynthesis.getVoices() : []; };
+    load(); if(window.speechSynthesis){ window.speechSynthesis.onvoiceschanged = load; setTimeout(load,800); }
+    try{
+      const sv = localStorage.getItem('tv_vol_'+this.screenCode);
+      if(sv!==null){ this.volume = Math.max(0,Math.min(1, parseInt(sv)/100)); }
+      const sb = localStorage.getItem('tv_bright_'+this.screenCode);
+      if(sb!==null){ this.brightness = Math.max(10,Math.min(100, parseInt(sb))); }
+      const sn = localStorage.getItem('tv_night_'+this.screenCode);
+      if(sn!==null){ this.nightMode = sn==='1'; }
+    }catch(e){}
+    this.applyBrightness(); this.checkNightMode();
+    setInterval(()=> this.checkNightMode(), 60000);
+    // Public TV: show tap hint if voice not enabled, hide after first interaction
+    if(!this.enabled){
+      const hint = document.getElementById('tapHint');
+      if(hint){ hint.style.display='block'; setTimeout(()=>{ hint.style.display='none'; }, 8000); }
+      document.body.addEventListener('click', ()=>{ this.enableVoice(); }, {once:true});
+    }
+    // QR code for patient portal
+    try{
+      const url = window.location.origin + "/welcome";
+      const qrEl = document.getElementById('qrMain');
+      if(qrEl){
+        // Use simple API or generate via canvas? For zero budget, show link text if qrcode lib not available
+        // Try to fetch QR as data URI from server if available
+        fetch("/api/tv/qr-url?code="+encodeURIComponent(this.screenCode)).then(r=>r.json()).then(d=>{
+          if(d.qr){ const img=document.createElement('img'); img.src=d.qr; img.style.width='110px'; img.style.height='110px'; img.style.borderRadius='8px'; qrEl.innerHTML=''; qrEl.appendChild(img); }
+          else { qrEl.textContent = "Scan /welcome"; }
+        }).catch(()=>{ qrEl.textContent = "/welcome"; });
+      }
+    }catch(e){}
+  },
+
+  unlock(){ if(!window.speechSynthesis) return; try{ const u=new SpeechSynthesisUtterance(" "); u.volume=0.01; window.speechSynthesis.speak(u); }catch(e){} },
+
+  setVolume(v){ this.volume=Math.max(0,Math.min(1, parseInt(v)/100)); const lb=document.getElementById('volLabel'); if(lb) lb.textContent=v+'%'; },
+  saveVolume(v){ this.setVolume(v); try{ localStorage.setItem('tv_vol_'+this.screenCode, v); fetch('/api/tv/volume?code='+encodeURIComponent(this.screenCode)+'&volume='+encodeURIComponent(v), {method:'POST'}).catch(()=>{}); }catch(e){} },
+
+  setBrightness(v){ this.brightness=Math.max(10,Math.min(100, parseInt(v))); const lb=document.getElementById('brightLabel'); if(lb) lb.textContent=v+'%'; this.applyBrightness(); },
+  saveBrightness(v){ this.setBrightness(v); try{ localStorage.setItem('tv_bright_'+this.screenCode, v); fetch('/api/tv/brightness?code='+encodeURIComponent(this.screenCode)+'&brightness='+encodeURIComponent(v), {method:'POST'}).catch(()=>{}); }catch(e){} },
+  applyBrightness(){
+    const isNightDim = this.nightMode && this.isNightTime();
+    const effective = isNightDim ? Math.max(10, Math.round(this.brightness * 0.45)) : this.brightness;
+    document.body.style.filter = 'brightness('+effective+'%)' + (isNightDim ? ' contrast(0.92)' : '');
+    if(isNightDim) document.body.classList.add('night'); else document.body.classList.remove('night');
+  },
+  isNightTime(){ const h=new Date().getHours(); return (h>=19 || h<7); },
+  checkNightMode(){
+    this.applyBrightness();
+    const icon=document.getElementById('nightIcon'); const label=document.getElementById('nightLabel');
+    if(icon) icon.textContent = this.nightMode ? '🌙' : '☀️';
+    if(label) label.textContent = this.nightMode ? (this.isNightTime() ? 'Night ON — dimmed' : 'Night ON — day') : 'Night OFF';
+  },
+  toggleNight(){
+    this.nightMode = !this.nightMode;
+    try{ localStorage.setItem('tv_night_'+this.screenCode, this.nightMode?'1':'0'); fetch('/api/tv/brightness?code='+encodeURIComponent(this.screenCode)+'&night_mode='+(this.nightMode?1:0), {method:'POST'}).catch(()=>{}); }catch(e){}
+    this.checkNightMode();
+  },
+
+  enableVoice(){
+    this.enabled=true; this.unlock();
+    const hint=document.getElementById('tapHint'); if(hint) hint.style.display='none';
+    const btn=document.getElementById('voiceBtn'); if(btn) btn.textContent='🔊 Voice ON';
+    // No announcement on enable for public clean TV, just ready
+  },
+
+  testVoice(){
+    if(!this.enabled){ this.enableVoice(); setTimeout(()=>this.testVoice(),800); return; }
+    this.speakMulti("Folake Abatan", "Room 3, Dental Clinic", false, "en");
+  },
+
+  pickVoice(lang){
+    if(!this.voices || !this.voices.length) return null;
+    let c=this.voices.filter(v=> v.lang && v.lang.toLowerCase().includes((lang||"en").split("-")[0].toLowerCase()));
+    if(!c.length) c=this.voices.filter(v=> v.lang && v.lang.toLowerCase().includes("en"));
+    if(!c.length) c=this.voices;
+    const wantFemale = (this.slot%2===0);
+    const hints = wantFemale ? ["female","zira","folake","samantha"] : ["male","emeka","chinedu","david"];
+    let f=c.filter(v=> hints.some(h=> (v.name||"").toLowerCase().includes(h)));
+    if(f.length) c=f;
+    return c[this.slot % c.length] || c[0];
+  },
+  speak(t,l){
+    if(!this.enabled||!speechSynthesis) return;
+    try{
+      const u=new SpeechSynthesisUtterance(t); u.lang=l||"en-NG"; u.volume=this.volume; u.rate=0.92;
+      const v=this.pickVoice(l); if(v) u.voice=v; speechSynthesis.speak(u);
+    }catch(e){}
+  },
+  speakMulti(name, room, isPriority, preferredLang){
+    if(!this.enabled) return;
+    const langsEnabled = (this.voiceLangs || "en,yo,ha,ig").split(",").map(s=>s.trim().toLowerCase());
+    const prio = isPriority ? "Priority patient, " : "";
+    const prioYo = isPriority ? "Alaisan pataki, " : "";
+    const prioHa = isPriority ? "Majinyaci mai fifiko, " : "";
+    const prioIg = isPriority ? "Onye ọrịa dị mkpa, " : "";
+    const enText = prio + name + ", please go to " + room;
+    const yoText = prioYo + name + ", ẹ jọwọ lọ sí " + room;
+    const haText = prioHa + name + ", don Allah je zuwa " + room;
+    const igText = prioIg + name + ", biko gaa na " + room;
+    const order=[]; order.push({text:enText, lang:"en-NG", code:"en"});
+    const pref=(preferredLang||"").toLowerCase().substring(0,2);
+    const map={"yo":{text:yoText, lang:"yo-NG", code:"yo"}, "ha":{text:haText, lang:"ha-NG", code:"ha"}, "ig":{text:igText, lang:"ig-NG", code:"ig"}};
+    if(pref && map[pref] && langsEnabled.includes(pref) && pref!=="en"){ order.push(map[pref]); }
+    for(const c of ["yo","ha","ig"]){ if(!langsEnabled.includes(c)) continue; if(order.some(o=>o.code===c)) continue; if(map[c]) order.push(map[c]); }
+    let delay=0; for(const item of order){ if(!item) continue; setTimeout(()=> this.speak(item.text, item.lang), delay); delay+=3800; }
+  }
+};
+hmsTv.init();
+
+function refreshFeed(){
+  const code = "{{ screen.code if screen else 'MAIN' }}";
+  fetch("/api/tv/feed?code="+encodeURIComponent(code))
+    .then(r=>r.json())
+    .then(data=>{
+      if(data.now_serving && data.now_serving.length){
+        const first=data.now_serving[0]; const key=first.code+"|"+first.room+"|"+first.type;
+        if(key!==hmsTv.lastKey){
+          hmsTv.lastKey=key;
+          const pref=first.preferred_lang||"en";
+          hmsTv.speakMulti(first.name, first.room + (first.clinic ? ", "+first.clinic : ""), !!first.is_fast_track, pref);
+          setTimeout(()=>{ window.location.reload(); }, 1200);
+        }
+      }
+    }).catch(()=>{});
+}
+setInterval(refreshFeed, 5000);
+setInterval(()=>{ fetch("/api/tv/feed?code=MAIN",{cache:"no-store"}).catch(()=>{}); }, 30000);
+</script>
+</body>
+</html>

@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}Corrective actions{% endblock %}
+{% block content %}
+<div class="spread mb"><h1 style="margin:0">Corrective Actions</h1>
+  <a class="btn small secondary" href="/reports/corrective-actions?format=csv">⬇ CSV</a></div>
+
+<form class="card mb row" method="get">
+  <select name="status" style="width:auto">
+    <option value="">All statuses</option>
+    {% for s in ('OPEN','IN_PROGRESS','OVERDUE','COMPLETED','VERIFIED') %}
+    <option {{ 'selected' if request.args.get('status')==s }}>{{ s }}</option>{% endfor %}
+  </select>
+  {% if current_user.is_am or current_user.is_hod %}
+  <label class="row" style="margin:0;gap:6px;font-weight:500">
+    <input type="checkbox" name="mine" value="1" {{ 'checked' if request.args.get('mine') }} style="width:auto"> Assigned to me</label>
+  {% endif %}
+  <button class="btn small">Filter</button>
+</form>
+
+{% for ca in items %}
+<div class="card mb" id="ca-{{ ca.id }}"
+     style="{{ 'border:2px solid var(--red)' if highlight and highlight == ca.id|string }}">
+  <div class="spread">
+    <span class="pill {{ 'red' if ca.status=='OVERDUE' else ('green' if ca.status in ('COMPLETED','VERIFIED') else ('amber' if ca.status=='IN_PROGRESS' else 'blue')) }}">{{ ca.status }}</span>
+    <span class="muted">Due {{ ca.deadline.strftime('%d %b %Y') }}{% if ca.completed_at %} · completed {{ ca.completed_at.strftime('%d %b') }}{% endif %}</span>
+  </div>
+  <h3 class="mt">{{ ca.finding }}</h3>
+  <p class="muted">Required: {{ ca.action_required }}</p>
+  <p><b>Owner:</b> {{ ca.owner.name }}
+     {% if ca.verified_by %} · <b>Verified by:</b> {{ ca.verified_by.name }} ({{ ca.verified_at.strftime('%d %b') }}){% endif %}
+     {% if ca.source_type=='inspection' %} · from inspection{% endif %}</p>
+  {% if ca.status in ('OPEN','IN_PROGRESS','OVERDUE') and (current_user.is_super or ca.owner_id == current_user.id or current_user.is_md) %}
+  <form method="post" action="/corrective-actions/{{ ca.id }}/update" enctype="multipart/form-data" class="row mt">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    {% if ca.status != 'IN_PROGRESS' %}<button name="status" value="IN_PROGRESS" class="btn small secondary">Start</button>{% endif %}
+    <input type="file" name="evidence" accept="image/*,.pdf" style="font-size:.8rem">
+    <button name="status" value="COMPLETED" class="btn small" style="background:var(--green)">Mark completed</button>
+    {% if current_user.role in ('SUPER_ADMIN','MD_CEO') %}
+    <button name="status" value="VERIFIED" class="btn small ghost">Verify ✓</button>
+    {% endif %}
+  </form>
+  {% endif %}
+</div>
+{% else %}<div class="card center muted">No corrective actions found.</div>{% endfor %}
+
+{% if can_create %}
+<details>
+  <summary>➕ New corrective action</summary>
+  <form method="post" action="/corrective-actions">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <label>Finding</label><textarea name="finding" required></textarea>
+    <label>Required action</label><textarea name="action_required" required></textarea>
+    <div class="grid cols2">
+      <div><label>Responsible person</label>
+        <select name="owner_id" required>{% for u in users %}<option value="{{ u.id }}">{{ u.name }} ({{ u.role }})</option>{% endfor %}</select></div>
+      <div><label>Deadline</label><input type="date" name="deadline" required></div>
+    </div>
+    <button class="btn mt">Create &amp; notify owner</button>
+  </form>
+</details>
+{% endif %}
+{% endblock %}

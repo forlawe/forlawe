@@ -1,0 +1,29 @@
+{# Hospital help desk contact — shown at the bottom of every patient page.
+
+   A patient who is confused, distressed, or simply cannot make the form work
+   must ALWAYS be one tap away from a human being. This is the single most
+   important accessibility feature on the patient side: the phone number is a
+   real tel: link, so tapping it dials.
+
+   Falls back gracefully when the hospital has not filled in its contact
+   details yet — it tells the patient to ask at reception instead of showing
+   an empty box. #}
+<div class="help-desk" id="help-desk">
+  <b>{{ _('help_need') }}</b>
+  {% if hospital and (hospital.phone or hospital.phone_alt) %}
+    <div class="help-nums">
+      {% if hospital.phone %}
+        <a class="help-call" href="tel:{{ hospital.phone | replace(' ', '') }}">
+          📞 {{ hospital.phone }}</a>
+      {% endif %}
+      {% if hospital.phone_alt %}
+        <a class="help-call" href="tel:{{ hospital.phone_alt | replace(' ', '') }}">
+          📞 {{ hospital.phone_alt }}</a>
+      {% endif %}
+    </div>
+    <div class="help-sub">{{ _('help_hours') }}</div>
+  {% else %}
+    <div class="help-sub">{{ _('help_ask_reception') }}</div>
+  {% endif %}
+  <div class="help-sub help-emerg">🚑 {{ _('help_emergency') }}</div>
+</div>

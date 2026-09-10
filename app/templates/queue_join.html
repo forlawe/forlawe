@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="{{ lang }}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+{% include "_pwa_head.html" %}
+<meta name="theme-color" content="#0e5a8a">
+<title>Get a Queue Number — {{ org.name }}</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}?v={{ app_version }}">
+<style nonce="{{ csp_nonce }}">
+  .hero{border-radius:18px;padding:18px 20px 16px;margin-bottom:14px;background: linear-gradient(135deg,#e7f0f8 0%,#e6f6f1 100%);border:1px solid #dbe4ec}
+  .hero h1{margin:0;font-size:1.25rem;font-weight:900;color:#0f2f47}
+  .hero p{margin:8px 0 0;font-size:.88rem;line-height:1.5;color:#425466}
+  .step-label{font-size:.75rem;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:#6b7d90;margin:16px 0 6px}
+  .card{border-radius:16px}
+  .input-big{font-size:1rem;padding:12px 14px;border-radius:10px;border:2px solid #e6edf3;width:100%}
+  .input-big:focus{border-color:#0e5a8a;outline:none}
+  .gold-box{margin-top:14px;padding:14px;background: linear-gradient(135deg,#FFFEF0,#FFF8DC);border:2px solid #FFD700;border-radius:14px}
+  .btn.gold{padding:14px;font-size:1.05rem;border-radius:999px;background:#000;color:#FFD700;border:none;font-weight:900;width:100%;box-shadow:0 6px 16px rgba(0,0,0,0.2)}
+</style>
+</head>
+<body>
+<div class="portal-head">
+  {% include "_brand_mark.html" %}
+  <div>Get a Queue Number</div>
+  {% include "_langbar.html" %}
+</div>
+<main class="wrap" style="max-width:560px">
+  {% with back_to="/welcome" %}{% include "_patient_nav.html" %}{% endwith %}
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for cat, msg in messages %}<div class="flash {{ cat }}">{{ msg }}</div>{% endfor %}
+  {% endwith %}
+
+  {% if is_emergency %}
+  <div class="hero" style="background:linear-gradient(135deg,#fdecec,#fff3cd);border:2px solid #c62828">
+    <h1 style="color:#8c1d1d">🚨 Emergency — Go to Accident & Emergency Now</h1>
+    <p style="color:#8c1d1d">Do not wait online. Go straight to <b>Accident & Emergency Unit — open 24/7</b>. Tell reception it's an emergency. You will be seen immediately.</p>
+    {# F-040: one instruction, not three — the emergency number form stays
+       below as the single action; chat/phone/voice are demoted to one line. #}
+    <div style="margin-top:8px;font-size:.75rem;color:#8c1d1d;line-height:1.5">
+      Can't come in right now?
+      {% if hospital and hospital.phone %}
+      <a href="tel:{{ hospital.phone | replace(' ', '') }}" style="color:#8c1d1d;font-weight:700">📞 Call Help Desk — {{ hospital.phone }}</a>
+      {% else %}
+      <a href="#help-desk" onclick="document.querySelector('.help-desk')?.scrollIntoView({behavior:'smooth'});return false;" style="color:#8c1d1d;font-weight:700">📞 Help desk numbers below</a>
+      {% endif %}
+      · <a href="/chat?q=emergency" style="color:#8c1d1d">💬 ask for directions</a>
+      · <button type="button" style="background:none;border:none;padding:0;color:#8c1d1d;text-decoration:underline;font-size:inherit;cursor:pointer" onclick="try{if(window.hmsVoice&&hmsVoice.speak){hmsVoice.speak('Emergency — Go straight to Accident and Emergency now. It is open twenty four seven. Tell reception it is an emergency, you will be seen immediately. Do not wait online.');}}catch(e){}">🔊 listen</button>
+      · Your emergency number below shows at the desk.
+    </div>
+  </div>
+  {% else %}
+  <div class="hero">
+  <h1>Track Your Visit — Receive Your Queue Number</h1>
+  <p>Your visit starts at Reception — you'll get a number and a private tracker showing your live position through every stage (Reception, Billing, Triage, Doctor, Pharmacy). Your number only shows on the TV screen — not your name. Today only — elderly (60+), pregnant, children under 5, and wheelchair users are seen first automatically.</p>
+  </div>
+  {% endif %}
+
+  <form class="card pad-lg" method="post" action="/queue/join">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <input type="hidden" name="loc" value="{{ loc or '' }}">
+
+    <div class="step-label">1 · Where do you need to go?</div>
+    <select name="department_id" required class="input-big" id="q-dept">
+      <option value="">— Select —</option>
+      {% for d in depts %}
+      <option value="{{ d.id }}" data-fast="{{ 1 if 'fast track' in d.name|lower else 0 }}"
+              {{ 'selected' if pre == d.id }}>
+        {% if 'fast track' in d.name|lower %}⭐ {% endif %}{{ d.name }}{% if d.name|lower == 'reception' %} — Front Desk (all patients start here){% endif %}
+      </option>
+      {% endfor %}
+    </select>
+    <p style="font-size:.8rem;color:#6b7d90;margin:6px 0 0;line-height:1.4">
+      {% if is_emergency %}Emergency goes to Accident & Emergency — you will be seen immediately.{% else %}Queue links only to Reception — all patients start at Reception, then we guide you. Fast Track is premium at top — be seen faster in the quiet, private lounge.{% endif %}
+      Today's queue only — priority (elderly, pregnant, child, wheelchair) seen first automatically.
+    </p>
+
+    <div class="step-label">2 · Your name</div>
+    <input type="text" name="patient_name" required class="input-big" placeholder="e.g. Aisha Bello">
+
+    <div class="step-label">3 · Phone (optional, for updates)</div>
+    <input type="tel" name="phone" inputmode="tel" class="input-big" placeholder="e.g. 08012345678">
+
+    <div class="gold-box">
+      <label style="font-weight:900;color:#000;margin:0;display:flex;gap:10px;align-items:center;font-size:1rem">
+        <input type="checkbox" name="is_fast_track" value="1" style="width:20px;height:20px"> ⭐ Fast Track — Be seen faster
+      </label>
+      <p style="font-size:.85rem;margin:8px 0 0;color:#5a4a00;line-height:1.5">Fast Track is our premium service. You are seen quickly in a quiet, private lounge. You pay a little more for comfort and speed. If you can afford it, choose Fast Track.</p>
+      <select name="fast_track_reason" style="margin-top:10px" class="input-big">
+        <option value="PREMIUM" selected>Premium — Fast service, comfortable lounge</option>
+        <option value="BUSINESS">Busy — I have little time today</option>
+      </select>
+      <p style="font-size:.78rem;color:#6b7d90;margin-top:8px;line-height:1.4">Elderly, pregnant, children under 5, and wheelchair users are seen first automatically — no need to pick Fast Track. Just tell reception how we can help you, and we will prioritize you with care.</p>
+    </div>
+
+    <label class="checkline" style="display:flex;gap:10px;align-items:flex-start;margin-top:12px;font-weight:700;font-size:.9rem;line-height:1.4;background:#FFFEF0;border:2px solid #FFD700;border-radius:10px;padding:10px 12px">
+      <input type="checkbox" name="fast_track_consent" value="1" style="width:20px;height:20px;margin-top:2px">
+      {% include "_fasttrack_consent.html" %}
+    </label>
+
+    <button class="btn gold mt" type="submit">🎟️ {{ _("btn_queue") }} — Fast Track</button>
+    <p style="font-size:.8rem;color:#6b7d90;margin-top:10px;text-align:center;line-height:1.4">After you join, you get a private tracker. It shows your position, estimated wait, and what to do next. Your number only shows on TV — not your name.</p>
+  </form>
+
+  <div style="margin-top:14px;background:#fff;border-radius:12px;padding:14px;border:1px solid #e6edf3">
+    <div style="font-weight:900;font-size:.9rem;color:#0f2f47">What happens next?</div>
+    <div style="font-size:.84rem;color:#5a6b7b;margin-top:6px;line-height:1.6">
+      1. You get a number like <b>A-012</b> and a private link<br>
+      2. You go to the waiting area and watch the TV<br>
+      3. When your number shows and you hear your name, go to the desk<br>
+      4. Our staff will guide you through the rest
+    </div>
+  </div>
+
+  {% include "_help_desk.html" %}
+</main>
+<div class="footer"><a href="/privacy">Privacy</a> · Your number only shows on TV, not your name</div>
+<script src="{{ url_for('static', filename='js/app.js') }}?v={{ app_version }}" nonce="{{ csp_nonce }}"></script>
+{% include "_install.html" %}
+</body>
+</html>

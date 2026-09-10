@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}LAHSMA Desk{% endblock %}
+{% block content %}
+<h1>🏥 LAHSMA Desk — Clearance</h1>
+<p class="muted">Patients sent by doctors for insurance clearance. See patient + policy number, issue clearance. No serious claims work — LAHSMA has their own web app. This is just flow tracking, like Billing issuing a bill. Priority lane first.</p>
+
+<div class="card pad-lg mb" style="text-align:center;display:flex;justify-content:space-around;align-items:center;flex-wrap:wrap;gap:12px">
+  <div>
+    <div style="font-size:2rem;font-weight:900">{{ count }}</div>
+    <div class="muted" style="font-size:.85rem">waiting for clearance</div>
+  </div>
+  <div>
+    <div style="font-size:1.4rem;font-weight:900;color:#8b5cf6">{{ rows | selectattr('is_fast_track') | list | length }}</div>
+    <div class="muted" style="font-size:.75rem">⭐ priority</div>
+  </div>
+  <div style="font-size:.8rem;color:#5a6b7b;max-width:260px;text-align:left">
+    ⭐ Priority: elderly 60+, pregnant, child &lt;5, wheelchair — seen first. Journey time shown.
+  </div>
+</div>
+
+{% if not rows %}
+  <div class="card pad-lg"><p class="muted" style="margin:0">Nobody is waiting at LAHSMA. When a doctor sends a patient here from the consulting room, they will appear here.</p></div>
+{% else %}
+  {% for r in rows %}
+  <div class="card pad-lg mb" style="{% if r.is_fast_track %}border-left:5px solid #8b5cf6{% endif %}">
+    <div class="spread">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:1.1rem;font-weight:800;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <span>{{ r.patient.full_name if r.patient else 'Patient #' ~ r.visit.patient_id }}</span>
+          {% if r.is_fast_track %}<span class="pill" style="background:#8b5cf6;color:#fff;font-size:.7rem">⭐ {{ r.fast_track_reason or 'Priority' }}</span>{% endif %}
+        </div>
+        <div class="muted" style="font-size:.85rem">
+          {{ r.patient.hospital_number if r.patient else '' }}
+          {% if r.patient and r.patient.payer_type %} · {{ r.patient.payer_type }}{% endif %}
+          {% if r.patient and r.patient.payer_number %} · <b>{{ r.patient.payer_number }}</b>{% endif %}
+          {% if r.patient and r.patient.payer_name %} · {{ r.patient.payer_name }}{% endif %}
+        </div>
+        <div class="muted" style="font-size:.85rem">
+          Visit {{ r.visit.visit_no if r.visit else r.step.visit_id }} · sent {{ (r.waited)|hm }} ago
+          {% if r.step.note %} · {{ r.step.note }}{% endif %}
+        </div>
+        {% if r.journey and r.journey.total %}
+        <div style="margin-top:6px;background:#f6f9fc;border-radius:8px;padding:6px 10px;font-size:.78rem">
+          <b>⏱ Journey est:</b> {{ (r.journey.total)|hm }} left
+          {% if r.journey.stages %}· {% for st in r.journey.stages %}{{ st.label }} {{ (st.minutes)|hm }}{% if not loop.last %} → {% endif %}{% endfor %}{% endif %}
+          {% if r.journey.fast_track %}· ⭐ priority{% endif %}
+        </div>
+        {% endif %}
+      </div>
+      <div style="text-align:right">
+        <span class="pill {{ 'red' if r.waited >= 20 else 'amber' }}">{{ (r.waited)|hm }}</span>
+        {% if r.journey and r.journey.total %}<div style="margin-top:6px"><span class="pill" style="background:#e7f0f8;color:#0e5a8a;font-size:.7rem">{{ (r.journey.total)|hm }} total</span></div>{% endif %}
+      </div>
+    </div>
+
+    {% if r.patient and r.patient.care_flags %}
+    <div class="notice mt" style="text-align:left">
+      <b>⚠ Needs help:</b> {{ r.patient.care_flags | join(' · ') }}
+    </div>
+    {% endif %}
+
+    <form method="post" action="/lahsma/{{ r.step.id }}/clear" class="mt">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <button class="btn" style="width:100%">✅ Clearance issued — patient can go</button>
+    </form>
+  </div>
+  {% endfor %}
+{% endif %}
+
+<div class="card pad-lg mt">
+  <h3 style="margin-top:0">How this desk works — premium patient care</h3>
+  <p class="muted" style="margin-bottom:0;line-height:1.5">
+    1. Doctor finishes consultation and ticks <b>LAHSMA</b> as destination (can tick 1, 2 or 3 destinations: Lab, Pharmacy, Billing, MEGALEX, LAHSMA, Emergency).<br>
+    2. Patient appears here with name + policy number + priority ⭐ if elderly/pregnant/child/wheelchair — seen first.<br>
+    3. You check their card on LAHSMA web app (separate system), then press <b>Clearance issued</b>.<br>
+    4. If that was their last stop, visit closes and they can go home. If doctor also sent them to Lab/Pharmacy, those still show as pending elsewhere.<br>
+    5. Journey time shown for every patient — based on real hospital speed.
+  </p>
+</div>
+{% endblock %}

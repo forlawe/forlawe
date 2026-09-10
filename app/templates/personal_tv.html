@@ -1,0 +1,335 @@
+{% extends "base.html" %}
+{% block title %}My Visit — {{ feed.org.name }}{% endblock %}
+{% block extra_head %}
+<style nonce="{{ csp_nonce }}">
+/* Premium++++ Personal TV — Domino's style tracker, gold for fast track, slow internet optimized */
+.personal-tv {
+  max-width: 520px; margin: 0 auto; padding: 12px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+.ptv-header {
+  background: {% if feed.is_fast_track %}linear-gradient(135deg,#FFD700,#FFA500){% else %}var(--primary,#0e5a8a){% endif %};
+  color: {% if feed.is_fast_track %}#000{% else %}#fff{% endif %};
+  padding: 16px; border-radius: 16px; text-align: center;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+}
+.ptv-header h1 { margin: 0; font-size: 1.4rem; }
+.ptv-header .code { font-size: 2rem; font-weight: 900; letter-spacing: 2px; margin: 8px 0; }
+.ptv-badge {
+  display: inline-block; background: #000; color: #FFD700; padding: 4px 12px;
+  border-radius: 999px; font-weight: 800; font-size: .85rem;
+}
+.ptv-position {
+  background: #fff; border: 2px solid {% if feed.is_fast_track %}#FFD700{% else %}var(--primary){% endif %};
+  border-radius: 16px; padding: 16px; margin: 16px 0; text-align: center;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+}
+.ptv-position .pos { font-size: 1.8rem; font-weight: 800; color: var(--primary); }
+.ptv-position .wait { font-size: 1.2rem; color: #333; margin-top: 8px; }
+.ptv-timeline {
+  background: #fff; border-radius: 16px; padding: 16px; margin: 16px 0;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+}
+.ptv-step {
+  display: flex; gap: 12px; padding: 12px 0; border-left: 3px solid #eee; margin-left: 12px; position: relative;
+}
+.ptv-step.done { border-left-color: #12b5a5; }
+.ptv-step.current { border-left-color: var(--primary); background: #f0f7ff; border-radius: 8px; margin-left: 0; padding-left: 12px; }
+.ptv-step .dot {
+  width: 24px; height: 24px; border-radius: 50%; background: #eee; display: flex; align-items: center; justify-content: center;
+  font-size: .8rem; margin-left: -14px; flex-shrink: 0;
+}
+.ptv-step.done .dot { background: #12b5a5; color: #fff; }
+.ptv-step.current .dot { background: var(--primary); color: #fff; animation: pulse 2s infinite; }
+@keyframes pulse { 0%{transform:scale(1)} 50%{transform:scale(1.15)} 100%{transform:scale(1)} }
+.ptv-step .info { flex: 1; }
+.ptv-step .label { font-weight: 700; }
+.ptv-step .est { font-size: .85rem; color: #666; }
+.ptv-actions {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 16px 0;
+}
+.ptv-btn {
+  padding: 14px; border-radius: 12px; border: none; font-weight: 700; font-size: 1rem;
+  cursor: pointer; text-align: center; text-decoration: none; display: block;
+}
+.ptv-btn.primary { background: var(--primary); color: #fff; }
+.ptv-btn.gold { background: linear-gradient(135deg,#FFD700,#FFA500); color: #000; }
+.ptv-btn.secondary { background: #f5f5f5; color: #333; border: 1px solid #ddd; }
+.ptv-qr { text-align: center; margin: 16px 0; padding: 16px; background: #fff; border-radius: 16px; }
+.ptv-footer { text-align: center; font-size: .85rem; color: #666; margin-top: 20px; }
+.ptv-offline { background: #fff3cd; border: 1px solid #ffe69c; padding: 10px; border-radius: 8px; text-align: center; margin-bottom: 12px; }
+@media (prefers-color-scheme: dark) {
+  .personal-tv { background: #0a0a0a; color: #fff; }
+  .ptv-position, .ptv-timeline, .ptv-qr { background: #1a1a1a; color: #fff; }
+}
+</style>
+{% endblock %}
+{% block content %}
+<div class="personal-tv">
+  <div id="offline-note" class="ptv-offline" style="display:none">📴 Offline — showing last known. Will update when back online.</div>
+
+  <div class="ptv-header">
+    <h1>{{ feed.org.name }}</h1>
+    {% if feed.ticket %}<div class="code">{{ feed.ticket.code }}</div>{% endif %}
+    {% if feed.intake %}<div class="code">{{ feed.intake.ref }}</div>{% endif %}
+    {% if feed.is_fast_track %}<span class="ptv-badge">⭐ Fast Track — Premium</span>{% endif %}
+    <div style="margin-top:8px;font-size:.9rem">Hi {{ feed.patient_name or 'there' }} 👋</div>
+  </div>
+
+  <div class="ptv-position">
+    <div class="pos" id="pos-text">{{ feed.position_text }}</div>
+    <div class="wait" id="wait-text">Est wait: <b>{{ feed.wait_text }}</b></div>
+    <div style="font-size:.85rem;color:#666;margin-top:8px" id="stage-text">Stage: {{ feed.current_stage }}</div>
+    {% if feed.visit and feed.visit.room %}<div style="font-size:.9rem;margin-top:8px">📍 {{ feed.visit.room }} {% if feed.visit.clinic %}· {{ feed.visit.clinic }}{% endif %}</div>{% endif %}
+  </div>
+
+  <div class="ptv-timeline">
+    <h3 style="margin:0 0 12px">Your Journey</h3>
+    <div id="timeline">
+      {% for step in feed.timeline %}
+      <div class="ptv-step {{ step.status }}">
+        <div class="dot">{% if step.status=='done' %}✓{% elif step.status=='current' %}◉{% else %}○{% endif %}</div>
+        <div class="info">
+          <div class="label">{{ step.label }}</div>
+          {% if step.status=='upcoming' and step.estimated %}<div class="est">~{{ step.estimated }} min</div>{% endif %}
+          {% if step.status=='current' %}<div class="est" style="color:var(--primary);font-weight:700">You are here</div>{% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="ptv-actions">
+    <button class="ptv-btn primary" id="notify-btn" onclick="enableNotify()">🔔 Notify me when called</button>
+    <button class="ptv-btn secondary" onclick="speakStatus()">🔊 Speak my status</button>
+  </div>
+
+  <div id="push-status" style="text-align:center;font-size:.85rem;color:#12b5a5;margin-bottom:12px;display:none">✅ You will be notified even if app closed, like alarm</div>
+
+  <div class="ptv-qr">
+    <div style="font-weight:700;margin-bottom:8px">Keep this page — scan QR</div>
+    {% if qr_data_uri %}
+    <img id="qr-img" alt="QR" style="width:160px;height:160px" src="{{ qr_data_uri }}">
+    {% else %}
+    <img id="qr-img" alt="QR" style="width:160px;height:160px" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle'%3EQR%3C/text%3E%3C/svg%3E">
+    {% endif %}
+    <div style="font-size:.8rem;color:#666;margin-top:8px;word-break:break-all">{{ request.url_root }}t/{{ access_key }}</div>
+    <div style="font-size:.75rem;color:#888;margin-top:4px">No app install needed. Works on any browser: Chrome, Firefox, Safari, Edge, Samsung, UC, Opera. Feature phone? Main TV + Voice + USSD.</div>
+  </div>
+
+  <div class="ptv-footer">
+    <div>💡 Tip: Main TV in waiting hall also shows your number</div>
+    <div style="margin-top:8px">🔊 Voice in {{ {'en':'English','yo':'Yorùbá','ha':'Hausa','ig':'Igbo'}.get(feed.preferred_lang,'English') }} + 📳 Vibrate when called</div>
+    <div style="margin-top:8px;font-size:.75rem">No SMS inside hospital except emergency/complaints — cost saver</div>
+    <div style="margin-top:12px"><a href="/welcome">← Back to Home</a> · <a href="/privacy">Privacy</a></div>
+  </div>
+</div>
+
+<script nonce="{{ csp_nonce }}">
+// Personal TV — slow internet optimized, <5KB JS, works on all browsers + feature phone fallback
+(function(){
+  var accessKey = "{{ access_key }}";
+  var feed = {{ feed|tojson }};
+  var lastUpdate = Date.now();
+  var isFeaturePhone = !('fetch' in window) || !('Promise' in window);
+
+  // Offline detection
+  function updateOnline(){
+    var offlineNote = document.getElementById("offline-note");
+    if(!navigator.onLine){
+      if(offlineNote) offlineNote.style.display = "block";
+    } else {
+      if(offlineNote) offlineNote.style.display = "none";
+    }
+  }
+  window.addEventListener("online", updateOnline);
+  window.addEventListener("offline", updateOnline);
+  updateOnline();
+
+  // Speak status — works on all browsers with speechSynthesis, fallback silent
+  window.speakStatus = function(){
+    try {
+      var text = feed.patient_name ? feed.patient_name + ", " : "";
+      text += feed.position_text + ". " + "Estimated wait " + feed.wait_text + ". Stage " + feed.current_stage;
+      if(feed.is_fast_track) text += ". Fast Track premium.";
+      if('speechSynthesis' in window){
+        window.speechSynthesis.cancel();
+        var u = new SpeechSynthesisUtterance(text);
+        u.lang = "{{ 'yo-NG' if feed.preferred_lang=='yo' else 'ha-NG' if feed.preferred_lang=='ha' else 'ig-NG' if feed.preferred_lang=='ig' else 'en-NG' }}";
+        u.volume = 1.0; u.rate = 0.9;
+        window.speechSynthesis.speak(u);
+      }
+      // Vibrate if supported
+      if(navigator.vibrate){
+        navigator.vibrate([200,100,200]);
+      }
+    } catch(e){}
+  };
+
+  // Enable notify — push without install, works on Chrome, Firefox, Edge, Samsung, Opera
+  // Safari 16.4+ needs PWA installed
+  window.enableNotify = function(){
+    var btn = document.getElementById("notify-btn");
+    if(!('Notification' in window)){
+      alert("Notifications not supported on this browser. Use Main TV + voice — we have provision for feature phones.");
+      return;
+    }
+    if(Notification.permission === "denied"){
+      alert("Notifications blocked. Please allow in browser settings, or use Main TV.");
+      return;
+    }
+
+    // Check if push supported
+    if(!('serviceWorker' in navigator) || !('PushManager' in window)){
+      // Feature phone or old browser — fallback: no push, but we still have TV + voice + USSD
+      alert("Push not supported on this browser — but Main TV + voice will call you. We have provision for feature phones: use USSD or ask staff.");
+      return;
+    }
+
+    Notification.requestPermission().then(function(perm){
+      if(perm !== "granted"){
+        alert("Permission not granted — Main TV will still call you.");
+        return;
+      }
+
+      // Get VAPID public key and subscribe
+      fetch("/api/v1/push/vapid-public").then(function(r){return r.json();}).then(function(data){
+        var publicKey = data.public_key;
+        if(!publicKey){
+          alert("Push not configured on server yet — Main TV + voice active.");
+          return;
+        }
+
+        navigator.serviceWorker.ready.then(function(reg){
+          // Convert VAPID key
+          function urlBase64ToUint8Array(base64String){
+            var padding = "=".repeat((4 - base64String.length % 4) % 4);
+            var base64 = (base64String + padding).replace(/\-/g, "+").replace(/_/g, "/");
+            var rawData = atob(base64);
+            var outputArray = new Uint8Array(rawData.length);
+            for(var i=0;i<rawData.length;i++) outputArray[i]=rawData.charCodeAt(i);
+            return outputArray;
+          }
+
+          reg.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(publicKey)
+          }).then(function(sub){
+            // Send to server
+            var payload = {
+              endpoint: sub.endpoint,
+              keys: {
+                p256dh: btoa(String.fromCharCode.apply(null, new Uint8Array(sub.getKey("p256dh")))),
+                auth: btoa(String.fromCharCode.apply(null, new Uint8Array(sub.getKey("auth"))))
+              },
+              device_info: navigator.userAgent,
+              access_key: accessKey
+            };
+            // Fix btoa for binary
+            function buf2base64(buf){
+              var binary = ""; var bytes = new Uint8Array(buf);
+              for(var i=0;i<bytes.byteLength;i++) binary+=String.fromCharCode(bytes[i]);
+              return btoa(binary);
+            }
+            payload.keys.p256dh = buf2base64(sub.getKey("p256dh"));
+            payload.keys.auth = buf2base64(sub.getKey("auth"));
+
+            fetch("/api/v1/push/subscribe", {
+              method: "POST",
+              headers: {"Content-Type":"application/json"},
+              body: JSON.stringify(payload)
+            }).then(function(r){return r.json();}).then(function(res){
+              if(res.ok){
+                var status = document.getElementById("push-status");
+                if(status) status.style.display = "block";
+                if(btn){ btn.textContent = "✅ Notifications ON — works closed like alarm"; btn.disabled = true; }
+                // Test notification that works closed
+                if(reg.showNotification){
+                  reg.showNotification("✅ Notifications ON", {
+                    body: "You will be notified even if app closed, like alarm! Ticket {{ feed.ticket.code if feed.ticket else '' }}",
+                    icon: "/branding/logo",
+                    vibrate: [200,100,200],
+                    tag: "hs-enabled"
+                  });
+                }
+              }
+            });
+          }).catch(function(err){
+            console.error(err);
+            alert("Subscribe failed: " + err + " — but Main TV + voice will call you. Provision for feature phones available.");
+          });
+        });
+      });
+    });
+  };
+
+  // Live poll — every 10s, <1KB JSON, slow internet optimized, multi-browser
+  function poll(){
+    if(isFeaturePhone){
+      // Feature phone: no fetch, use meta refresh fallback — server will handle
+      return;
+    }
+    if(!navigator.onLine) return;
+
+    fetch("/my-visit/" + accessKey, {cache:"no-store"}).then(function(r){
+      if(!r.ok) throw new Error("not ok");
+      return r.json();
+    }).then(function(newFeed){
+      feed = newFeed;
+      // Update UI
+      var posEl = document.getElementById("pos-text");
+      var waitEl = document.getElementById("wait-text");
+      var stageEl = document.getElementById("stage-text");
+      if(posEl) posEl.textContent = newFeed.position_text;
+      if(waitEl) waitEl.innerHTML = "Est wait: <b>" + newFeed.wait_text + "</b>";
+      if(stageEl) stageEl.textContent = "Stage: " + newFeed.current_stage;
+
+      // If called, vibrate + speak + show notification even if page open
+      if(newFeed.current_stage === "CALLED" && lastUpdate){
+        if(navigator.vibrate) navigator.vibrate([500,200,500,200,1000]);
+        speakStatus();
+        // If page visible, show in-page alert
+        if(document.visibilityState === "visible"){
+          var alertBox = document.createElement("div");
+          alertBox.style.cssText = "position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#000;color:#FFD700;padding:16px 24px;border-radius:12px;font-weight:800;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,0.3)";
+          alertBox.textContent = "🔔 YOU ARE NEXT — Please go now! " + (newFeed.visit ? newFeed.visit.room : "");
+          document.body.appendChild(alertBox);
+          setTimeout(function(){ alertBox.remove(); }, 8000);
+        }
+      }
+
+      lastUpdate = Date.now();
+
+      // Update seen
+      fetch("/api/v1/my-visit/" + accessKey + "/seen", {method:"POST"}).catch(function(){});
+    }).catch(function(){});
+  }
+
+  // Poll every 10s, slow internet: only when visible to save data
+  setInterval(function(){
+    if(document.visibilityState === "visible") poll();
+  }, 10000);
+
+  // Also poll when visible
+  document.addEventListener("visibilitychange", function(){
+    if(document.visibilityState === "visible") poll();
+  });
+
+  // Initial seen
+  fetch("/api/v1/my-visit/" + accessKey + "/seen", {method:"POST"}).catch(function(){});
+
+  // Register SW for offline + push
+  if('serviceWorker' in navigator){
+    navigator.serviceWorker.register("/sw.js", {scope:"/"}).catch(function(){});
+  }
+
+  // Feature phone fallback: meta refresh every 30s if no JS fetch
+  if(isFeaturePhone){
+    var meta = document.createElement("meta");
+    meta.httpEquiv = "refresh";
+    meta.content = "30";
+    document.head.appendChild(meta);
+  }
+})();
+</script>
+{% endblock %}

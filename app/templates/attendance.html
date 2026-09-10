@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+{% block title %}I am here{% endblock %}
+{% block extra_head %}
+{% if can_admin %}
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/leaflet/leaflet.css') }}">
+<style nonce="{{ csp_nonce }}">
+  .fence-map{height:280px;border-radius:12px;border:1px solid #d7e3ec;margin:10px 0}
+  .leaflet-container{font-family:inherit}
+</style>
+{% endif %}
+{% endblock %}
+{% block content %}
+<h1>📍 I am here</h1>
+<p class="muted">Tap once when you arrive. Tap again when you leave.
+  Voice reminders stay on after you sign in.</p>
+
+<div class="card mb">
+  <p>
+    {% if site %}<b>Your site:</b> {{ site.name }}<br>{% endif %}
+    {% if fence.mode == 'off' %}
+      The gate check is <b>off</b> at this hospital. You can still sign in so
+      the board knows you are at work.
+    {% elif fence.mode == 'optional' %}
+      The phone will try to mark your place. You can still sign in if it fails.
+    {% else %}
+      You must be inside {{ fence.radius_m }} metres of
+      <b>{{ fence.place }}</b> to sign in.
+      {% if not fence.pinned %}
+        <br><span class="pill red">No gate pin yet</span> — Admin must drop
+        the pin on the map below. Until then, sign-in is not blocked.
+      {% endif %}
+    {% endif %}
+  </p>
+  <p class="hint">If there is no internet, the tap is saved on this phone and
+    sent when you are back online. A fake-place app will be refused when the
+    gate check is required.</p>
+</div>
+
+{% if open_row %}
+<div class="card mb" style="border:2px solid #1a7f37">
+  <h2>You are signed in</h2>
+  <p>Since {{ open_row.clock_in_at.strftime('%H:%M') }}
+    {% if open_row.in_inside is sameas true %} · inside the gate{% endif %}
+    {% if open_row.in_inside is sameas false %} · recorded outside the circle{% endif %}
+    {% if open_row.in_grace %} · within the grace hour{% endif %}
+    {% if open_row.late_minutes and not open_row.in_grace %} · late {{ open_row.late_minutes }} min{% endif %}
+    {% if open_row.flagged and not open_row.reviewed_at %} · <span class="pill red">Needs review</span>{% endif %}
+    {% if open_row.reviewed_at %} · <span class="pill green">Reviewed</span>{% endif %}
+  </p>
+  <form method="post" action="/attendance/out" id="out-form">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <input type="hidden" name="lat" id="out-lat">
+    <input type="hidden" name="lng" id="out-lng">
+    <input type="hidden" name="accuracy" id="out-acc">
+    <input type="hidden" name="mocked" id="out-mocked" value="0">
+    <input type="hidden" name="client_at" id="out-when">
+    <button class="btn big" type="submit">I am leaving</button>
+  </form>
+</div>
+{% else %}
+<div class="card mb">
+  <h2>Not signed in yet</h2>
+  <form method="post" action="/attendance/in" id="in-form">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <input type="hidden" name="lat" id="in-lat">
+    <input type="hidden" name="lng" id="in-lng">
+    <input type="hidden" name="accuracy" id="in-acc">
+    <input type="hidden" name="mocked" id="in-mocked" value="0">
+    <input type="hidden" name="client_at" id="in-when">
+    <button class="btn big" type="submit" id="in-btn">I am here</button>
+  </form>
+  <p class="hint mt" id="gps-hint">Turn on Location. This page will find you by itself.</p>
+</div>
+{% endif %}
+
+{% if can_admin %}
+<div class="card mb" style="border:2px solid #0e5a8a">
+  <h2>Gate pin (System Admin)</h2>
+  <p class="hint">Drop the pin on the gate. Stretch the circle. This is per
+    hospital — not a server switch. Voice reminders stay on.</p>
+  <form method="post" action="/attendance/gate">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <input type="hidden" name="attendance_lat" id="gate-lat" value="{{ fence.lat or '' }}">
+    <input type="hidden" name="attendance_lng" id="gate-lng" value="{{ fence.lng or '' }}">
+    <label>How strict</label>
+    <select name="attendance_mode">
+      <option value="off" {{ 'selected' if fence.mode=='off' }}>Off — sign in without a place check</option>
+      <option value="optional" {{ 'selected' if fence.mode=='optional' }}>Record place, still allow if outside</option>
+      <option value="required" {{ 'selected' if fence.mode=='required' }}>Must be inside the circle</option>
+    </select>
+    <label>Circle (metres)</label>
+    <input type="number" name="attendance_radius_m" id="gate-rad" min="50" max="2000"
+           value="{{ fence.radius_m or 200 }}">
+    <label>Grace after roster start (minutes)</label>
+    <input type="number" name="attendance_grace_minutes" min="0" max="240"
+           value="{{ settings.attendance_grace_minutes or 60 }}">
+    <p class="hint" id="gate-map-label">Turn on Location. The pin will drop where you are standing.</p>
+    <div id="gate-map" class="fence-map" role="img" aria-label="Map to drop the gate pin"></div>
+    <button class="btn ghost small" type="button" id="gate-here">Find me again</button>
+    <button class="btn mt">Save gate pin</button>
+  </form>
+</div>
+{% endif %}
+
+{% if can_board and reviews %}
+<div class="card mb" style="border:2px solid #b45309">
+  <h2>Needs your sign-off</h2>
+  <p class="hint">These clock-ins were flagged (late, fake place, or odd jump).
+    Open the note, then accept if the person really was at work.</p>
+  {% for r in reviews %}
+  <div class="row spread mb" style="border-bottom:1px solid #eef4f9;padding-bottom:8px">
+    <div>
+      <b>{{ r.user.name if r.user else 'Staff' }}</b>
+      · {{ r.clock_in_at.strftime('%H:%M') }}
+      {% if r.flag_note %}<div class="hint">{{ r.flag_note }}</div>{% endif %}
+    </div>
+    <form method="post" action="/attendance/review" class="row" style="gap:6px;align-items:center">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <input type="hidden" name="row_id" value="{{ r.id }}">
+      <input type="hidden" name="next" value="/attendance">
+      <input type="text" name="note" maxlength="200" placeholder="I saw them at the gate"
+             style="min-width:160px">
+      <button class="btn small">Accept</button>
+    </form>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if can_help %}
+<div class="card mb">
+  <h2>Help a colleague (photo required)</h2>
+  {% with staff=help_staff, next_url="/attendance" %}
+    {% include "_help_clockin.html" %}
+  {% endwith %}
+</div>
+{% endif %}
+
+{% if can_board %}
+<p class="mt">
+  <a class="btn secondary" href="/attendance/today">Who is at work today →</a>
+  <a class="btn ghost" href="/attendance/week">This week's ratings →</a>
+</p>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/attendance.js') }}" nonce="{{ csp_nonce }}"></script>
+{% if can_admin %}
+<script src="{{ url_for('static', filename='vendor/leaflet/leaflet.js') }}" nonce="{{ csp_nonce }}"></script>
+<script src="{{ url_for('static', filename='js/fence-map.js') }}" nonce="{{ csp_nonce }}"></script>
+<script nonce="{{ csp_nonce }}">
+  if (window.hmsFenceMap) {
+    window.hmsFenceMap.boot({
+      latId: "gate-lat", lngId: "gate-lng", radId: "gate-rad",
+      mapId: "gate-map", locateBtn: "gate-here", labelId: "gate-map-label"
+    });
+  }
+</script>
+{% endif %}
+{% endblock %}

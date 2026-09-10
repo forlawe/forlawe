@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}Roles{% endblock %}
+{% block content %}
+<h1>🔐 Roles &amp; what each may do</h1>
+<p class="muted">A role is a job. Ticking a box here changes what everybody
+  holding that job can see and do — straight away, with no developer and no
+  restart.</p>
+
+<div class="notice mb">
+  <b>The built-in roles already work exactly as they always did.</b>
+  Nothing changes until you change it. You can re-tick a built-in role, but you
+  cannot delete one, because every account holding it would lose its way in.
+</div>
+
+<div class="table-wrap card mb" style="padding:0">
+<table>
+  <tr><th>Role</th><th>How much they see</th><th>Powers</th><th>People</th><th></th></tr>
+  {% for r in items %}
+  <tr>
+    <td><b>{{ r.name }}</b>
+      {% if r.builtin %}<span class="pill blue">built-in</span>{% endif %}
+      {% if not r.active %}<span class="pill red">switched off</span>{% endif %}
+      {% if r.description %}<div class="hint">{{ r.description }}</div>{% endif %}
+    </td>
+    <td>{{ r.scope_label }}</td>
+    <td>{{ r.permission_keys|length }}</td>
+    <td>{{ counts.get(r.id, 0) }}</td>
+    <td class="right">
+      <a class="btn small" href="/admin/roles/{{ r.id }}">Edit</a>
+      {% if not r.builtin %}
+      <form method="post" action="/admin/roles/{{ r.id }}/toggle" style="display:inline">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        <button class="btn small secondary">{{ 'Switch off' if r.active else 'Switch on' }}</button>
+      </form>
+      {% endif %}
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+</div>
+
+<div class="grid cols2">
+  <div class="card">
+    <h2>Add a new role</h2>
+    <p class="hint">For a job the hospital has that the system does not yet
+      know about — "Pharmacy Technician", "Ward Clerk", "Security Supervisor".</p>
+    <form method="post" action="/admin/roles/create">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <label>What is this job called? <span class="req">*</span></label>
+      <input name="name" required maxlength="120" placeholder="e.g. Pharmacy Technician">
+      <label class="mt">How much of the hospital should they see?</label>
+      <select name="scope">
+        {% for code, label in scopes %}
+        <option value="{{ code }}" {{ 'selected' if code == 'DEPARTMENT' }}>{{ label }}</option>
+        {% endfor %}
+      </select>
+      <label class="mt">One line describing the job (optional)</label>
+      <input name="description" maxlength="300">
+      <button class="btn mt">Create the role</button>
+    </form>
+  </div>
+  <div class="card">
+    <h2>Give somebody a second job</h2>
+    <p class="hint">A senior nurse can be Staff in Theatre and Acting HOD of
+      A&amp;E at the same time. Powers add up — she keeps everything she
+      already had, and she can see both places.</p>
+    <a class="btn" href="/admin/roles/assign">Assign roles to staff →</a>
+  </div>
+</div>
+{% endblock %}
