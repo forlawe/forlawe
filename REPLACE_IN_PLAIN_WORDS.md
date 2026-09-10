@@ -11,14 +11,14 @@ next to each claim is what the command printed.
 
 | Question | Command I ran | Answer |
 |---|---|---|
-| How many files are in the forlawe GitHub repo? | `git ls-tree -r --name-only origin/arena/01a08cab-forlawe \| wc -l` | **548 files** |
+| How many files are in the forlawe GitHub repo? | `git ls-tree -r --name-only origin/arena/01a08cab-forlawe \| wc -l` | **549 files** |
 | How many of those are the app? | `... \| grep -c '^hositalsuite/'` | **541 files** |
 | How many files were in the zip you gave me? | `unzip -Z1 … \| grep -v '/$' \| wc -l` | **540 files** |
 | Anything in the zip that is missing from the repo? | `comm -23 zipfiles tracked` | **nothing** (blank) |
 | What is extra in the repo? | `comm -13 zipfiles tracked` | **1 new file**: `app/templates/_auth_footer.html` |
 
 So: **540 of your files + 1 new file I made = 541.** Not one of your files is
-missing. The other 7 of the 548 are the two guides, the `deploy/` helper scripts,
+missing. The other 8 of the 549 are the two guides, the 4 `deploy/` helper files,
 `.gitignore` and the original zip.
 
 ### And here is the really good news
