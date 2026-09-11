@@ -157,7 +157,10 @@ replacement test is stricter than the original, it locks both directions.
 | The same 9 tests run against that branch's code | **2 failed** — `test_fast_track_door_renders_the_flag_and_stores_it`, `test_fast_track_consent_still_enforced_server_side` (i.e. they catch exactly the §3 bug) |
 | Focused tests after the port (`test_f039 + fasttrack_doors + booking`) | **23 passed** |
 | Full suite, first pass after the port | 1051 passed, **2 failed** — both `test_f039_consent_partial` (the stale `/book` expectation), now fixed |
-| Full suite, final pass | see `§7` |
+| Full suite, second pass | 1053 passed, 8 skipped, **1 error** — `test_patient_hub.py::test_hub_has_an_emergency_notice` raised a fixture `SystemError`, not an assertion failure |
+| That error investigated | the file passes **16/16** alone and the single test passes twice alone → environment flake, not my change |
+| Full suite, third pass (decisive) | **1054 passed, 8 skipped** in 17m04s — no failures, no errors |
+| Baseline for comparison | 1044 passed before this work; +9 new Fast Track tests +1 new F-039 test = **1054**, which reconciles exactly |
 | Both patches dry-run against a **fresh clone of your live `main`** | `landing_auth_mobile.patch` fits, `fasttrack_two_doors.patch` fits |
 | Both patches applied to that clone, tests run there | **45 passed** (fasttrack doors, booking, queue, patient hub, F-039) and **120 passed** on the wider selection (adds nav links, navigation, a11y, phone look, Fast Track tier guard, tracking) |
 
