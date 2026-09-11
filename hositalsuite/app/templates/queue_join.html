@@ -51,8 +51,8 @@
   </div>
   {% else %}
   <div class="hero">
-    <h1>Get a number at Reception — wait comfortably</h1>
-    <p>Your queue starts at Reception — our front desk will welcome you and guide you to the right place. You will get a number and a private page that shows your place in line and what to do next. Only your number shows on the public TV — not your name. Today's queue only — priority patients (elderly 60+, pregnant, child under 5, wheelchair) are seen first automatically.</p>
+    <h1>Track Your Visit — Receive Your Queue Number</h1>
+    <p>You'll get a number and a private tracker showing your live position through every stage of your visit (Reception, Billing, Triage, Doctor, Pharmacy) — first-time patients start at Reception, returning patients go straight to Records. Your number only shows on the TV screen — not your name. Today only — elderly (60+), pregnant, children under 5, and wheelchair users are seen first automatically.</p>
   </div>
   {% endif %}
 
@@ -71,7 +71,7 @@
       {% endfor %}
     </select>
     <p style="font-size:.8rem;color:#6b7d90;margin:6px 0 0;line-height:1.4">
-      {% if is_emergency %}Emergency goes to Accident & Emergency — you will be seen immediately.{% else %}Queue links only to Reception — all patients start at Reception, then we guide you. Fast Track is premium at top — be seen faster in the quiet, private lounge.{% endif %}
+      {% if is_emergency %}Emergency goes to Accident & Emergency — you will be seen immediately.{% else %}First-time patients start at Reception; if we already have your file, we'll take you straight to Records — no need to repeat paperwork. Fast Track is premium at top — be seen faster in the quiet, private lounge.{% endif %}
       Today's queue only — priority (elderly, pregnant, child, wheelchair) seen first automatically.
     </p>
 
@@ -83,7 +83,7 @@
 
     <div class="gold-box">
       <label style="font-weight:900;color:#000;margin:0;display:flex;gap:10px;align-items:center;font-size:1rem">
-        <input type="checkbox" name="is_fast_track" value="1" checked style="width:20px;height:20px"> ⭐ Fast Track — Be seen faster
+        <input type="checkbox" name="is_fast_track" value="1" style="width:20px;height:20px"> ⭐ Fast Track — Be seen faster
       </label>
       <p style="font-size:.85rem;margin:8px 0 0;color:#5a4a00;line-height:1.5">Fast Track is our premium service. You are seen quickly in a quiet, private lounge. You pay a little more for comfort and speed. If you can afford it, choose Fast Track.</p>
       <select name="fast_track_reason" style="margin-top:10px" class="input-big">
@@ -94,11 +94,11 @@
     </div>
 
     <label class="checkline" style="display:flex;gap:10px;align-items:flex-start;margin-top:12px;font-weight:700;font-size:.9rem;line-height:1.4;background:#FFFEF0;border:2px solid #FFD700;border-radius:10px;padding:10px 12px">
-      <input type="checkbox" name="fast_track_consent" value="1" required style="width:20px;height:20px;margin-top:2px">
+      <input type="checkbox" name="fast_track_consent" value="1" style="width:20px;height:20px;margin-top:2px">
       {% include "_fasttrack_consent.html" %}
     </label>
 
-    <button class="btn gold mt" type="submit">🎟️ {{ _("btn_queue") }} — Fast Track</button>
+    <button class="btn mt" type="submit">🎟️ {{ _("btn_queue") }}</button>
     <p style="font-size:.8rem;color:#6b7d90;margin-top:10px;text-align:center;line-height:1.4">After you join, you get a private tracker. It shows your position, estimated wait, and what to do next. Your number only shows on TV — not your name.</p>
   </form>
 

@@ -50,8 +50,12 @@
     <input type="hidden" name="loc" value="{{ qr_loc.code if qr_loc else '' }}">
     <input type="hidden" name="r" value="{{ ref_code|default('') }}">
     <input type="hidden" name="idem" value="{{ idem }}">
+    {# Only the /book/fast-track door posts these. The old markup posted them
+       unconditionally, so EVERY booking became a premium Fast Track one. #}
+    {% if fast_track %}
     <input type="hidden" name="is_fast_track" value="1">
     <input type="hidden" name="fast_track_reason" value="PREMIUM">
+    {% endif %}
 
     <label class="step-label" for="bp-dept">1 · Which service do you need?</label>
     <select name="department_id" id="bp-dept" required class="input-big">
@@ -87,6 +91,7 @@
     <div class="hint">We send your booking reference and updates here.</div>
 
     {% if s and s.fast_track_enabled %}
+    {% if fast_track %}
     <div class="gold-box">
       <div style="display:flex;gap:10px;align-items:flex-start">
         <div style="font-size:1.6rem">👑</div>
@@ -107,18 +112,25 @@
       </div>
     </div>
     {% endif %}
+    {% endif %}
 
     <label class="checkline" style="display:flex;gap:10px;align-items:flex-start;margin-top:16px;font-weight:400;font-size:.88rem;line-height:1.4">
       <input type="checkbox" name="consent" value="1" required style="width:auto;margin-top:3px">
       <span>I agree the hospital can save my name and phone to manage this booking and send me reminders. See <a href="/privacy" target="_blank">Privacy Notice</a>.</span>
     </label>
 
+    {% if fast_track %}
     <label class="checkline" style="display:flex;gap:10px;align-items:flex-start;margin-top:12px;font-weight:700;font-size:.9rem;line-height:1.4;background:#FFFEF0;border:2px solid #FFD700;border-radius:10px;padding:10px 12px">
       <input type="checkbox" name="fast_track_consent" value="1" required style="width:20px;height:20px;margin-top:2px">
       {% include "_fasttrack_consent.html" %}
     </label>
+    {% endif %}
 
+    {% if fast_track %}
     <button class="btn big mt" type="submit" style="width:100%;background:#000;color:#FFD700;border:none;font-weight:900;padding:14px;border-radius:999px;font-size:1.05rem;box-shadow:0 6px 16px rgba(0,0,0,0.2)">👑 {{ _('btn_book') }} — Fast Track Ready</button>
+    {% else %}
+    <button class="btn big mt" type="submit" style="width:100%;background:#0e5a8a;color:#fff;border:none;font-weight:700;padding:14px;border-radius:999px;font-size:1.05rem">📅 {{ _('btn_book') }} — Confirm Visit</button>
+    {% endif %}
     <p class="hint" style="text-align:center;margin-top:10px">You will get your reference by WhatsApp first, then SMS if WhatsApp is not available.</p>
   </form>
 

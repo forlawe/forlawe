@@ -30,6 +30,16 @@ def _default_org() -> Organization | None:
 @bp.get("/book")
 @rate_limit(limit=30, window=60.0)
 def portal():
+    return _portal_render(fast_track=False)
+
+
+@bp.get("/book/fast-track")
+@rate_limit(limit=30, window=60.0)
+def portal_fast_track():
+    return _portal_render(fast_track=True)
+
+
+def _portal_render(fast_track: bool):
     org = _default_org()
     if not org:
         return render_template("error.html", code=503, message="System not configured yet."), 503
@@ -47,7 +57,7 @@ def portal():
     window = int(services.get_setting(org.id, "booking_window_days") or 30)
     s = services.org_settings_bundle(org.id)
     return render_template("booking_portal.html", org=org, depts=depts, qr_loc=qr_loc,
-                           ref_code=ref_code, s=s,
+                           ref_code=ref_code, s=s, fast_track=fast_track,
                            min_date=today.isoformat(),
                            max_date=(today + timedelta(days=window)).isoformat(),
                            slots=services.get_setting(org.id, "booking_slots") or [],
@@ -108,8 +118,8 @@ def portal_submit():
     if request.form.get("consent") not in ("1", "on", "true", "yes"):
         errors.append("Please tick the box to allow the hospital to store your "
                       "details for this appointment.")
-    # MUST consent for Fast Track premium service
-    is_ft_check = (request.form.get("is_fast_track") or "").strip() in ("1","on","true","yes") or True
+    # MUST consent for Fast Track premium service — only enforced when Fast Track is actually selected.
+    is_ft_check = (request.form.get("is_fast_track") or "").strip() in ("1","on","true","yes")
     if is_ft_check and request.form.get("fast_track_consent") not in ("1","on","true","yes"):
         errors.append("To use Fast Track, you must agree that it is a premium service and you will pay a little more for quick, private care.")
     if day and dept and slot in slots and services.slot_is_full(org.id, dept.id, day, slot):
@@ -138,7 +148,7 @@ def portal_submit():
     from ..patient_places import is_fast_track_dept
     # Fast Track — Booking is now Fast Track premium linked to Reception
     is_ft = ((request.form.get("is_fast_track") or "").strip() in ("1","on","true","yes")
-             or is_fast_track_dept(dept) or True)
+             or is_fast_track_dept(dept))
     ft_reason = (request.form.get("fast_track_reason") or "PREMIUM").strip().upper()[:40] or "PREMIUM"
     ft_price = int(services.get_setting(org.id, "fast_track_price") or 15000)
     ft_requires_pay = bool(services.get_setting(org.id, "fast_track_booking_requires_payment"))

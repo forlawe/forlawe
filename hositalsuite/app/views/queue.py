@@ -160,6 +160,12 @@ def join_submit():
         from .. import personal_tv as ptv
         sess = ptv.ensure_personal_session(org.id, ticket=t)
         ptv.update_session_from_ticket(sess, t)
+        # Request 3 — entry routing by patient history: returning patients (existing Patient record)
+        # skip the paper-folder Reception stage and start at HIMS; new patients start at RECEPTION.
+        entry_stage = "HIMS" if patient_id else "RECEPTION"
+        if sess and hasattr(sess, 'current_stage') and sess.current_stage != entry_stage:
+            sess.current_stage = entry_stage
+            db.session.add(sess)
     except Exception:
         current_app.logger.exception("personal TV session create failed")
 

@@ -28,7 +28,12 @@ def test_consent_statement_exists_in_exactly_one_template():
 
 
 def test_both_patient_forms_render_the_consent(client, seeded):
-    for url in ("/book", "/queue/join"):
+    # /book/fast-track, not /book: the booking portal is now TWO doors and only
+    # the Fast Track one offers the premium service. When there was a single
+    # door it posted is_fast_track=1 for everybody (the bug), so the consent
+    # statement legitimately appeared on /book. Showing a paid-service consent
+    # on a form that cannot create a paid booking would be its own dishonesty.
+    for url in ("/book/fast-track", "/queue/join"):
         r = client.get(url)
         assert r.status_code == 200, (url, r.status_code)
         assert CONSENT_MARK in r.get_data(as_text=True), url
@@ -37,7 +42,15 @@ def test_both_patient_forms_render_the_consent(client, seeded):
 def test_consent_wording_is_single_version(client, seeded):
     """The three historical wordings are gone — every rendered form shows the
     same 'quiet, private lounge' promise."""
-    for url in ("/book", "/queue/join"):
+    for url in ("/book/fast-track", "/queue/join"):
         html = client.get(url).get_data(as_text=True)
         assert "quiet, private lounge" in html, url
         assert "quiet, comfortable lounge" not in html
+
+
+def test_normal_booking_door_does_not_advertise_a_paid_service(client, seeded):
+    """/book is the ordinary visit: no gold Fast Track box, no premium consent,
+    and no is_fast_track field for the browser to post."""
+    html = client.get("/book").get_data(as_text=True)
+    assert CONSENT_MARK not in html
+    assert 'name="is_fast_track"' not in html

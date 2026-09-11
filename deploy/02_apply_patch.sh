@@ -25,17 +25,31 @@ set -euo pipefail
 
 APP_DIR="${1:-}"
 HERE="$(cd "$(dirname "$0")" && pwd)"
-PATCH="$HERE/landing_auth_mobile.patch"
+# Both patches, in order. Each is independent; both are verified to apply to a
+# fresh clone of Hcarepro2026/hositalsuite@main.
+PATCHES=("landing_auth_mobile.patch" "fasttrack_two_doors.patch")
 
 if [ -z "$APP_DIR" ] || [ ! -d "$APP_DIR" ]; then
   echo "Usage: bash deploy/02_apply_patch.sh /path/to/your/hositalsuite"
   exit 1
 fi
-[ -f "$PATCH" ] || { echo "Patch not found: $PATCH"; exit 1; }
+for f in "${PATCHES[@]}"; do
+  [ -f "$HERE/$f" ] || { echo "Patch not found: $HERE/$f"; exit 1; }
+done
 
 cd "$APP_DIR"
 
 echo "==> 1/3 Dry run (nothing written yet)"
+for f in "${PATCHES[@]}"; do
+  echo "    checking $f"
+  git apply --check "$HERE/$f" || {
+    echo
+    echo "❌ $f does not fit your files. Your copy has drifted from the version"
+    echo "   the patch was cut against. Stop here and tell me — I will re-cut it."
+    exit 1
+  }
+done
+PATCH="$HERE/${PATCHES[0]}"
 if ! git apply --check --verbose "$PATCH"; then
   echo
   echo "❌ The patch does not fit your files. That means your copy has already"
@@ -49,15 +63,22 @@ fi
 echo "    dry run OK — the patch fits"
 
 echo "==> 2/3 Applying"
-git apply --stat "$PATCH"
-git apply "$PATCH"
+for f in "${PATCHES[@]}"; do
+  echo "    $f"
+  git apply --stat "$HERE/$f"
+  git apply "$HERE/$f"
+done
 
 echo "==> 3/3 Confirming the files now match this workspace"
 FAIL=0
 for f in app/static/css/app.css app/templates/_auth_footer.html \
          app/templates/landing_sales.html app/templates/login.html \
          app/templates/request_access.html app/templates/signup_pick.html \
-         app/templates/forgot_password.html app/templates/reset_password.html; do
+         app/templates/forgot_password.html app/templates/reset_password.html \
+         app/views/bookings.py app/views/queue.py \
+         app/templates/booking_portal.html app/templates/queue_join.html \
+         app/templates/patient_hub.html tests/test_fasttrack_doors.py \
+         tests/test_f039_consent_partial.py; do
   if diff -q "$APP_DIR/$f" "$HERE/../hositalsuite/$f" >/dev/null 2>&1; then
     echo "    ok   $f"
   else
