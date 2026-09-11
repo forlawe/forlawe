@@ -29,7 +29,17 @@ config = context.config
 # pointing at a scratch database all SILENTLY MIGRATED THE WRONG DATABASE:
 # Alembic reported "Running upgrade ..." while the intended database was never
 # touched. Anything verifying an upgrade this way was proving nothing.
-if not config.get_main_option("sqlalchemy.url", None):
+# alembic.ini ships Alembic's own placeholder ("driver://user:pass@localhost/
+# dbname"). It is truthy, so the guard above treated it as "the caller supplied
+# a URL" and left it in place — which made every CLI run die with
+#   NoSuchModuleError: Can't load plugin: sqlalchemy.dialects:driver
+# The app's boot path never noticed because run_alembic_upgrade() passes an
+# explicit URL. Treat the placeholder as "nobody supplied one" so
+# `alembic upgrade head` works from a shell (Render shell, a VPS, or a laptop
+# pointed at the Supabase pooler) while a real -x url=... still wins.
+_INI_PLACEHOLDER = "driver://user:pass@localhost/dbname"
+_supplied_url = (config.get_main_option("sqlalchemy.url", None) or "").strip()
+if not _supplied_url or _supplied_url == _INI_PLACEHOLDER:
     config.set_main_option("sqlalchemy.url",
                            Config.SQLALCHEMY_DATABASE_URI.replace("%", "%%"))
 

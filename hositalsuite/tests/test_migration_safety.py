@@ -336,3 +336,51 @@ def test_role_management_never_becomes_a_medical_record():
                 assert word not in column.name.lower(), (
                     f"{model.__name__}.{column.name} looks like clinical data. "
                     f"This system is not an EMR.")
+
+
+def test_alembic_cli_can_migrate_without_an_explicit_url(tmp_path):
+    """`alembic upgrade head` must work from a shell, not only at app boot.
+
+    alembic.ini ships Alembic's placeholder URL ("driver://user:pass@localhost/
+    dbname"). migrations/env.py used to read that placeholder as "the caller
+    supplied a URL", so every CLI run died with:
+
+        NoSuchModuleError: Can't load plugin: sqlalchemy.dialects:driver
+
+    The app never noticed — run_alembic_upgrade() passes the real URL — but an
+    operator on a Render shell, a VPS, or a laptop pointed at the Supabase
+    pooler could not migrate by hand at all. This runs the real CLI in a
+    subprocess against a throwaway database and checks it reaches head.
+    """
+    import subprocess
+    import sys
+
+    db_file = tmp_path / "cli_migrate.db"
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    env = dict(os.environ)
+    env["DATABASE_URL"] = f"sqlite:///{db_file}"
+    env["SECRET_KEY"] = env.get("SECRET_KEY") or "migration-cli-test"
+    env["DISABLE_SCHEDULER"] = "1"
+
+    proc = subprocess.run(
+        [sys.executable, "-m", "alembic", "upgrade", "head"],
+        cwd=root, env=env, capture_output=True, text=True, timeout=180)
+
+    assert proc.returncode == 0, (
+        f"alembic upgrade head failed from the CLI.\n"
+        f"stdout:\n{proc.stdout[-2000:]}\nstderr:\n{proc.stderr[-2000:]}")
+
+    from sqlalchemy import create_engine
+    insp = inspect(create_engine(f"sqlite:///{db_file}"))
+    assert "alembic_version" in insp.get_table_names()
+    assert "patient" in insp.get_table_names(), "migrations ran but built nothing"
+
+
+def test_env_py_does_not_mistake_the_ini_placeholder_for_a_real_url():
+    """Guard the guard: the placeholder must be recognised as 'not supplied'."""
+    env_py = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                          "migrations", "env.py")
+    src = open(env_py, encoding="utf-8").read()
+    assert "driver://user:pass@localhost/dbname" in src, (
+        "env.py no longer recognises the alembic.ini placeholder — "
+        "`alembic upgrade head` from a shell will break again")
