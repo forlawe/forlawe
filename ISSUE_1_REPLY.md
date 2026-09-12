@@ -1,4 +1,4 @@
-## Branch: `arena/01a08cab-forlawe` — commit `e760486`
+## Branch: `arena/01a08cab-forlawe` — commit `44bcae1`
 
 One branch, complete, on this repo (`forlawe/forlawe`). The application lives under the **`hositalsuite/`** subdirectory of that branch — that folder is the deploy root, i.e. it is what maps to the root of `Hcarepro2026/hositalsuite`.
 
@@ -59,7 +59,7 @@ Dockerfile         PRESENT
 ### 3. Test results
 
 ```
-pytest -q   ->   1060 passed, 8 skipped   (16m21s)
+pytest -q   ->   1060 passed, 8 skipped   (16m41s)
 ```
 
 `tests/test_fasttrack_doors.py` (13 tests) posts what the pages actually render rather than hand-built payloads — that is what caught the premium-department hole. `tests/test_migration_safety.py` grew two tests for a deploy blocker fixed here: `alembic.ini` ships the placeholder `driver://user:pass@localhost/dbname`, which `migrations/env.py` mistook for a caller-supplied URL, so **every CLI migration died** with `NoSuchModuleError: Can't load plugin: sqlalchemy.dialects:driver`. The app never noticed (boot passes the URL explicitly); no operator could migrate by hand. `alembic upgrade head` now works: 51 tables, `current = k28_tenant_usernames`.
@@ -68,4 +68,15 @@ pytest -q   ->   1060 passed, 8 skipped   (16m21s)
 
 No PostgreSQL exists in this workspace (`postgres`, `psql`, `initdb` all absent), so the suite ran on SQLite and the Postgres-only paths — RLS policies, `FORCE ROW LEVEL SECURITY`, `set_config('app.current_org', …, true)` — were **read, not executed**. Before production, run once against a real Supabase database: `TEST_DATABASE_URL=postgresql://… pytest -q` and `alembic upgrade head` via the **session** pooler (not the transaction pooler — DDL and the RLS variable both need a session). No real WhatsApp/SMS/mail sends were made (sandbox mode).
 
+The driver behind those numbers is committed at `hositalsuite/tools/e2e_booking_doors.py`, so this test can be re-run rather than re-read:
+
+```
+python tools/e2e_booking_doors.py http://127.0.0.1:8078 data/e2e.db --clear
+... ALL CHECKS PASSED   (exit code 0)
+```
+
 Full detail in `DEPLOY_READY.md` and `CONSULTANT_REPORT_RESPONSE.md` on the same branch.
+
+---
+
+*(This reply could not be posted as an issue comment: the GitHub identity used here — `arena-ai-coding-agent[bot]` — has no issue permissions on this repo. `gh api repos/forlawe/forlawe` returns `push:false, triage:false, admin:false`, and `gh issue comment 1` returns `Resource not accessible by integration`. It is committed at the branch root instead so it travels with the code.)*
