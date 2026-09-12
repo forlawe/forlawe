@@ -112,6 +112,40 @@ And the merged behaviour is live in that process, not just in tests:
 /welcome gold card → class="lux-card" href="/book/fast-track"
 ```
 
+### End-to-end bookings, made for real and read back out of the database
+
+Issue #1 asked for both doors to be tested end to end rather than read. Done —
+real HTTP through gunicorn, posting only the fields each page renders, then
+reading the rows back:
+
+```
+/book             17 departments; 'Fast Track' offered: False
+/book/fast-track  18 departments; '⭐ Fast Track' listed, gold box + consent shown
+
+/book              → HTTP 200, /book/thanks?ref=HOSP-APT-2026-000001
+/book/fast-track   → HTTP 200, /book/thanks?ref=HOSP-APT-2026-000002
+/book/fast-track, no consent → HTTP 422, "premium service" refusal
+/book + premium department posted by hand, no consent → HTTP 422, refused
+
+  HOSP-APT-2026-000001  Normal Door      is_fast_track=False
+  HOSP-APT-2026-000002  Fast Track Door  is_fast_track=True
+```
+
+**That test found a bug no unit test could.** `Fast Track` was the *first*
+department in the dropdown on **both** doors, and a booking into that department
+becomes premium regardless of door (`is_ft = … or is_fast_track_dept(dept)`).
+So a patient on the free door could pick the first item in a list and be handed
+a paid service with no price and no consent box on screen. Three fixes:
+
+1. the free door no longer lists the paid lounge (17 departments vs 18);
+2. the consent rule now follows the **outcome** — `becomes_fast_track =
+   is_ft_check or is_fast_track_dept(dept)` — so posting that department by hand
+   without consent is refused with 422;
+3. a validation error no longer re-renders the premium door as the plain one
+   (it was dropping the `fast_track` flag on the 422 path).
+
+All three are locked by tests in `tests/test_fasttrack_doors.py` (13 tests).
+
 ---
 
 ## 4. ✅ Supabase-specific paths, checked in the code

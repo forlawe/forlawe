@@ -169,6 +169,63 @@ def join_submit():
     except Exception:
         current_app.logger.exception("personal TV session create failed")
 
+    # Request 3, finished — the tracker must not be ahead of reality.
+    #
+    # Setting current_stage alone meant a returning patient's tracker could read
+    # "HIMS" while no HIMS record existed yet, and a first-time patient's could
+    # read "RECEPTION" with nothing on the Reception desk to match. So the entry
+    # now creates the real record behind the stage:
+    #
+    #   * first-time patient -> a ReceptionIntake is opened (they need a paper
+    #     folder), the ticket is linked to it, and the journey opens at
+    #     RECEPTION. Reception can see them coming instead of finding out when
+    #     the patient arrives at the desk.
+    #   * returning patient  -> their folder already exists, so NO duplicate
+    #     intake is minted; the journey simply opens at HIMS against the folder.
+    #
+    # created_by stays NULL on purpose: nobody at a desk did this, the patient
+    # did it themselves from a QR code. Inventing a staff member would put a
+    # false name in the audit trail.
+    #
+    # Wrapped like every other tracking call: a measurement must never stop a
+    # patient being seen.
+    try:
+        from .. import reception as reception_engine, tracking
+
+        if patient_id:
+            tracking.safely(tracking.enter, org.id, "HIMS",
+                            patient_id=patient_id, department_id=dept.id)
+        else:
+            from ..models import ReceptionIntake
+            parts = name.split()
+            surname = parts[-1] if parts else "\u2014"
+            first = " ".join(parts[:-1]) if len(parts) > 1 else (parts[0] if parts else "Patient")
+            intake = ReceptionIntake(
+                org_id=org.id,
+                ref=reception_engine.next_ref(org.id),
+                surname=surname[:80],
+                first_name=first[:80],
+                phone=phone or None,
+                stage="RECEPTION",
+                is_fast_track=bool(is_fast),
+                fast_track_reason=fast_reason if is_fast else None,
+            )
+            db.session.add(intake)
+            db.session.flush()
+            t.intake_id = intake.id
+            if sess is not None:
+                sess.intake_id = intake.id
+                db.session.add(sess)
+            tracking.safely(tracking.enter, org.id, "RECEPTION",
+                            intake_id=intake.id, department_id=dept.id)
+        audit("QUEUE_ENTRY_ROUTED", "queue_ticket", t.id,
+              {"code": t.code, "entry_stage": entry_stage,
+               "returning": bool(patient_id)}, org_id=org.id)
+    except Exception:                                    # noqa: BLE001
+        current_app.logger.exception(
+            "queue join: entry record could not be created — the patient still "
+            "has a ticket and a tracker, but the journey is not being measured")
+
     # Announce to the department: staff hear how many are now waiting.
     try:
         announce_queue_depth(org.id, dept)

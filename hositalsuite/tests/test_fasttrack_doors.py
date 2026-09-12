@@ -16,7 +16,8 @@ given a normal booking after tapping the gold card).
 import re
 from datetime import timedelta
 
-from app.models import Appointment, Patient, db, now_naive
+from app.models import (Appointment, JourneySegment, Patient, QueueTicket,
+                        ReceptionIntake, db, now_naive)
 from app.models_v2 import PersonalTvSession
 
 from conftest import csrf
@@ -53,12 +54,14 @@ def _submit_as_browser(client, seeded, page: str, idem: str, **extra):
     return client.post("/book/submit", data=data, follow_redirects=True)
 
 
-def _join_queue(client, seeded, name: str, phone: str = ""):
-    return client.post("/queue/join", data={
+def _join_queue(client, seeded, name: str, phone: str = "", **extra):
+    data = {
         "_csrf": csrf(client, "/queue/join"),
         "department_id": seeded["dept"],
         "patient_name": name, "phone": phone,
-    }, follow_redirects=True)
+    }
+    data.update(extra)
+    return client.post("/queue/join", data=data, follow_redirects=True)
 
 
 # ---------------------------------------------------------------- two doors
@@ -96,6 +99,53 @@ def test_fast_track_consent_still_enforced_server_side(client, seeded):
     assert db.session.query(Appointment).count() == 0
 
 
+def test_ordinary_door_does_not_offer_the_paid_lounge(client, seeded):
+    """Found end to end, not by reading: 'Fast Track' was the FIRST department in
+    the dropdown on BOTH doors, so a patient on the free door picked it and was
+    handed a premium booking with no price and no consent on screen."""
+    from app.models import Department
+    ft = Department(org_id=seeded["org"], name="Fast Track", active=True)
+    db.session.add(ft); db.session.commit()
+
+    plain = client.get("/book").get_data(as_text=True)
+    gold = client.get("/book/fast-track").get_data(as_text=True)
+    assert f'value="{ft.id}"' not in plain, (
+        "the free door must not list the paid Fast Track lounge")
+    assert f'value="{ft.id}"' in gold, (
+        "the Fast Track door is where the lounge belongs")
+
+
+def test_premium_department_cannot_skip_the_consent(client, seeded):
+    """Posting the premium department through the ordinary door — bypassing the
+    UI entirely — must still be refused without consent. The rule follows the
+    outcome, not whichever field the browser happened to send."""
+    from app.models import Department
+    ft = Department(org_id=seeded["org"], name="Fast Track", active=True)
+    db.session.add(ft); db.session.commit()
+
+    r = _submit_as_browser(client, seeded, "/book", "sneaky-premium",
+                           department_id=str(ft.id))
+    assert b"premium service" in r.data
+    assert db.session.query(Appointment).count() == 0
+
+
+def test_a_typo_on_the_fast_track_door_keeps_it_gold(client, seeded):
+    """A validation error used to re-render the form without the fast_track
+    flag, silently downgrading the premium door to the plain one."""
+    html = client.get("/book/fast-track").get_data(as_text=True)
+    data = _hidden_fields(html)
+    data["_csrf"] = csrf(client, "/book/fast-track")
+    data["consent"] = "1"
+    data["department_id"] = seeded["dept"]
+    data["appointment_date"] = "not-a-date"          # force a 422 re-render
+    data["appointment_time"] = "09:00"
+    data["patient_name"] = "Typo Person"
+    data["phone"] = "08033334447"
+    r = client.post("/book/submit", data=data)
+    assert r.status_code == 422
+    assert 'name="is_fast_track"' in r.get_data(as_text=True)
+
+
 # ------------------------------------------------- the hub points where it says
 def test_hub_gold_card_and_plain_tile_use_different_doors(client, seeded):
     html = client.get("/welcome").get_data(as_text=True)
@@ -127,11 +177,31 @@ def test_queue_join_copy_matches_the_new_routing(client, seeded):
 
 
 # ------------------------------------------------- Request 3: entry routing
-def test_first_time_patient_starts_at_reception(client, seeded):
+# These assert the RECORDS, not just the stage shown on the tracker. A display
+# flag that nothing else knows about is how a tracker ends up promising
+# "you are at Records" while no Records row exists.
+def test_first_time_patient_starts_at_reception_with_a_real_record(client, seeded):
     _join_queue(client, seeded, "New Person", "08099990000")
+
     sess = db.session.query(PersonalTvSession).order_by(PersonalTvSession.id.desc()).first()
     assert sess is not None
     assert sess.current_stage == "RECEPTION"
+
+    # a first-time patient needs a paper folder, so Reception gets a real intake
+    intake = db.session.query(ReceptionIntake).one()
+    assert intake.ref.startswith("RCP-")
+    assert intake.stage == "RECEPTION"
+    assert intake.surname and intake.first_name
+    assert intake.created_by is None, (
+        "self-service queue join must not invent a staff member in the audit trail")
+
+    # ticket, tracker and journey all point at that same intake
+    ticket = db.session.query(QueueTicket).one()
+    assert ticket.intake_id == intake.id
+    assert sess.intake_id == intake.id
+
+    seg = db.session.query(JourneySegment).filter_by(stage="RECEPTION").one()
+    assert seg.intake_id == intake.id
 
 
 def test_returning_patient_starts_at_records(client, seeded):
@@ -141,8 +211,25 @@ def test_returning_patient_starts_at_records(client, seeded):
     db.session.commit()
 
     _join_queue(client, seeded, "Chinwe Obi", "08099991111")
+
     sess = db.session.query(PersonalTvSession).order_by(PersonalTvSession.id.desc()).first()
     assert sess is not None
     assert sess.patient_id == p.id
     assert sess.current_stage == "HIMS", (
         "a patient with an existing folder should skip the paper Reception stage")
+
+    # their folder already exists — minting a second intake would put a
+    # duplicate name on the Reception desk list
+    assert db.session.query(ReceptionIntake).count() == 0
+
+    seg = db.session.query(JourneySegment).filter_by(stage="HIMS").one()
+    assert seg.patient_id == p.id
+
+
+def test_fast_track_choice_survives_onto_the_reception_record(client, seeded):
+    """The premium flag must reach Reception, not just the ticket."""
+    _join_queue(client, seeded, "Premium Person", "08099992222",
+                is_fast_track="1", fast_track_consent="1", fast_track_reason="PREMIUM")
+    intake = db.session.query(ReceptionIntake).one()
+    assert intake.is_fast_track is True
+    assert intake.fast_track_reason == "PREMIUM"
