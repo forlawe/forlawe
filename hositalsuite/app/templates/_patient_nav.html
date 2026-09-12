@@ -1,0 +1,12 @@
+{# Back arrow for patient pages.
+
+   Every patient page needs a way out. Without one, a patient who taps the
+   wrong tile is stranded unless they know their phone's back gesture — and on
+   a shared or borrowed phone many do not.
+
+   Usage:  {% with back_to='/welcome' %}{% include "_patient_nav.html" %}{% endwith %}
+   Defaults to the services hub. #}
+<a href="{{ back_to | default('/welcome') }}" class="patient-back"
+   aria-label="Go back to services">
+  <span aria-hidden="true">‹</span> {{ _('back') }}
+</a>

@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+{% block title %}Referrals & repeat visits{% endblock %}
+{% block content %}
+<div class="spread mb">
+  <h1 style="margin:0">Referrals &amp; Repeat Visits</h1>
+  <a class="btn small secondary" href="/r/{{ hospital.code }}" target="_blank" rel="noopener">Open public share page</a>
+</div>
+<p class="muted">When a happy patient shares their link, or a visitor scans a hospital poster,
+this page shows who came. <b>No prizes, no coupons, no pressure</b> — just a kind “tell a friend”.</p>
+
+<div class="grid cols4 mb">
+  <div class="kpi info"><div class="v">{{ stats.codes }}</div><div class="l">Share-links issued</div></div>
+  <div class="kpi info"><div class="v">{{ stats.clicks }}</div><div class="l">Clicks ({{ stats.days }}d)</div></div>
+  <div class="kpi {{ 'good' if stats.books else 'gray' }}"><div class="v">{{ stats.books }}</div><div class="l">Bookings from links</div></div>
+  <div class="kpi {{ 'good' if stats.conversion else 'gray' }}"><div class="v">{{ stats.conversion }}%</div><div class="l">Click → book</div></div>
+  <div class="kpi info"><div class="v">{{ stats.repeats }}</div><div class="l">Repeat visits ({{ stats.days }}d)</div></div>
+  <div class="kpi"><div class="v">{{ stats.active }}</div><div class="l">Links still active</div></div>
+</div>
+
+<div class="grid cols2 mb">
+  <div class="card pad-lg">
+    <h2>Hospital-wide QR (print this)</h2>
+    <p class="hint">One link for reception, waiting areas and posters. Anyone who scans it
+      is counted here when they book.</p>
+    <div class="center">
+      <img src="/r/{{ hospital.code }}.png" alt="Hospital referral QR"
+           width="180" height="180" style="border:1px solid var(--line);border-radius:12px;background:#fff;padding:8px">
+      <div class="mt"><code id="hosp-link">{{ share_url }}</code></div>
+      <div class="btn-row grid cols2 mt">
+        <button type="button" class="btn small" onclick="hmsCopy('hosp-link')">Copy link</button>
+        <a class="btn small secondary" href="{{ wa }}" target="_blank" rel="noopener">WhatsApp</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Top share-links</h2>
+    {% for row in stats.top %}
+      <div class="row spread mb">
+        <div>
+          <b>{{ row.referral.note or row.referral.code }}</b>
+          <div class="hint">{{ row.referral.kind }} · {{ row.referral.code }}</div>
+        </div>
+        <span class="pill {{ 'green' if row.books else 'gray' }}">{{ row.books }} booked / {{ row.clicks }} clicks</span>
+      </div>
+    {% else %}
+      <p class="muted">No share activity yet. After the first happy patient rates 4 or 5 stars,
+        their personal link will appear here.</p>
+    {% endfor %}
+    <div class="mt">
+      <a class="btn small ghost" href="/reports/referrals?format=csv">⬇ CSV</a>
+      <a class="btn small ghost" href="/reports/referrals?format=pdf">⬇ PDF</a>
+    </div>
+  </div>
+</div>
+
+{% if can_manage %}
+<div class="card mb">
+  <h2>Make a named link (ward, campaign, desk)</h2>
+  <form method="post" action="/referrals/create" class="row">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <input type="text" name="note" placeholder="e.g. Ward A poster" required style="flex:1;min-width:180px">
+    <select name="department_id" style="width:auto">
+      <option value="">— Whole hospital —</option>
+      {% for d in depts %}<option value="{{ d.id }}">{{ d.name }}</option>{% endfor %}
+    </select>
+    <button class="btn small">Create link</button>
+  </form>
+</div>
+{% endif %}
+
+<div class="card" style="padding:0">
+  <div class="table-wrap">
+  <table>
+    <tr>
+      <th>Code</th><th>Kind</th><th>Label</th><th>Clicks</th><th>Bookings</th>
+      <th>Created</th><th>Status</th>{% if can_manage %}<th></th>{% endif %}
+    </tr>
+    {% for row in stats.rows %}
+    <tr>
+      <td>
+        <a href="/r/{{ row.referral.code }}" target="_blank" rel="noopener"><code>{{ row.referral.code }}</code></a>
+        <a class="hint" href="/r/{{ row.referral.code }}.png" download>QR</a>
+      </td>
+      <td>{{ row.referral.kind }}</td>
+      <td>{{ row.referral.note or '—' }}</td>
+      <td>{{ row.clicks }}</td>
+      <td><b>{{ row.books }}</b></td>
+      <td>{{ row.referral.created_at.strftime('%d %b %Y') if row.referral.created_at else '' }}</td>
+      <td><span class="pill {{ 'green' if row.referral.active else 'gray' }}">{{ 'active' if row.referral.active else 'off' }}</span></td>
+      {% if can_manage %}
+      <td>
+        <form method="post" action="/referrals/{{ row.referral.id }}/toggle">
+          <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+          <button class="btn small ghost">{{ 'Turn off' if row.referral.active else 'Turn on' }}</button>
+        </form>
+      </td>
+      {% endif %}
+    </tr>
+    {% endfor %}
+  </table>
+  </div>
+</div>
+
+{% if stats.recent_books %}
+<div class="card mt">
+  <h2>Recent bookings that came from a share-link</h2>
+  {% for a in stats.recent_books %}
+  <div class="list-item">
+    <div class="spread">
+      <span class="t">{{ a.patient_name|first_name }} · {{ a.department.name }}</span>
+      <span class="pill blue">{{ a.ref }}</span>
+    </div>
+    <div class="muted">{{ a.appointment_date.strftime('%d %b %Y') }} at {{ a.appointment_time }}
+      {% if a.is_repeat %}· <span class="pill amber">returning patient</span>{% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+{% endblock %}
+{% block scripts %}
+<script nonce="{{ csp_nonce }}">
+function hmsCopy(id) {
+  var el = document.getElementById(id);
+  var text = el ? (el.innerText || el.value) : '';
+  if (navigator.clipboard) { navigator.clipboard.writeText(text); }
+  else { prompt('Copy this link:', text); }
+  if (window.hmsToast) hmsToast('Link copied');
+  else alert('Copied: ' + text);
+}
+</script>
+{% endblock %}

@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card pad-lg center" style="max-width:560px;margin:30px auto;line-height:1.5">
+  <div style="font-size:2.8rem">
+    {% if code == 404 %}🔍{% elif code == 403 %}🔒{% elif code == 429 %}⏳{% elif code == 500 %}🛠️{% else %}⚠️{% endif %}
+  </div>
+  <h1 style="margin:12px 0 6px">
+    {% if code == 404 %}We couldn't find that page
+    {% elif code == 403 %}You don't have access to that
+    {% elif code == 429 %}Too many tries — please wait a moment
+    {% elif code == 500 %}Something went wrong on our side
+    {% else %}Oops — {{ code }}{% endif %}
+  </h1>
+  <p style="font-size:.95rem;color:#334155;margin:8px 0">
+    {% if message %}
+      {{ message }}
+    {% else %}
+      {% if code == 404 %}The page or record you asked for isn't here — it may have been moved, renamed, or removed. Please check the link or choose from the menu.
+      {% elif code == 403 %}You signed in, but your role doesn't allow this action. If you need access, ask your Admin Manager or Super Admin to update your role.
+      {% elif code == 429 %}You tried too quickly. Wait 1 minute and try again — this protects the system for everyone.
+      {% elif code == 500 %}Our team has been notified. Please refresh the page, or go back to dashboard and try again. If it keeps happening, tell front desk what you were doing.
+      {% else %}We hit a small problem. Please go back and try again, or ask front desk for help.{% endif %}
+    {% endif %}
+  </p>
+  {% if code == 404 %}
+  <p style="font-size:.85rem;color:#64748b;margin-top:8px">Tip: If you were looking for a department like Pharmacy, we removed duplicate names — please pick Pharmacy from the list, not Pharmacy Dept.</p>
+  {% endif %}
+  {% if code == 500 %}
+  <p style="font-size:.85rem;color:#64748b;margin-top:8px">What happened? A small error on our side. What to do next? Refresh, or go to dashboard. Your data is safe — we log errors to fix them.</p>
+  {% endif %}
+  <div style="margin-top:16px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+    <a class="btn secondary" href="/">← Back to dashboard</a>
+    <a class="btn" href="/welcome" style="background:#0e5a8a;color:#fff">Go to patient hub</a>
+  </div>
+  <p style="font-size:.8rem;color:#94a3b8;margin-top:14px">Need help? Call help desk at bottom of page — someone answers during working hours, emergencies day and night.</p>
+</div>
+{% endblock %}

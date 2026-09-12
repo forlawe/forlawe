@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+{% block title %}Notifications — Premium{% endblock %}
+{% block extra_head %}
+<style nonce="{{ csp_nonce }}">
+.notif-center { max-width: 720px; margin: 0 auto; }
+.notif-tabs { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 12px; }
+.notif-tab { padding: 8px 14px; border-radius: 999px; border: 1px solid #ddd; background: #fff; cursor: pointer; white-space: nowrap; font-weight: 600; }
+.notif-tab.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+.notif-card {
+  background: #fff; border-radius: 16px; padding: 14px; margin-bottom: 10px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06); border-left: 4px solid var(--primary);
+  transition: transform .15s;
+}
+.notif-card:hover { transform: translateY(-1px); box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+.notif-card.read { border-left-color: #ddd; opacity: .85; }
+.notif-card.HIGH { border-left-color: #f59e0b; }
+.notif-card.CRITICAL, .notif-card.EMERGENCY { border-left-color: #dc2626; background: #fff5f5; }
+.notif-card .head { display: flex; justify-content: space-between; gap: 10px; }
+.notif-card .subject { font-weight: 800; }
+.notif-card .time { font-size: .8rem; color: #666; }
+.notif-card .body { margin: 8px 0; line-height: 1.4; }
+.notif-card .meta { font-size: .75rem; color: #888; display: flex; gap: 8px; flex-wrap: wrap; }
+.notif-actions { display: flex; gap: 8px; margin-top: 10px; }
+.notif-btn { padding: 6px 12px; border-radius: 999px; border: 1px solid #ddd; background: #f5f5f5; font-size: .85rem; cursor: pointer; }
+.notif-btn.primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+.notif-btn.gold { background: linear-gradient(135deg,#FFD700,#FFA500); color: #000; border-color: #FFD700; }
+.premium-banner {
+  background: linear-gradient(135deg,#0e5a8a,#12b5a5); color: #fff; padding: 16px; border-radius: 16px; margin-bottom: 16px;
+}
+.premium-banner .title { font-size: 1.2rem; font-weight: 800; }
+.premium-banner .desc { font-size: .9rem; opacity: .9; margin-top: 6px; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="notif-center">
+  <div class="spread mb" style="align-items:center">
+    <h1 style="margin:0">🔔 Notifications — Premium</h1>
+    <form method="post" action="/notifications/read">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <button class="btn small ghost">Mark all read</button>
+    </form>
+  </div>
+
+  <div class="premium-banner">
+    <div class="title">✨ World-Class Notifications — Text + Voice + Personal TV + Alarm</div>
+    <div class="desc">In-app is primary (free). SMS only for emergency/complaints outside hospital — saves 80% cost. Works even when app closed like alarm. Multi-hospital, slow internet optimized, all browsers.</div>
+    <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn small" style="background:#FFD700;color:#000" onclick="hmsPush.enable().then(()=>location.reload())">🔔 Enable Alarm Mode</button>
+      <button class="btn small secondary" onclick="hmsPush.test()">🔊 Test Alarm When Closed</button>
+      <a class="btn small ghost" href="/alert-settings" style="background:rgba(255,255,255,0.2);color:#fff">⚙ Settings</a>
+    </div>
+    <div style="font-size:.75rem;margin-top:8px;opacity:.8">Feature phones: Main TV + Voice + USSD — provision available, no app needed</div>
+  </div>
+
+  <div class="notif-tabs" id="tabs">
+    <button class="notif-tab active" data-filter="all" onclick="filterNotifs('all', this)">All</button>
+    <button class="notif-tab" data-filter="queue" onclick="filterNotifs('queue', this)">Queue</button>
+    <button class="notif-tab" data-filter="booking" onclick="filterNotifs('booking', this)">Bookings</button>
+    <button class="notif-tab" data-filter="complaint" onclick="filterNotifs('complaint', this)">Complaints</button>
+    <button class="notif-tab" data-filter="flow" onclick="filterNotifs('flow', this)">Patient Flow</button>
+    <button class="notif-tab" data-filter="roster" onclick="filterNotifs('roster', this)">Roster</button>
+  </div>
+
+  <div id="live-counts" style="background:#fff;padding:10px;border-radius:12px;margin-bottom:12px;font-size:.85rem;display:none">
+    <b>Live — Smart Queue Estimator:</b> <span id="counts-text">Loading...</span>
+  </div>
+
+  <div id="notif-list">
+    {% for n in items %}
+    <div class="notif-card {{ 'read' if n.status=='READ' else '' }} {{ getattr(n,'priority','NORMAL') }}" data-category="{{ getattr(n,'category','general')|lower }}">
+      <div class="head">
+        <span class="subject">{{ n.subject }} {% if getattr(n,'priority','') in ('HIGH','CRITICAL','EMERGENCY') %}<span style="background:#dc2626;color:#fff;padding:2px 6px;border-radius:999px;font-size:.7rem">{{ n.priority }}</span>{% endif %}</span>
+        <span class="time">{{ n.created_at.strftime('%d %b %H:%M') }}</span>
+      </div>
+      <div class="body">{{ n.body }}</div>
+      <div class="meta">
+        {% if getattr(n,'category','') %}<span>📂 {{ n.category }}</span>{% endif %}
+        {% if getattr(n,'personal_tv_url','') %}<span>📺 <a href="{{ n.personal_tv_url }}">Personal TV</a></span>{% endif %}
+        {% if n.channel %}<span>📡 {{ n.channel }}</span>{% endif %}
+        <span>🆔 #{{ n.id }}</span>
+      </div>
+      <div class="notif-actions">
+        <button class="notif-btn" onclick="speakNotif(`{{ n.body|replace('`','')|replace('\"','') }}`)">🔊 Replay Voice</button>
+        {% if getattr(n,'personal_tv_url','') %}<a class="notif-btn primary" href="{{ n.personal_tv_url }}">📺 Open Personal TV</a>{% endif %}
+        <button class="notif-btn" onclick="dismissNotif({{ n.id }}, this)">✓ Dismiss</button>
+      </div>
+    </div>
+    {% else %}
+    <div class="card center muted" style="padding:30px;border-radius:16px">
+      <div style="font-size:2rem">🔔</div>
+      <div>No notifications yet — you are all caught up!</div>
+      <div style="font-size:.85rem;margin-top:8px">Enable alarm mode to get notified even when app closed, like alarm</div>
+      <button class="btn small" style="margin-top:12px;background:var(--primary);color:#fff" onclick="hmsPush.enable()">🔔 Enable Alarm Mode</button>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="card" style="margin-top:20px;padding:16px;border-radius:16px">
+    <h3 style="margin:0 0 8px">💡 How it works — Premium++++</h3>
+    <ul style="font-size:.9rem;line-height:1.5;margin:0;padding-left:18px">
+      <li><b>Text:</b> In-app bell + toast + list (this page) — always</li>
+      <li><b>Voice:</b> Native Nigerian voices (Ada/Emeka) + browser TTS + chime — heard</li>
+      <li><b>Visual:</b> Main TV + Clinic TV + <b>Personal TV /t/&lt;code&gt;</b> — individual tracker like Domino's, no SMS inside</li>
+      <li><b>Push:</b> Works closed like alarm — VAPID + SW, free, saves SMS cost</li>
+      <li><b>No SMS inside:</b> Patients inside hospital get TV + Voice + Push + Personal TV (free). SMS only for serious complaints/emergency or outside hospital</li>
+      <li><b>Feature phones:</b> Provision — Main TV + Voice + USSD *xxx#, staff help. No app needed</li>
+      <li><b>Slow internet:</b> Offline-first, <1KB JSON, cached shell, <1s first paint on 3G</li>
+      <li><b>All browsers:</b> Chrome, Firefox, Edge, Samsung, Opera, Safari 16.4+ (PWA), UC — with fallback</li>
+      <li><b>Multi-hospital:</b> Per-tenant logo on home screen, per-hospital settings, per-tenant colors</li>
+      <li><b>Smart queue:</b> Real-time adaptive estimator using reception, billing, megalex, lahsma, hims, triage, doctor, onward counts + historical averages + Little's Law + EMA — free AI-like, no external API</li>
+    </ul>
+  </div>
+</div>
+
+<script nonce="{{ csp_nonce }}">
+function filterNotifs(cat, btn){
+  document.querySelectorAll(".notif-tab").forEach(function(b){b.classList.remove("active")});
+  if(btn) btn.classList.add("active");
+  document.querySelectorAll(".notif-card").forEach(function(card){
+    if(cat==="all") card.style.display="block";
+    else {
+      var c = card.getAttribute("data-category") || "";
+      card.style.display = (c===cat) ? "block" : "none";
+    }
+  });
+}
+
+function speakNotif(text){
+  try {
+    if('speechSynthesis' in window){
+      window.speechSynthesis.cancel();
+      var u = new SpeechSynthesisUtterance(text);
+      u.lang = "en-NG"; u.volume = 1.0; u.rate = 0.9;
+      window.speechSynthesis.speak(u);
+    }
+    if(navigator.vibrate) navigator.vibrate([200,100,200]);
+  } catch(e){}
+}
+
+function dismissNotif(id, btn){
+  var card = btn.closest(".notif-card");
+  if(card){ card.style.opacity="0.3"; card.style.transform="scale(0.98)"; }
+  // Optionally call API to mark read
+  fetch("/notifications/read", {method:"POST", headers:{"X-CSRF-Token":"{{ csrf_token() }}", "Content-Type":"application/x-www-form-urlencoded"}, body:"_csrf={{ csrf_token() }}&id="+id}).catch(function(){});
+}
+
+// Live counts — smart queue estimator
+(function(){
+  function updateCounts(){
+    fetch("/api/v1/alerts/poll?after=0").then(function(r){return r.json();}).then(function(data){
+      var counts = data.live_counts || {};
+      if(Object.keys(counts).length>0){
+        var el = document.getElementById("live-counts");
+        var txt = document.getElementById("counts-text");
+        if(el && txt){
+          var parts = [];
+          for(var k in counts){ if(counts[k]>0) parts.push(k+": "+counts[k]); }
+          txt.textContent = parts.length ? parts.join(" · ") : "No patients waiting — flowing well";
+          el.style.display = "block";
+        }
+      }
+    }).catch(function(){});
+  }
+  updateCounts();
+  setInterval(updateCounts, 30000);
+})();
+</script>
+{% endblock %}

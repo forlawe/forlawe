@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="{{ lang if lang else 'en' }}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+{% include "_pwa_head.html" %}
+<title>Phone code — {{ hospital.name if hospital else 'Hospital Suite' }}</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}?v={{ app_version }}">
+</head>
+<body>
+<div class="login-wrap">
+  <div class="card login-card pad-lg">
+    <div class="center mb">
+      <div style="font-size:2.4rem">📱</div>
+      <h1 style="margin:4px 0 2px">Enter your phone code</h1>
+      <div class="muted">Hello {{ name }}. Open the authenticator app on your phone
+        and type the 6-digit number. It changes every 30 seconds.</div>
+    </div>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for cat, msg in messages %}<div class="flash {{ cat }}">{{ msg }}</div>{% endfor %}
+    {% endwith %}
+    <form method="post" action="/mfa/verify">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <label>6-digit code</label>
+      <input type="text" name="code" inputmode="numeric" autocomplete="one-time-code"
+             maxlength="16" required autofocus placeholder="123456"
+             style="letter-spacing:.2em;font-size:1.4rem;text-align:center">
+      <div class="hint">Lost your phone? Type one of the spare codes you saved
+        when you turned this on.</div>
+      <div class="mt">
+        <button class="btn big" type="submit" style="width:100%">Continue</button>
+      </div>
+    </form>
+    <form method="post" action="/logout" class="center mt">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <button class="btn ghost small" type="submit">Sign out instead</button>
+    </form>
+  </div>
+</div>
+</body>
+</html>

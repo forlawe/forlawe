@@ -1,0 +1,8 @@
+{# Hospital name + logo for public portal headers #}
+{% set h = org or hospital %}
+{% if h and h.logo_path %}
+  <img class="auth-logo" src="/branding/logo" alt="{{ h.name }}">
+{% else %}
+  <div style="font-size:2rem">🏥</div>
+{% endif %}
+<h1>{{ h.name if h else 'Hospital' }}</h1>

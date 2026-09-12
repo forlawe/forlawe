@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+{% block title %}Consulting room{% endblock %}
+{% block content %}
+{# Emergency always on A&E page — founder rule: HIMS and Accident & Emergency always 24/7 with voice alarm to all #}
+{% if session and session.clinic == 'EMERGENCY' %}
+  {% set show_always = True %}
+  {% include "_emergency_banner.html" %}
+{% elif doctor_clinic == 'EMERGENCY' %}
+  {% set show_always = True %}
+  {% include "_emergency_banner.html" %}
+{% else %}
+  {% include "_emergency_banner.html" %}
+{% endif %}
+<h1>🩻 My consulting room</h1>
+
+{% if session and session.is_open %}
+  <div class="card pad-lg mb" style="border-left:6px solid #1a7f37">
+    <div class="spread">
+      <div>
+        <div style="font-size:1.05rem;font-weight:800">🟢 Ready to consult</div>
+        <div class="muted">{{ clinic_labels.get(session.clinic, session.clinic) }}
+          · {{ session.consulting_room }}</div>
+      </div>
+      <form method="post" action="/triage/not-ready">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        <button class="btn small secondary">Stop taking patients</button>
+      </form>
+    </div>
+  </div>
+{% else %}
+  <div class="card pad-lg mb">
+    <h2 style="margin-top:0">Tell Triage you are ready</h2>
+    <p class="hint">You must also be on today's roster, or Triage cannot send
+      you patients even after clicking ready.</p>
+    <form method="post" action="/triage/ready">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <div class="grid cols2">
+        <div><label style="margin-top:0">Clinic</label>
+          <select name="clinic" required>
+            {% for code, label in clinics %}<option value="{{ code }}">{{ label }}</option>{% endfor %}
+          </select></div>
+        <div><label style="margin-top:0">Consulting room</label>
+          <select name="consulting_room" required>
+            {% for r in rooms %}<option value="{{ r }}">{{ r }}</option>{% endfor %}
+          </select></div>
+      </div>
+      <button class="btn big mt">🟢 I am ready to consult</button>
+    </form>
+  </div>
+{% endif %}
+
+<div class="card pad-lg mb" style="background:#f3e8ff;border-left:4px solid #8b5cf6">
+  <b>💜 Priority Lane + Journey Time Active</b><br>
+  <span style="font-size:.9rem">⭐ Priority patients first (elderly 60+, pregnant, child under 5, wheelchair) — half wait time. Each patient shows estimated total journey time to going home. TV shows same. Voice announces priority.</span>
+</div>
+
+{# ---------------- the patient in the room right now ---------------- #}
+{% if current %}
+{% set p = patients.get(current.patient_id) %}
+<div class="card pad-lg mb" style="border-left:6px solid #0e5a8a; {% if current.is_fast_track %}background:#f3e8ff;border-left-color:#8b5cf6{% endif %}">
+  <div class="muted" style="font-size:.75rem;text-transform:uppercase;letter-spacing:.06em">
+    In the room with you now {% if current.is_fast_track %}⭐ Priority — {{ current.fast_track_reason }}{% endif %}</div>
+  <div style="font-size:1.25rem;font-weight:800">{% if current.is_fast_track %}⭐ {% endif %}{{ p.full_name if p else '—' }}</div>
+  <div class="muted" style="font-size:.85rem">{{ p.hospital_number if p }} {% if current.is_fast_track %}· ⭐ Priority Lane{% endif %}</div>
+  {% if p and p.care_flags %}
+  <div class="notice mt" style="text-align:left">
+    <b>⚠ Needs help:</b> {{ p.care_flags | join(' · ') }}</div>
+  {% endif %}
+  {% if current.is_fast_track %}
+  <div class="notice mt" style="text-align:left;background:#f3e8ff;border-left:4px solid #8b5cf6">
+    <b>⭐ Priority Lane:</b> {{ current.fast_track_reason }} — patient prioritized, seen first at every desk.
+  </div>
+  {% endif %}
+
+  <form method="post" action="/consulting-room/{{ current.id }}/finish" class="mt">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <h3 style="margin-bottom:4px">Where does this patient go next?</h3>
+    {% if doctor_clinic %}<p class="hint" style="margin:0 0 4px">You are in <b>{{ clinic_labels.get(doctor_clinic, doctor_clinic) }}</b> — showing {{ 'only relevant' if is_shortlisted else 'all' }} destinations.</p>{% endif %}
+    {% if all_suspended %}
+      <div class="notice" style="border-left:4px solid #b91c1c;text-align:left">
+        <b>⚠ All destinations for this clinic are suspended.</b> Tell Admin to activate some in Clinics, Rooms &amp; Destinations. No patient can be sent onward until that is fixed.
+      </div>
+    {% else %}
+      <p class="hint" style="margin-top:0">Tick as many as apply — one, two or three.
+        Tick nothing if they are finished and can go home.</p>
+      <div class="grid cols2">
+        {% for code, label in destinations %}
+        <label style="font-weight:400;margin:3px 0">
+          <input type="checkbox" name="destination" value="{{ code }}" style="width:auto">
+          {{ label }}
+        </label>
+        {% endfor %}
+      </div>
+    {% endif %}
+    <label class="mt">A word for the next desk (optional)</label>
+    <input type="text" name="note" maxlength="200" id="onward_note"
+           placeholder="e.g. bring the card back to me afterwards">
+    <button type="button" class="mic-btn" data-lang="en-NG"
+            onclick="hmsVoice.start(this,'onward_note')">🎤 Speak</button>
+    <p class="hint">This is a direction to a desk, not a prescription or a
+      clinical note — this app is not a medical record.</p>
+    <button class="btn big mt">✅ Finish consultation</button>
+  </form>
+</div>
+{% endif %}
+
+<h2>My call room queue — Priority first, with journey time</h2>
+{% if not rows %}
+  <div class="card pad-lg"><p class="muted" style="margin:0">
+    No patients waiting. Triage will send them to you — either by name, or
+    into your clinic for whoever is free — and you will hear the call.</p></div>
+{% else %}
+  {% for r in rows %}
+  {% if not current or r.visit.id != current.id %}
+  <div class="card pad-lg mb" style="border-left:4px solid {% if r.visit.is_fast_track %}#8b5cf6{% else %}#f59e0b{% endif %}; {% if r.visit.is_fast_track %}background:#f3e8ff{% endif %}">
+    <div class="spread">
+      <div>
+        <div style="font-size:1.05rem;font-weight:800">{% if r.visit.is_fast_track %}⭐ {% endif %}{{ r.patient.full_name if r.patient else '—' }} {% if r.visit.is_fast_track %}<span class="pill" style="background:#8b5cf6;color:#fff;font-size:.7rem">⭐ {{ r.visit.fast_track_reason }}</span>{% endif %}</div>
+        <div class="muted" style="font-size:.85rem">
+          {{ r.patient.hospital_number if r.patient }} ·
+          {{ clinic_labels.get(r.visit.clinic, r.visit.clinic) }}
+          {% if r.visit.is_fast_track %}· ⭐ Priority{% endif %}
+        </div>
+      </div>
+      <span>
+        {% if r.unclaimed %}
+        <span class="pill" style="background:#0e5a8a;color:#fff"
+              title="Placed in your clinic but not assigned to anyone — call them in to take them">
+          for the clinic</span>
+        {% endif %}
+        <span class="pill {{ 'red' if r.waited >= 30 else 'amber' }} {% if r.visit.is_fast_track %}purple{% endif %}">waiting {{ (r.waited)|hm }} {% if r.visit.is_fast_track %}⭐{% endif %}</span>
+      </span>
+    </div>
+    {% if r.patient and r.patient.care_flags %}
+    <div class="notice mt" style="text-align:left">
+      <b>⚠ Needs help:</b> {{ r.patient.care_flags | join(' · ') }}</div>
+    {% endif %}
+    {% if r.journey_estimate %}
+    <div class="notice mt" style="text-align:left;background:#f0f9ff;border-left:3px solid #0e5a8a">
+      <b>⏱ Estimated journey:</b> {{ (r.journey_estimate.total)|hm }} total — {% for st in r.journey_estimate.stages %}{{ st.label }} {{ (st.minutes)|hm }}{% if not loop.last %} → {% endif %}{% endfor %} {% if r.journey_estimate.fast_track %}<span style="color:#8b5cf6;font-weight:800">· Priority (half time)</span>{% endif %}
+    </div>
+    {% endif %}
+    <form method="post" action="/consulting-room/{{ r.visit.id }}/call-in" class="mt">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <button class="btn" style="{% if r.visit.is_fast_track %}background:#8b5cf6{% endif %}">📣 Call this patient in {% if r.visit.is_fast_track %}⭐ Priority{% endif %}</button>
+    </form>
+  </div>
+  {% endif %}
+  {% endfor %}
+{% endif %}
+{% endblock %}

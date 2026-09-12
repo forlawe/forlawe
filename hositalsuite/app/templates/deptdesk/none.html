@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}My department{% endblock %}
+{% block content %}
+<h1>🏥 My department</h1>
+<div class="notice" style="border-left-color:var(--amber);background:var(--amber-bg)">
+  <b>{{ note }}</b>
+  <p style="margin-bottom:0">This page shows the work coming into your own
+    department. Until somebody records which department you work in, there is
+    nothing here to show you — and guessing would be worse than saying so.</p>
+</div>
+<p class="hint">Ask whoever manages the system to open
+  <b>Admin → Users</b>, find your name, and set your department.</p>
+{% endblock %}

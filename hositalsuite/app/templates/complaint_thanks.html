@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Complaint received{% endblock %}
+{% block content %}
+{% with back_to="/welcome" %}{% include "_patient_nav.html" %}{% endwith %}
+<div class="card pad-lg center" style="max-width:520px;margin:30px auto">
+  <div style="font-size:3rem">✅</div>
+  <h1>{{ _('received') }}</h1>
+  <p>This is your <b>acknowledgment</b>. Hospital management has been notified.
+     A copy of this message is also going to your phone by <b>SMS and WhatsApp</b>.</p>
+  <div class="notice" style="text-align:left">
+    <b>{{ _('ref_no') }}:</b><br>
+    <span style="font-size:1.3rem;font-weight:800;letter-spacing:.03em">{{ ref }}</span><br>
+    <small>Please write this down or take a screenshot. You can use it to check the status
+    of your complaint — no account needed.</small>
+  </div>
+  {% if ack %}
+  <div class="notice" style="text-align:left;border-left-color:var(--green);background:var(--green-bg)">
+    <b>Message to you:</b><br>{{ ack }}
+  </div>
+  {% endif %}
+  <a class="btn secondary mt" href="/complaint/status?ref={{ ref }}">{{ _('check_status') }}</a>
+  <a class="btn ghost mt" href="/complaint">Submit another complaint</a>
+</div>
+{% include "_help_desk.html" %}
+{% endblock %}

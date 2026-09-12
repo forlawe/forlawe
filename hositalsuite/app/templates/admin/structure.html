@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+{% block title %}Departments{% endblock %}
+{% block content %}
+<h1>Departments, Sections &amp; Units</h1>
+<p class="muted">Assign the responsible HOD to each department (or specific section/unit).
+Complaints are routed automatically to the most specific HOD configured.</p>
+
+{% for d in depts %}
+<div class="card mb">
+  <div class="spread">
+    <h2 style="margin:0">{{ d.name }} {% if not d.active %}<span class="pill red">inactive</span>{% endif %}</h2>
+    <span class="muted">HOD: {{ d.hod.name if d.hod else '—' }}</span>
+  </div>
+  {% if d.sections %}
+  <ul>
+    {% for s in d.sections %}
+    <li><b>{{ s.name }}</b>{% if s.hod %} <span class="muted">(HOD: {{ s.hod.name }})</span>{% endif %}
+      <details style="display:inline-block"><summary class="btn small ghost" style="list-style:none">Edit</summary>
+        <form method="post" action="/admin/structure/section/{{ s.id }}/edit" class="card mt">
+          <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+          <input type="text" name="name" value="{{ s.name }}">
+          <select name="hod_user_id" class="mt" style="margin-top:6px">
+            <option value="">— No HOD —</option>
+            {% for h in hods %}<option value="{{ h.id }}" {{ 'selected' if s.hod_user_id==h.id }}>{{ h.name }}</option>{% endfor %}
+          </select>
+          <button class="btn small mt">Save section</button>
+        </form>
+      </details>
+      <form method="post" action="/admin/structure/section/{{ s.id }}/delete" style="display:inline"
+            onsubmit="return confirm('Delete section {{ s.name }}?')">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        <button class="btn small danger">Delete</button>
+      </form>
+      {% if s.units %}<ul>
+        {% for u in s.units %}
+        <li>{{ u.name }}{% if u.hod %} <span class="muted">(HOD: {{ u.hod.name }})</span>{% endif %}
+          <details style="display:inline-block"><summary class="btn small ghost" style="list-style:none">Edit</summary>
+            <form method="post" action="/admin/structure/unit/{{ u.id }}/edit" class="card mt">
+              <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+              <input type="text" name="name" value="{{ u.name }}">
+              <select name="hod_user_id" class="mt" style="margin-top:6px">
+                <option value="">— No HOD —</option>
+                {% for h in hods %}<option value="{{ h.id }}" {{ 'selected' if u.hod_user_id==h.id }}>{{ h.name }}</option>{% endfor %}
+              </select>
+              <button class="btn small mt">Save unit</button>
+            </form>
+          </details>
+          <form method="post" action="/admin/structure/unit/{{ u.id }}/delete" style="display:inline"
+                onsubmit="return confirm('Delete unit {{ u.name }}?')">
+            <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+            <button class="btn small danger">Delete</button>
+          </form>
+        </li>
+        {% endfor %}
+      </ul>{% endif %}
+    </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+  <div class="row mt">
+    <form method="post" action="/admin/structure/department/{{ d.id }}/toggle">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <button class="btn small ghost">{{ 'Suspend' if d.active else 'Activate' }}</button>
+    </form>
+    <form method="post" action="/admin/structure/department/{{ d.id }}/delete"
+          onsubmit="return confirm('Permanently delete {{ d.name }}?')">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <button class="btn small danger">Delete</button>
+    </form>
+    <details>
+      <summary class="btn small ghost" style="list-style:none">Edit / HOD / roster system</summary>
+      <form method="post" action="/admin/structure/department" class="card mt">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        <input type="hidden" name="department_id" value="{{ d.id }}">
+        <input type="text" name="name" value="{{ d.name }}">
+        <select name="hod_user_id" class="mt" style="margin-top:8px">
+          <option value="">— No HOD (or not a system user) —</option>
+          {% for h in hods %}<option value="{{ h.id }}" {{ 'selected' if d.hod_user_id==h.id }}>{{ h.name }}</option>{% endfor %}
+        </select>
+        <input type="text" name="hod_name" class="mt" style="margin-top:8px"
+               value="{{ d.hod_name or '' }}" placeholder="HOD full name">
+        <input type="tel" name="hod_phone" class="mt" style="margin-top:8px" inputmode="tel"
+               value="{{ d.hod_phone or '' }}" placeholder="HOD phone e.g. 08012345678">
+        <select name="roster_mode" class="mt" style="margin-top:8px">
+          {% for m, label in roster_modes.items() %}
+          <option value="{{ m }}" {{ 'selected' if (d.roster_mode or 'two_12h')==m }}>Roster: {{ label }}</option>
+          {% endfor %}
+        </select>
+        <select name="roster_staff_per_shift" class="mt" style="margin-top:8px">
+          {% for n in [1,2,3,4,5,6,8,10,12,15,20] %}
+          <option value="{{ n }}" {{ 'selected' if (d.roster_staff_per_shift or 1)==n }}>{{ n }} staff on duty per shift</option>
+          {% endfor %}
+        </select>
+        <button class="btn small mt">Save</button>
+      </form>
+    </details>
+    <details>
+      <summary class="btn small ghost" style="list-style:none">+ Section</summary>
+      <form method="post" action="/admin/structure/section" class="card mt">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        <input type="hidden" name="department_id" value="{{ d.id }}">
+        <input type="text" name="name" placeholder="Section name" required>
+        <button class="btn small mt">Add section</button>
+      </form>
+    </details>
+    {% for s in d.sections %}
+    <details>
+      <summary class="btn small ghost" style="list-style:none">+ Unit in {{ s.name }}</summary>
+      <form method="post" action="/admin/structure/unit" class="card mt">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        <input type="hidden" name="section_id" value="{{ s.id }}">
+        <input type="text" name="name" placeholder="Unit name" required>
+        <button class="btn small mt">Add unit</button>
+      </form>
+    </details>
+    {% endfor %}
+  </div>
+</div>
+{% endfor %}
+
+<div class="card pad mb" style="max-width:560px">
+  <h2 style="margin-top:0">🏥 Standard hospital departments</h2>
+  <p class="muted" style="margin-top:0">Adds the departments a general hospital normally has —
+    A&amp;E, Internal Medicine, Surgery, O&amp;G, Paediatrics, Laboratory, Pharmacy, Radiology,
+    Nursing Services, HIMS, Finance, Admin &amp; HR, Engineering, Environmental Health and more,
+    each with its usual sections and units.</p>
+  <p class="hint">Safe to press at any time: departments you already have are left exactly as they are.</p>
+  <form method="post" action="/admin/structure/install-standard">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <button class="btn secondary">➕ Add any missing standard departments</button>
+  </form>
+</div>
+
+<div class="card pad-lg" style="max-width:560px">
+  <h2>Add department</h2>
+  <form method="post" action="/admin/structure/department">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <label>Name</label><input type="text" name="name" required>
+    <label>HOD — pick a staff account (optional)</label>
+    <select name="hod_user_id"><option value="">— None / not a system user —</option>
+      {% for h in hods %}<option value="{{ h.id }}">{{ h.name }}</option>{% endfor %}</select>
+
+    <label>HOD full name <span class="req">*</span></label>
+    <input type="text" name="hod_name" required placeholder="e.g. Dr. Amina Bello">
+
+    <label>HOD phone number <span class="req">*</span></label>
+    <input type="tel" name="hod_phone" required inputmode="tel" placeholder="08012345678">
+    <p class="hint">The HOD's name and phone are stored on the department, so you can record a
+      head of department even before they have a login.</p>
+
+    <button class="btn mt">Add department</button>
+  </form>
+</div>
+{% endblock %}

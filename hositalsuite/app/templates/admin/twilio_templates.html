@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}SMS & WhatsApp Templates — Copy & Paste{% endblock %}
+{% block content %}
+<h1>📋 SMS & WhatsApp Templates — Copy & Paste Ready (Termii & Twilio)</h1>
+<p class="muted">All templates ≤160 chars, no emoji, no ₦, DND channel for Termii. Click copy button.</p>
+
+<div class="card pad mb">
+  <h2>Quick Copy — Patient SMS (Termii DND + Twilio SMS)</h2>
+  <div id="samples">
+    {% for key, text in samples %}
+      <div style="border-bottom:1px solid #eee;padding:8px 0;display:flex;gap:8px;align-items:center">
+        <code style="min-width:160px">{{ key }}</code>
+        <span style="flex:1;font-family:monospace;background:#f5f5f5;padding:4px 8px;border-radius:4px">{{ text }}</span>
+        <button class="btn small" onclick="navigator.clipboard.writeText(`{{ text }}`); this.textContent='Copied!'; setTimeout(()=>this.textContent='Copy',1000)">Copy</button>
+        <span class="muted" style="font-size:.75rem">{{ text|length }} chars</span>
+      </div>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="card pad mb">
+  <h2>Full Guide — Markdown</h2>
+  <pre style="background:#f5f5f5;padding:12px;overflow:auto;white-space:pre-wrap;font-size:.85rem">{{ md_content }}</pre>
+  <button class="btn small secondary" onclick="navigator.clipboard.writeText(document.querySelector('pre').textContent); this.textContent='Copied All!'; setTimeout(()=>this.textContent='Copy All',1000)">Copy All</button>
+</div>
+
+<div class="card pad mb">
+  <h2>Termii Curl — Copy & Paste</h2>
+  <pre style="background:#f5f5f5;padding:12px;overflow:auto;font-size:.8rem">curl -X POST https://api.ng.termii.com/api/sms/send \
+  -H "Content-Type: application/json" \
+  -d '{
+    "api_key": "TLyourkey",
+    "from": "GHIJEDE",
+    "to": "+2348012345678",
+    "sms": "GHIJEDE: Your sign-in code is 847291. It dies in 10 minutes.",
+    "type": "plain",
+    "channel": "dnd"
+  }'</pre>
+</div>
+
+<div class="card pad">
+  <h2>Twilio SMS Curl — Copy & Paste</h2>
+  <pre style="background:#f5f5f5;padding:12px;overflow:auto;font-size:.8rem">curl -X POST https://api.twilio.com/2010-04-01/Accounts/ACxxx/Messages.json \
+  -u ACxxx:auth_token \
+  --data-urlencode "From=+12125551234" \
+  --data-urlencode "To=+2348012345678" \
+  --data-urlencode "Body=GHIJEDE: Your sign-in code is 847291. It dies in 10 minutes."</pre>
+</div>
+
+<div class="card pad mt">
+  <h2>Twilio WhatsApp Curl — Copy & Paste</h2>
+  <pre style="background:#f5f5f5;padding:12px;overflow:auto;font-size:.8rem">curl -X POST https://api.twilio.com/2010-04-01/Accounts/ACxxx/Messages.json \
+  -u ACxxx:auth_token \
+  --data-urlencode "From=whatsapp:+14155238886" \
+  --data-urlencode "To=whatsapp:+2348012345678" \
+  --data-urlencode "Body=GHIJEDE: Visit booked Mon 24 Aug at 09:00, OPD. Ref BK24082401. Come 15 min early."</pre>
+</div>
+
+{% endblock %}

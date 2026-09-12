@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="{{ lang }}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+{% include "_pwa_head.html" %}
+<meta name="theme-color" content="#0e5a8a">
+<title>{{ _('hub_chat') }} — {{ org.name if org else 'Hospital' }}</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}?v={{ app_version }}">
+<style nonce="{{ csp_nonce }}">
+/* ------------------------------------------------------------------
+   Chat layout.
+
+   THE BUG THIS REPLACES: the old page used
+       .chat{height: calc(100vh minus a guessed header height)}
+   inside normal page flow, under a tall hospital header. On a phone that
+   pushed the typing box to y=921px on an 844px-tall screen — completely
+   BELOW THE FOLD. Patients saw a greeting, a huge empty gap, and no way to
+   type anything at all.
+
+   Now the page is a fixed full-height flex column: header, scrolling
+   messages, and a composer PINNED to the bottom. The typing box is always
+   on screen no matter how long the conversation gets.
+   ------------------------------------------------------------------ */
+html,body{height:100%;margin:0}
+body{display:flex;flex-direction:column;background:var(--bg,#eef2f6);
+     /* dvh follows the mobile browser chrome as it hides/shows; vh is the fallback */
+     height:100vh;height:100dvh;overflow:hidden}
+
+.chat-head{flex:0 0 auto;background:linear-gradient(160deg,#0e5a8a,#0a4468);color:#fff;
+  padding:10px 14px;display:flex;align-items:center;gap:10px;box-shadow:0 2px 10px rgba(0,0,0,.18)}
+.chat-head a.back{color:#fff;text-decoration:none;font-size:1.5rem;line-height:1;padding:4px 6px;
+  border-radius:8px;flex-shrink:0}
+.chat-head a.back:hover{background:rgba(255,255,255,.14)}
+.chat-head .who{min-width:0}
+.chat-head .who b{display:block;font-size:.98rem;line-height:1.2;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chat-head .who span{font-size:.74rem;opacity:.85}
+.chat-head img{height:34px;width:34px;object-fit:contain;background:#fff;border-radius:8px;
+  padding:2px;flex-shrink:0}
+
+.disclosure{flex:0 0 auto;font-size:.7rem;color:#5a6b7b;text-align:center;
+  padding:6px 12px;background:#fff7e6;border-bottom:1px solid #f0e0bb}
+
+.msgs{flex:1 1 auto;overflow-y:auto;-webkit-overflow-scrolling:touch;
+  padding:12px;display:flex;flex-direction:column;gap:10px}
+.bub{max-width:86%;padding:11px 14px;border-radius:16px;font-size:.95rem;line-height:1.45;
+  white-space:pre-wrap;word-wrap:break-word;overflow-wrap:anywhere}
+.bub.bot{background:#fff;border:1px solid #dbe4ec;border-bottom-left-radius:4px;
+  box-shadow:0 1px 4px rgba(16,42,67,.08);align-self:flex-start}
+.bub.user{background:#0e5a8a;color:#fff;align-self:flex-end;border-bottom-right-radius:4px}
+.bub.err{background:#fdecec;border-color:#f3c2c2;color:#8c1d1d}
+
+.typing{align-self:flex-start;display:flex;gap:4px;padding:12px 16px;background:#fff;
+  border:1px solid #dbe4ec;border-radius:16px;border-bottom-left-radius:4px}
+.typing i{width:7px;height:7px;border-radius:50%;background:#9bb0c2;display:block;
+  animation:blink 1.3s infinite}
+.typing i:nth-child(2){animation-delay:.18s}
+.typing i:nth-child(3){animation-delay:.36s}
+@keyframes blink{0%,60%,100%{opacity:.25}30%{opacity:1}}
+
+.fb{display:flex;gap:10px;align-self:flex-start;margin:-4px 0 2px 6px}
+.fb button{background:none;border:none;font-size:1.05rem;cursor:pointer;opacity:.55;padding:2px}
+.fb button:hover{opacity:1}
+.fb .said{font-size:.75rem;color:#5a8a6a;align-self:center}
+
+.quick{flex:0 0 auto;display:flex;gap:6px;overflow-x:auto;padding:8px 12px;
+  background:#fff;border-top:1px solid #e3e9ef;-webkit-overflow-scrolling:touch}
+.quick::-webkit-scrollbar{display:none}
+.chip{background:#f2f6fa;border:1.5px solid #dbe4ec;border-radius:999px;padding:8px 13px;
+  font-size:.8rem;font-weight:650;cursor:pointer;color:#2c4a63;white-space:nowrap;flex-shrink:0}
+.chip:hover{border-color:#0e5a8a;color:#0e5a8a}
+
+/* The composer is PINNED — this is the fix. It can never scroll off-screen. */
+.composer{flex:0 0 auto;display:flex;gap:8px;padding:10px 12px;background:#fff;
+  border-top:1px solid #dbe4ec;box-shadow:0 -2px 10px rgba(16,42,67,.06);
+  padding-bottom:calc(10px + env(safe-area-inset-bottom))}
+.composer input{flex:1 1 auto;min-width:0;margin:0;padding:12px 14px;font-size:1rem;
+  border:1.5px solid #cfdae4;border-radius:24px;background:#f7fafc;min-height:48px}
+.composer input:focus{outline:none;border-color:#0e5a8a;background:#fff}
+.composer button{flex:0 0 auto;min-height:48px;border-radius:24px;border:none;cursor:pointer;
+  font-weight:700;font-size:.95rem}
+.composer .mic{width:48px;background:#f2f6fa;border:1.5px solid #cfdae4;font-size:1.15rem}
+.composer .mic.rec{background:#fdecec;border-color:#e07070}
+.composer .go{background:#0e5a8a;color:#fff;padding:0 18px}
+.composer .go:disabled{opacity:.5;cursor:default}
+</style>
+</head>
+<body>
+<a class="skip-link" href="#main-content">Skip to main content</a>
+<main id="main-content" style="display:contents">
+
+<div class="chat-head">
+  <a class="back" href="/welcome" title="Back to services" aria-label="Back to services">‹</a>
+  {% if org and org.logo_path %}<img src="/branding/logo" alt="">{% endif %}
+  <div class="who">
+    <b>{{ _('hub_chat') }}</b>
+    <span>{{ org.name if org else 'Hospital' }}</span>
+  </div>
+  {% if hospital and hospital.phone %}
+  <a class="back" style="margin-left:auto" href="tel:{{ hospital.phone | replace(' ', '') }}"
+     title="Call the hospital help desk" aria-label="Call the hospital help desk">📞</a>
+  {% endif %}
+</div>
+
+<div class="disclosure">
+  🤖 {{ _('chat_disclosure') }}
+</div>
+
+<div class="msgs" id="msgs" aria-live="polite"></div>
+
+<div class="quick" id="chips">
+  <button class="chip" data-q="Book an appointment">📅 Book</button>
+  <button class="chip" data-q="I want Fast Track">⭐ Fast Track</button>
+  <button class="chip" data-q="What are your opening hours?">🕐 Hours</button>
+  <button class="chip" data-q="How much is my bill?">🧾 Bills</button>
+  <button class="chip" data-q="I want to make a complaint">📣 Complaint</button>
+  <button class="chip" data-q="I am pregnant and want to book ANC">🤰 ANC</button>
+  <button class="chip" data-q="Where is the hospital?">🗺️ Directions</button>
+  <button class="chip" data-q="Talk to a human">🙋 Human</button>
+</div>
+
+<form class="composer" id="composer" autocomplete="off">
+  <button type="button" class="mic" id="mic" data-lang="{{ speech_lang }}"
+          title="Speak" aria-label="Speak your message">🎤</button>
+  <input id="chat-in" type="text" placeholder="{{ _('chat_placeholder') }}"
+         autocomplete="off" enterkeyhint="send" aria-label="Type your message">
+  <button type="submit" class="go" id="send">{{ _('chat_send') }}</button>
+</form>
+
+</main>
+<script src="{{ url_for('static', filename='js/app.js') }}?v={{ app_version }}" nonce="{{ csp_nonce }}"></script>
+<script nonce="{{ csp_nonce }}">
+(function () {
+  "use strict";
+  var sessionId = null;
+  var LANG = {{ lang | tojson }};
+  var msgs = document.getElementById('msgs');
+  var input = document.getElementById('chat-in');
+  var sendBtn = document.getElementById('send');
+  var busy = false;
+
+  function scrollDown() { msgs.scrollTop = msgs.scrollHeight; }
+
+  function bubble(text, role) {
+    var d = document.createElement('div');
+    d.className = 'bub ' + role;
+    d.textContent = text;              // textContent, never innerHTML -> XSS-safe
+    msgs.appendChild(d);
+    scrollDown();
+    return d;
+  }
+
+  function rateButtons(msgId) {
+    if (!msgId) return;
+    var fb = document.createElement('div');
+    fb.className = 'fb';
+    [['up', '👍'], ['down', '👎']].forEach(function (pair) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = pair[1];
+      b.setAttribute('aria-label', pair[0] === 'up' ? 'Helpful' : 'Not helpful');
+      b.onclick = function () {
+        fetch('/chat/feedback', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ msg_id: msgId, rating: pair[0] })
+        }).catch(function () {});
+        fb.textContent = '';
+        var s = document.createElement('span');
+        s.className = 'said';
+        s.textContent = 'Thank you ✓';
+        fb.appendChild(s);
+      };
+      fb.appendChild(b);
+    });
+    msgs.appendChild(fb);
+    scrollDown();
+  }
+
+  function showTyping() {
+    var t = document.createElement('div');
+    t.className = 'typing';
+    t.id = 'typing';
+    t.innerHTML = '<i></i><i></i><i></i>';
+    msgs.appendChild(t);
+    scrollDown();
+    return t;
+  }
+
+  function send(text) {
+    text = (text || '').trim();
+    if (!text || busy) return;
+    busy = true;
+    sendBtn.disabled = true;
+    bubble(text, 'user');
+    var typing = showTyping();
+
+    fetch('/api/chat', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: text, lang: LANG, session: sessionId })
+    })
+      .then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      })
+      .then(function (d) {
+        typing.remove();
+        if (d.session) sessionId = d.session;
+        bubble(d.reply || 'Sorry, I did not catch that.', 'bot');
+        rateButtons(d.msg_id);
+
+        // Live addresses from the server — they follow this host / domain.
+        var pageLinks = d.links || [];
+        pageLinks.forEach(function (item) {
+          if (!item || !item.href) return;
+          var a = document.createElement('a');
+          a.href = item.href; a.className = 'chip'; a.style.display = 'inline-block';
+          a.style.margin = '0 0 0 6px'; a.style.textDecoration = 'none';
+          a.textContent = item.label || 'Open';
+          msgs.appendChild(a);
+        });
+        if (d.action === 'emergency') {
+          var tel = {{ (hospital.phone if hospital and hospital.phone else '') | tojson }};
+          if (tel) {
+            var c = document.createElement('a');
+            c.href = 'tel:' + String(tel).replace(/\s/g, '');
+            c.className = 'chip'; c.style.display = 'inline-block';
+            c.style.margin = '0 0 0 6px'; c.style.textDecoration = 'none';
+            c.textContent = '🚑 Call the hospital';
+            msgs.appendChild(c);
+          }
+        }
+        if (pageLinks.length) scrollDown();
+
+        if (d.handoff || d.action === 'handoff' || text.toLowerCase().indexOf('human') >= 0) {
+          fetch('/chat/handoff', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ session: sessionId })
+          })
+            .then(function (r) { return r.json(); })
+            .then(function (h) {
+              if (h && h.message && !h.already) bubble(h.message, 'bot');
+            })
+            .catch(function () {});
+        }
+      })
+      .catch(function () {
+        typing.remove();
+        bubble('Sorry — I could not reach the hospital system just now. '
+             + 'Please check your internet connection and try again.', 'bot err');
+      })
+      .then(function () {
+        busy = false;
+        sendBtn.disabled = false;
+        input.focus();
+      });
+  }
+
+  document.getElementById('composer').addEventListener('submit', function (e) {
+    e.preventDefault();                 // form submit = Enter key works everywhere
+    send(input.value);
+    input.value = '';
+  });
+
+  document.querySelectorAll('.chip').forEach(function (c) {
+    c.onclick = function () { send(c.dataset.q); };
+  });
+
+  // Voice-to-text, reusing the shared engine but degrading quietly if unsupported.
+  var mic = document.getElementById('mic');
+  if (window.hmsVoice) {
+    mic.onclick = function () { hmsVoice.start(mic, 'chat-in'); };
+  } else {
+    mic.style.display = 'none';
+  }
+
+  bubble({{ _('chat_greeting') | tojson }}, 'bot');
+  input.focus();
+})();
+</script>
+{% include "_install.html" %}
+</body>
+</html>

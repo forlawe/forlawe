@@ -1,0 +1,70 @@
+name: tests
+
+# Runs the full suite on every push and pull request, against BOTH databases the
+# project supports. Free for public repos. This is the cheapest possible
+# protection against "it worked on my machine" reaching a hospital.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  sqlite:
+    name: tests (SQLite)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - run: python -m pytest tests/ -q
+
+  postgres:
+    name: tests (PostgreSQL)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: hms
+          POSTGRES_PASSWORD: hms_test_pw
+          POSTGRES_DB: hms_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Run tests against PostgreSQL
+        env:
+          DATABASE_URL: postgresql://hms:hms_test_pw@127.0.0.1:5432/hms_test
+        run: python -m pytest tests/ -q
+      - name: Verify migrations apply to an empty database
+        env:
+          DATABASE_URL: postgresql://hms:hms_test_pw@127.0.0.1:5432/hms_migrate
+        run: |
+          PGPASSWORD=hms_test_pw createdb -h 127.0.0.1 -U hms hms_migrate
+          alembic upgrade head
+
+  security:
+    name: dependency audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt pip-audit
+      # Advisory only: a new CVE should tell you, not block an urgent hotfix.
+      - run: pip-audit --desc || true

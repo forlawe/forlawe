@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}Data request {{ req.ref }}{% endblock %}
+{% block content %}
+<h1>🔐 Data request {{ req.ref }}</h1>
+<p><a href="/admin/data-requests">← All data requests</a></p>
+
+<div class="card pad">
+  <p><b>Type:</b> {{ 'Send me a copy of my data' if req.kind == 'access' else 'Delete my data' }}</p>
+  <p><b>Phone given:</b> {{ req.phone }}</p>
+  <p><b>Received:</b> {{ req.created_at.strftime('%d %B %Y, %H:%M') }}</p>
+  {% if req.note %}<p><b>Their note:</b> {{ req.note }}</p>{% endif %}
+  <p><b>Status:</b> {{ req.status }}</p>
+  {% if req.outcome %}<div class="notice"><b>What was done:</b><br>{{ req.outcome }}</div>{% endif %}
+</div>
+
+<div class="card pad mt">
+  <h2>Records found for this phone number</h2>
+  <ul>
+    <li><b>{{ found.complaints|length }}</b> complaint(s)</li>
+    <li><b>{{ found.appointments|length }}</b> appointment(s)</li>
+    <li><b>{{ found.feedback|length }}</b> feedback entr(ies)</li>
+    <li><b>{{ found.queue|length }}</b> queue ticket(s)</li>
+  </ul>
+
+  {% if found.complaints %}
+  <h3>Complaints</h3>
+  <table class="table"><thead><tr><th>Ref</th><th>Date</th><th>Status</th></tr></thead><tbody>
+    {% for c in found.complaints %}<tr><td><code>{{ c.ref }}</code></td>
+      <td>{{ c.submitted_at.strftime('%d %b %Y') }}</td><td>{{ c.status }}</td></tr>{% endfor %}
+  </tbody></table>
+  {% endif %}
+</div>
+
+{% if req.status == 'NEW' %}
+<div class="card pad mt">
+  <h2>Respond to this request</h2>
+  <p class="hint"><b>Before you act, verify the person is who they say they are</b> — for
+    example, call the number back, or ask them at reception for a complaint reference only
+    they would know. Erasure cannot be undone.</p>
+
+  {% if req.kind == 'access' %}
+  <form method="post" action="/admin/data-requests/{{ req.id }}/fulfil" class="mt">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <input type="hidden" name="action" value="access">
+    <p>Print or export the records listed above, give them to the patient, then record it here.</p>
+    <button class="btn">✅ I have given the patient their copy</button>
+  </form>
+  {% else %}
+  <form method="post" action="/admin/data-requests/{{ req.id }}/fulfil" class="mt"
+        onsubmit="return confirm('Erase personal details from every record above? This cannot be undone.')">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <input type="hidden" name="action" value="erase">
+    <p>This replaces the name, phone number and free-text description with
+      <code>[erased]</code> on every record above. Ratings, dates and scores stay, so hospital
+      statistics remain correct, but the records can no longer identify anyone.</p>
+    <button class="btn danger">🗑 Erase this patient's personal details</button>
+  </form>
+  {% endif %}
+
+  <form method="post" action="/admin/data-requests/{{ req.id }}/fulfil" class="mt">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <input type="hidden" name="action" value="reject">
+    <label>Reject instead — reason (the patient may ask for this)</label>
+    <input type="text" name="reason" maxlength="300"
+           placeholder="e.g. Identity could not be verified">
+    <button class="btn ghost mt">Reject request</button>
+  </form>
+</div>
+{% endif %}
+{% endblock %}

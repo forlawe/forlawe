@@ -1,0 +1,180 @@
+{% extends "base.html" %}
+{% block title %}What the assistant has learned{% endblock %}
+{% block content %}
+<h1>🎓 What the assistant has learned</h1>
+<p class="muted">The assistant watches every conversation and works out what it
+  is getting wrong. It <b>never changes what patients are told on its own</b> —
+  it proposes, you approve with one tap.</p>
+
+<div class="row mb" style="gap:6px;flex-wrap:wrap">
+  {% for d in (7, 30, 90) %}
+  <a class="btn small {{ '' if days == d else 'secondary' }}"
+     href="/admin/kb/learning?days={{ d }}">Last {{ d }} days</a>
+  {% endfor %}
+  <a class="btn small secondary" href="/admin/kb">Answer book</a>
+</div>
+
+{# ---------------- how well it is doing ---------------- #}
+<div class="card pad-lg mb" style="border-left:6px solid #0e5a8a">
+  <div class="spread">
+    <div>
+      <h2 style="margin:0">Accuracy</h2>
+      <div class="muted" style="font-size:.85rem">
+        {{ accuracy.answered }} of {{ accuracy.asked }} questions answered
+        in the last {{ days }} days</div>
+    </div>
+    <div style="text-align:right">
+      <div style="font-size:2.1rem;font-weight:800;
+                  color:{{ '#1a7f37' if accuracy.percent >= 85 else ('#b58900' if accuracy.percent >= 65 else '#c0262c') }}">
+        {{ accuracy.percent }}%</div>
+    </div>
+  </div>
+  {% if not accuracy.reliable %}
+  <p class="hint" style="margin-bottom:0">Fewer than 20 questions so far — this
+    percentage is not yet a real measurement. It becomes meaningful as patients
+    use the assistant.</p>
+  {% endif %}
+</div>
+
+{# ---------------- 1. words it is missing ---------------- #}
+<h2>1 · Words patients used that it did not recognise</h2>
+<p class="muted" style="margin-top:0">These questions failed, but
+  <b>the answer already exists</b> — it just could not be found. Approving one
+  of these changes nothing a patient reads. It is the safest improvement there
+  is.</p>
+
+{% if not missing_words %}
+  <div class="card pad-lg mb"><p class="muted" style="margin:0">Nothing here.
+    Either the assistant is finding everything, or there is not enough
+    conversation yet.</p></div>
+{% else %}
+  {% for p in missing_words %}
+  <div class="card pad-lg mb">
+    <div class="spread">
+      <div>
+        <div style="font-size:1.05rem;font-weight:800">
+          “{{ p.word }}” → {{ p.intent }}</div>
+        <div class="muted" style="font-size:.85rem">{{ p.category }}</div>
+      </div>
+      <span class="pill amber">{{ p.count }} patients</span>
+    </div>
+    <div class="hint mt">Patients typed:
+      {% for e in p.examples %}<div>• “{{ e }}”</div>{% endfor %}
+    </div>
+    <form method="post" action="/admin/kb/learn-word" class="mt">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <input type="hidden" name="article_id" value="{{ p.article_id }}">
+      <input type="hidden" name="word" value="{{ p.word }}">
+      <button class="btn small">✅ Teach it this word</button>
+    </form>
+  </div>
+  {% endfor %}
+{% endif %}
+
+{# ---------------- 2. answers it does not have ---------------- #}
+<h2 class="mt">2 · Questions with no answer at all</h2>
+<p class="muted" style="margin-top:0">People keep asking these and getting
+  nothing. The assistant cannot write these itself — <b>it does not know your
+  hospital's policy</b>. Two sentences written once will serve everybody who
+  asks next month.</p>
+
+{% if not missing_answers %}
+  <div class="card pad-lg mb"><p class="muted" style="margin:0">Nothing being
+    asked repeatedly without an answer.</p></div>
+{% else %}
+  {% for g in missing_answers %}
+  <div class="card pad-lg mb">
+    <div class="spread">
+      <div style="font-size:1.05rem;font-weight:800">{{ g.topic }}</div>
+      <span class="pill red">{{ g.count }} patients</span>
+    </div>
+    <div class="hint mt">
+      {% for e in g.examples %}<div>• “{{ e }}”</div>{% endfor %}
+    </div>
+    <details class="mt">
+      <summary class="btn small ghost" style="list-style:none">
+        Write the answer</summary>
+      <form method="post" action="/admin/kb/add" class="card mt">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        <label>What should the assistant say?</label>
+        <textarea name="en" rows="3" required
+                  placeholder="e.g. Yes, there is free parking for visitors inside the main gate."></textarea>
+        <label class="mt">Short name for this answer</label>
+        <input name="intent" required value="{{ g.topic.split(' / ')[0] }}_info">
+        <label class="mt">Category</label>
+        <input name="category" required value="general">
+        <label class="mt">Words that should find it</label>
+        <textarea name="keywords" rows="2">{{ g.suggested_keywords | join('\n') }}</textarea>
+        <button class="btn small mt">Save this answer</button>
+      </form>
+    </details>
+  </div>
+  {% endfor %}
+{% endif %}
+
+{# ---------------- 3. answers that are failing ---------------- #}
+{% if failing %}
+<h2 class="mt">3 · Answers patients marked 👎</h2>
+<p class="muted" style="margin-top:0">These need a human to read and rewrite.</p>
+<div class="table-wrap card mb" style="padding:0">
+<table>
+  <tr><th>Answer</th><th>👎</th><th>👍</th><th></th></tr>
+  {% for f in failing %}
+  <tr>
+    <td><b>{{ f.intent }}</b><br>
+      <span class="muted" style="font-size:.8rem">{{ f.preview }}</span></td>
+    <td><b style="color:#c0262c">{{ f.down }}</b></td>
+    <td>{{ f.up }}</td>
+    <td><a class="btn small ghost" href="/admin/kb">Edit</a></td>
+  </tr>
+  {% endfor %}
+</table>
+</div>
+{% endif %}
+
+{# ---------------- 4. lucky guesses ---------------- #}
+{% if coin_flips %}
+<h2 class="mt">4 · Answers that were nearly a coin toss</h2>
+<p class="muted" style="margin-top:0">Two answers scored almost the same, so the
+  winner was luck. <b>These are the dangerous ones</b> — the patient gets a
+  confident answer to a slightly different question and never complains,
+  because it looks like an answer.</p>
+{% for c in coin_flips %}
+<div class="card pad-lg mb">
+  <div class="spread">
+    <div><b>{{ c.winner }}</b>
+      <span class="muted">only just beat</span> <b>{{ c.runner_up }}</b></div>
+    <span class="pill amber">{{ c.count }}×</span>
+  </div>
+  <div class="hint mt">
+    {% for e in c.examples %}<div>• “{{ e }}”</div>{% endfor %}
+  </div>
+</div>
+{% endfor %}
+{% endif %}
+
+{# ---------------- 5. corrections from staff ---------------- #}
+{% if corrections %}
+<h2 class="mt">5 · Corrections typed into the chat</h2>
+<p class="muted" style="margin-top:0">Somebody told the assistant it was wrong.
+  It cannot change itself, so it saved the note for you.</p>
+{% for n in corrections %}
+<div class="card pad-lg mb">
+  <div class="muted" style="font-size:.8rem">{{ n.at.strftime('%d %b, %H:%M') }}</div>
+  <div class="mt">“{{ n.text }}”</div>
+  <form method="post" action="/admin/kb/dismiss-note/{{ n.id }}" class="mt">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <button class="btn small ghost">Mark as dealt with</button>
+  </form>
+</div>
+{% endfor %}
+{% endif %}
+
+<div class="notice mt" style="text-align:left">
+  <b>Why you have to approve each one.</b> The assistant could write its own
+  answers and its accuracy would climb overnight. But an answer nobody approved
+  is an answer nobody is accountable for, and this app talks to sick people
+  about where to go and what to pay. It learns continuously; you stay in charge
+  of what patients are actually told.
+</div>
+{% endblock %}

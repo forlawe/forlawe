@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="{{ lang if lang else 'en' }}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>No signal — Hospital</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}?v={{ app_version }}">
+{% include "_pwa_head.html" %}
+</head>
+<body>
+<div class="login-wrap">
+  <div class="card login-card pad-lg">
+    <div class="center mb">
+      <div style="font-size:2.4rem">📴</div>
+      <h1>No signal just now</h1>
+      <p class="muted">This page was saved on your phone. Open it again when the network comes back. Emergency: call the hospital.</p>
+    </div>
+    {% include "_help_desk.html" %}
+    <p class="center mt"><a class="btn" href="/welcome">Try again</a></p>
+  </div>
+</div>
+</body>
+</html>

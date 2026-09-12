@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="{{ lang }}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+{% include "_pwa_head.html" %}
+<meta name="theme-color" content="#0e5a8a">
+<title>{{ _('f_cat') }} — {{ org.name }}</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}?v={{ app_version }}">
+</head>
+<body>
+<a class="skip-link" href="#main-content">Skip to main content</a>
+<div class="portal-head">
+  {% include "_brand_mark.html" %}
+  <div>{{ _('tagline') }}</div>
+  {% include "_langbar.html" %}
+  {% if qr_loc %}<div class="mt"><span class="pill blue">📍 {{ qr_loc.name }}</span></div>{% endif %}
+</div>
+<main id="main-content" class="wrap" style="max-width:560px">
+  {% with back_to="/welcome" %}{% include "_patient_nav.html" %}{% endwith %}
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for cat, msg in messages %}<div class="flash {{ cat }}">{{ msg }}</div>{% endfor %}
+  {% endwith %}
+
+  <div class="privacy-note">🔒 {{ _('privacy') }}</div>
+
+  <form class="card pad-lg" method="post" action="/complaint/submit" enctype="multipart/form-data" id="cmp-form">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <input type="hidden" name="loc" value="{{ qr_loc.code if qr_loc else '' }}">
+    <input type="hidden" name="idem" value="{{ csrf_token()[:24] }}-{{ range(100000, 999999) | random }}">
+
+    <label for="cmp-dept">1 · {{ _('f_dept') }} <span class="req">*</span></label>
+    <select name="department_id" id="cmp-dept" required>
+      <option value="">— {{ _('f_dept') }} —</option>
+      {% for d in depts %}
+      <option value="{{ d.id }}" {{ 'selected' if form and form.get('department_id')==d.id|string }}>{{ d.name }}</option>
+      {% endfor %}
+    </select>
+
+    <label for="cmp-cat">2 · {{ _('f_cat') }} <span class="req">*</span></label>
+    <select name="category" id="cmp-cat" required>
+      <option value="">— {{ _('f_cat') }} —</option>
+      {% for c in categories %}
+      <option {{ 'selected' if form and form.get('category')==c.name }}>{{ c.name }}</option>
+      {% endfor %}
+    </select>
+
+    <label for="cmp-desc">3 · {{ _('f_desc') }} <span class="req">*</span></label>
+    <textarea name="description" id="cmp-desc" required minlength="10"
+              placeholder="{{ _('f_desc') }}…">{{ form.get('description','') if form else '' }}</textarea>
+    <button type="button" class="mic-btn" data-lang="{{ speech_lang }}"
+            onclick="hmsVoice.start(this,'cmp-desc')">🎤 {{ _('speak') }}</button>
+
+    <label for="cmp-phone">4 · {{ _('f_phone') }} <span class="req" id="phone-req">*</span></label>
+    <input type="tel" name="phone" id="cmp-phone" required inputmode="tel" placeholder="08012345678"
+           value="{{ form.get('phone','') if form else '' }}">
+
+    <label class="checkline" style="display:flex;gap:10px;align-items:flex-start;margin-top:10px;font-weight:400">
+      <input type="checkbox" name="anonymous" id="cmp-anon" value="1" style="width:auto;margin-top:3px"
+             {{ 'checked' if form and form.get('anonymous') }}>
+      <span>🕶️ <b>Submit anonymously.</b> We will not store your phone number.
+        You will still get a reference number to track the complaint, but the
+        hospital will not be able to call you back.</span>
+    </label>
+
+    <label for="cmp-attach">5 · {{ _('f_attach') }}</label>
+    <input type="file" name="attachment" id="cmp-attach" accept="image/jpeg,image/png,image/webp" style="font-size:.9rem">
+    <select name="contact_method" id="cmp-contact" aria-label="Preferred contact method" class="mt" style="margin-top:8px">
+      <option value="phone">Call / Kiran / Oku</option>
+      <option value="whatsapp">WhatsApp</option>
+      <option value="either">— / —</option>
+    </select>
+
+    <label class="checkline" id="consent-line"
+           style="display:flex;gap:10px;align-items:flex-start;margin-top:14px;font-weight:400">
+      <input type="checkbox" name="consent" id="cmp-consent" value="1" style="width:auto;margin-top:3px"
+             {{ 'checked' if form and form.get('consent') }}>
+      <span>I agree that {{ hospital.name if hospital else 'the hospital' }} may store
+        and use the details above to investigate and follow up on this complaint,
+        as described in the <a href="/privacy" target="_blank">Privacy Notice</a>.</span>
+    </label>
+
+    <button class="btn big mt" type="submit" style="width:100%">{{ _('btn_complaint') }}</button>
+  </form>
+
+  <script nonce="{{ csp_nonce }}">
+  // Anonymous mode: the phone field becomes irrelevant, so stop the browser
+  // demanding it and make the consent box unnecessary (nothing personal is kept).
+  (function () {
+    var anon = document.getElementById('cmp-anon');
+    var phone = document.getElementById('cmp-phone');
+    var req = document.getElementById('phone-req');
+    var consent = document.getElementById('cmp-consent');
+    var consentLine = document.getElementById('consent-line');
+    if (!anon) return;
+    function sync() {
+      var on = anon.checked;
+      phone.required = !on;
+      phone.disabled = on;
+      phone.value = on ? '' : phone.value;
+      phone.placeholder = on ? 'Not required for anonymous complaints' : '08012345678';
+      if (req) req.style.display = on ? 'none' : '';
+      if (consentLine) consentLine.style.display = on ? 'none' : 'flex';
+      if (consent) consent.required = !on;
+    }
+    anon.addEventListener('change', sync);
+    sync();
+  })();
+  </script>
+
+  <div class="card mt center">
+    <a class="btn secondary" href="/chat">💬 Ask our care assistant</a>
+    <div class="mt"><a href="/complaint/status">{{ _('check_status') }} →</a></div>
+    <small class="muted"><a href="/book">{{ _('book_title') }}</a> · <a href="/feedback">{{ _('fb_title') }}</a></small>
+  </div>
+  {% include "_help_desk.html" %}
+</main>
+<div class="footer">{{ _('no_account') }} · Hospital Admin Manager Suite · <a href="/privacy">Privacy</a></div>
+<script src="{{ url_for('static', filename='js/app.js') }}?v={{ app_version }}" nonce="{{ csp_nonce }}"></script>
+{% include "_install.html" %}
+</body>
+</html>

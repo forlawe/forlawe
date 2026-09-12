@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Spare codes{% endblock %}
+{% block content %}
+<h1>Write these spare codes down</h1>
+<p>If you lose your phone you can still sign in with one of these.
+  <b>We will not show them again.</b> Keep them on paper, not in a photo on
+  the same phone.</p>
+<div class="card mb" style="max-width:420px">
+  <ol style="font-size:1.15rem;letter-spacing:.08em;font-family:ui-monospace,monospace">
+    {% for c in codes %}<li style="margin:6px 0">{{ c }}</li>{% endfor %}
+  </ol>
+</div>
+<p><a class="btn" href="/">I have written them down — continue</a></p>
+{% endblock %}

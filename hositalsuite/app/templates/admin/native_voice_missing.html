@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Missing Phrases — Native Voice{% endblock %}
+{% block content %}
+<h1>🔍 Missing Phrases Report — {{ total_missing }} missing</h1>
+<p class="muted">Shows which phrase keys have no audio per language/voice. Record these to complete the bank. Table scrolls sideways on phone — swipe left/right.</p>
+<a class="btn secondary small" href="/admin/native-voice/">← Back to Voice Bank</a>
+<div class="card pad mt" style="padding:0;overflow:hidden">
+  <div class="table-wrap" style="border-radius:12px">
+    <table class="table">
+      <tr><th>Key</th><th>Lang</th><th>Voice</th><th>Action</th></tr>
+      {% for m in missing %}
+        <tr>
+          <td><code style="font-size:.82rem;word-break:break-all">{{ m.key }}</code></td>
+          <td><span class="pill blue">{{ m.lang }}</span></td>
+          <td style="font-size:.85rem">{{ m.voice_name }}</td>
+          <td><a class="btn small" href="/admin/native-voice/#upload-{{ m.key }}" style="white-space:nowrap">Upload</a></td>
+        </tr>
+      {% endfor %}
+    </table>
+  </div>
+  {% if total_missing > 200 %}<p class="muted" style="padding:12px">Showing 200 of {{ total_missing }} — record top priority first: greeting_*, queue_waiting, consult_call_in, go_to_*, number_*, place_*</p>{% endif %}
+</div>
+<div class="card pad mt" style="background:#f0fdf4;border-left:5px solid #1a7f37">
+  <h3 style="margin-top:0">How to fix quickly on phone</h3>
+  <p class="muted" style="font-size:.9rem;line-height:1.5">1. Go to Voice Bank → Voice Studio → Record button → Speak phrase → Save.<br>2. Or use bulk zip: name files like <code>queue_waiting_en_FEMALE1.mp3</code>.<br>3. On Android Chrome, allow microphone when asked. Max 10 sec per phrase.</p>
+</div>
+{% endblock %}

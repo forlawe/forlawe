@@ -1,0 +1,101 @@
+# 🔴 Your live site is DOWN — here is exactly what happened and what to do
+
+**Checked:** 2026-08-15 · **Status:** `hospital-suite.onrender.com` returns nothing at all
+**Fix pushed:** commit `938158f` on `main` — **but it is not deployed yet**
+
+---
+
+## Do these three things, in this order
+
+### 1. Check Supabase is awake (2 minutes) — this is the actual cause
+
+Log in to **supabase.com** → your project (`YOURPROJECTREF`).
+
+Free Supabase projects are **paused automatically after 7 days of inactivity**. If you see
+a **"Restore project"** or **"Project paused"** button, click it and wait ~3 minutes.
+
+That single click is most likely the whole fix.
+
+### 2. Deploy the new code (30 seconds)
+
+Render dashboard → `hospital-suite` → **Manual Deploy → Deploy latest commit** (`938158f`).
+
+Render is not auto-deploying — the service was created before the blueprint, so `autoDeploy`
+in `render.yaml` isn't governing it. Every future change will need this click until you
+reconnect the service to the blueprint.
+
+### 3. Confirm it worked
+
+Open `https://hospital-suite.onrender.com/api/v1/health`. You want:
+
+```json
+{"status":"ok","database":true,"scheduler":true,"last_backup":"...","storage":"db"}
+```
+
+- `database: false` → Supabase is still asleep or the connection string is wrong.
+- No response at all → tell me and I'll dig further.
+
+---
+
+## What actually broke (plain English)
+
+Your site talks to a database hosted at Supabase. When that database stopped answering,
+the app tried to connect at startup **with no time limit**, so it sat waiting for over two
+minutes. Render gives an app much less time than that to start, so Render assumed the app
+had failed, killed it, and started it again — forever.
+
+The result: your hospital's site served **nothing at all**, not even the pages that don't
+need a database. A patient scanning a QR code got a blank screen.
+
+**I reproduced this exactly.** Against a database that accepts a connection but never
+replies:
+
+| Version | Result |
+|---|---|
+| The code live on your site now | **hangs 2m 10s, then crashes** → restart loop → total outage |
+| The code I just pushed | **starts in 10.5 seconds and serves pages** |
+
+So this outage was already waiting to happen in the old code. It is now fixed.
+
+---
+
+## What I changed
+
+Three faults compounded into the outage:
+
+1. **No connection time limit.** Added a 10-second cap plus TCP keepalives, so a dead
+   database is detected in seconds instead of minutes.
+
+2. **The file-rescue step retried once per file.** With 37 files that meant 37 × 10s = over
+   6 minutes of dead startup. It now checks the database once and gives up immediately.
+
+3. **Every startup step retried the dead database separately.** There is now a single check
+   at the top. If the database is down the app starts anyway in **degraded mode**: your
+   login page, patient pages and static files all still load, and the health check honestly
+   reports `degraded` with a 503.
+
+**That last point is the important one.** From now on, a database problem means "the site
+is up but reporting a fault" instead of "the hospital's website has vanished".
+
+Tests: **144 passing**, verified on both SQLite and PostgreSQL 17 (the same engine Supabase runs).
+
+---
+
+## Prevent this happening again
+
+- **Set up uptime monitoring — free.** [uptimerobot.com](https://uptimerobot.com) → monitor
+  `https://hospital-suite.onrender.com/api/v1/health` every 5 minutes, alert to your email
+  and phone. **You should not be finding out from me, or from a patient, that your site is
+  down.** This is the single most valuable 10 minutes you can spend today.
+- **Keep Supabase awake.** The uptime monitor above also prevents the 7-day inactivity pause,
+  because the health check touches the database.
+- **Upgrade Render to Starter ($7/mo)** — removes the 20-second cold start as well.
+
+---
+
+## Still outstanding from the hardening pass
+
+- ⬜ **Revoke the GitHub token** you pasted in chat — github.com/settings/tokens
+- ⬜ **Enable CI** — `ci/README.md`, 5-minute copy-paste (my token lacked the `workflow` scope)
+- ⬜ **Turn on Supabase backups** — Supabase → Database → Backups
+- ⬜ **Set up uptime monitoring** (above)

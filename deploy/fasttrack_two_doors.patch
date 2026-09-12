@@ -1,0 +1,367 @@
+diff --git a/app/templates/booking_portal.html b/app/templates/booking_portal.html
+index 2f6fe65..adb10b1 100644
+--- a/app/templates/booking_portal.html
++++ b/app/templates/booking_portal.html
+@@ -50,8 +50,12 @@
+     <input type="hidden" name="loc" value="{{ qr_loc.code if qr_loc else '' }}">
+     <input type="hidden" name="r" value="{{ ref_code|default('') }}">
+     <input type="hidden" name="idem" value="{{ idem }}">
++    {# Only the /book/fast-track door posts these. The old markup posted them
++       unconditionally, so EVERY booking became a premium Fast Track one. #}
++    {% if fast_track %}
+     <input type="hidden" name="is_fast_track" value="1">
+     <input type="hidden" name="fast_track_reason" value="PREMIUM">
++    {% endif %}
+ 
+     <label class="step-label" for="bp-dept">1 · Which service do you need?</label>
+     <select name="department_id" id="bp-dept" required class="input-big">
+@@ -87,6 +91,7 @@
+     <div class="hint">We send your booking reference and updates here.</div>
+ 
+     {% if s and s.fast_track_enabled %}
++    {% if fast_track %}
+     <div class="gold-box">
+       <div style="display:flex;gap:10px;align-items:flex-start">
+         <div style="font-size:1.6rem">👑</div>
+@@ -107,18 +112,25 @@
+       </div>
+     </div>
+     {% endif %}
++    {% endif %}
+ 
+     <label class="checkline" style="display:flex;gap:10px;align-items:flex-start;margin-top:16px;font-weight:400;font-size:.88rem;line-height:1.4">
+       <input type="checkbox" name="consent" value="1" required style="width:auto;margin-top:3px">
+       <span>I agree the hospital can save my name and phone to manage this booking and send me reminders. See <a href="/privacy" target="_blank">Privacy Notice</a>.</span>
+     </label>
+ 
++    {% if fast_track %}
+     <label class="checkline" style="display:flex;gap:10px;align-items:flex-start;margin-top:12px;font-weight:700;font-size:.9rem;line-height:1.4;background:#FFFEF0;border:2px solid #FFD700;border-radius:10px;padding:10px 12px">
+       <input type="checkbox" name="fast_track_consent" value="1" required style="width:20px;height:20px;margin-top:2px">
+       {% include "_fasttrack_consent.html" %}
+     </label>
++    {% endif %}
+ 
++    {% if fast_track %}
+     <button class="btn big mt" type="submit" style="width:100%;background:#000;color:#FFD700;border:none;font-weight:900;padding:14px;border-radius:999px;font-size:1.05rem;box-shadow:0 6px 16px rgba(0,0,0,0.2)">👑 {{ _('btn_book') }} — Fast Track Ready</button>
++    {% else %}
++    <button class="btn big mt" type="submit" style="width:100%;background:#0e5a8a;color:#fff;border:none;font-weight:700;padding:14px;border-radius:999px;font-size:1.05rem">📅 {{ _('btn_book') }} — Confirm Visit</button>
++    {% endif %}
+     <p class="hint" style="text-align:center;margin-top:10px">You will get your reference by WhatsApp first, then SMS if WhatsApp is not available.</p>
+   </form>
+ 
+diff --git a/app/templates/patient_hub.html b/app/templates/patient_hub.html
+index a277660..36257d6 100644
+--- a/app/templates/patient_hub.html
++++ b/app/templates/patient_hub.html
+@@ -81,7 +81,7 @@
+   {% endwith %}
+ 
+   <!-- Premium luxury Fast Track booking — special button -->
+-  <a class="lux-card" href="{{ url_for('bookings.portal') }}{{ q }}" aria-label="Book Fast Track">
++  <a class="lux-card" href="{{ url_for('bookings.portal_fast_track') }}{{ q }}" aria-label="Book Fast Track">
+     <div class="lux-icon">👑</div>
+     <div class="lux-txt">
+       <div class="lux-title">Fast Track — Be Seen Fast</div>
+diff --git a/app/templates/queue_join.html b/app/templates/queue_join.html
+index 11c31e6..f19c8bb 100644
+--- a/app/templates/queue_join.html
++++ b/app/templates/queue_join.html
+@@ -51,8 +51,8 @@
+   </div>
+   {% else %}
+   <div class="hero">
+-    <h1>Get a number at Reception — wait comfortably</h1>
+-    <p>Your queue starts at Reception — our front desk will welcome you and guide you to the right place. You will get a number and a private page that shows your place in line and what to do next. Only your number shows on the public TV — not your name. Today's queue only — priority patients (elderly 60+, pregnant, child under 5, wheelchair) are seen first automatically.</p>
++    <h1>Track Your Visit — Receive Your Queue Number</h1>
++    <p>You'll get a number and a private tracker showing your live position through every stage of your visit (Reception, Billing, Triage, Doctor, Pharmacy) — first-time patients start at Reception, returning patients go straight to Records. Your number only shows on the TV screen — not your name. Today only — elderly (60+), pregnant, children under 5, and wheelchair users are seen first automatically.</p>
+   </div>
+   {% endif %}
+ 
+@@ -71,7 +71,7 @@
+       {% endfor %}
+     </select>
+     <p style="font-size:.8rem;color:#6b7d90;margin:6px 0 0;line-height:1.4">
+-      {% if is_emergency %}Emergency goes to Accident & Emergency — you will be seen immediately.{% else %}Queue links only to Reception — all patients start at Reception, then we guide you. Fast Track is premium at top — be seen faster in the quiet, private lounge.{% endif %}
++      {% if is_emergency %}Emergency goes to Accident & Emergency — you will be seen immediately.{% else %}First-time patients start at Reception; if we already have your file, we'll take you straight to Records — no need to repeat paperwork. Fast Track is premium at top — be seen faster in the quiet, private lounge.{% endif %}
+       Today's queue only — priority (elderly, pregnant, child, wheelchair) seen first automatically.
+     </p>
+ 
+@@ -83,7 +83,7 @@
+ 
+     <div class="gold-box">
+       <label style="font-weight:900;color:#000;margin:0;display:flex;gap:10px;align-items:center;font-size:1rem">
+-        <input type="checkbox" name="is_fast_track" value="1" checked style="width:20px;height:20px"> ⭐ Fast Track — Be seen faster
++        <input type="checkbox" name="is_fast_track" value="1" style="width:20px;height:20px"> ⭐ Fast Track — Be seen faster
+       </label>
+       <p style="font-size:.85rem;margin:8px 0 0;color:#5a4a00;line-height:1.5">Fast Track is our premium service. You are seen quickly in a quiet, private lounge. You pay a little more for comfort and speed. If you can afford it, choose Fast Track.</p>
+       <select name="fast_track_reason" style="margin-top:10px" class="input-big">
+@@ -94,11 +94,11 @@
+     </div>
+ 
+     <label class="checkline" style="display:flex;gap:10px;align-items:flex-start;margin-top:12px;font-weight:700;font-size:.9rem;line-height:1.4;background:#FFFEF0;border:2px solid #FFD700;border-radius:10px;padding:10px 12px">
+-      <input type="checkbox" name="fast_track_consent" value="1" required style="width:20px;height:20px;margin-top:2px">
++      <input type="checkbox" name="fast_track_consent" value="1" style="width:20px;height:20px;margin-top:2px">
+       {% include "_fasttrack_consent.html" %}
+     </label>
+ 
+-    <button class="btn gold mt" type="submit">🎟️ {{ _("btn_queue") }} — Fast Track</button>
++    <button class="btn mt" type="submit">🎟️ {{ _("btn_queue") }}</button>
+     <p style="font-size:.8rem;color:#6b7d90;margin-top:10px;text-align:center;line-height:1.4">After you join, you get a private tracker. It shows your position, estimated wait, and what to do next. Your number only shows on TV — not your name.</p>
+   </form>
+ 
+diff --git a/app/views/bookings.py b/app/views/bookings.py
+index 37f8e8c..f980e88 100644
+--- a/app/views/bookings.py
++++ b/app/views/bookings.py
+@@ -30,6 +30,16 @@ def _default_org() -> Organization | None:
+ @bp.get("/book")
+ @rate_limit(limit=30, window=60.0)
+ def portal():
++    return _portal_render(fast_track=False)
++
++
++@bp.get("/book/fast-track")
++@rate_limit(limit=30, window=60.0)
++def portal_fast_track():
++    return _portal_render(fast_track=True)
++
++
++def _portal_render(fast_track: bool):
+     org = _default_org()
+     if not org:
+         return render_template("error.html", code=503, message="System not configured yet."), 503
+@@ -47,7 +57,7 @@ def portal():
+     window = int(services.get_setting(org.id, "booking_window_days") or 30)
+     s = services.org_settings_bundle(org.id)
+     return render_template("booking_portal.html", org=org, depts=depts, qr_loc=qr_loc,
+-                           ref_code=ref_code, s=s,
++                           ref_code=ref_code, s=s, fast_track=fast_track,
+                            min_date=today.isoformat(),
+                            max_date=(today + timedelta(days=window)).isoformat(),
+                            slots=services.get_setting(org.id, "booking_slots") or [],
+@@ -108,8 +118,8 @@ def portal_submit():
+     if request.form.get("consent") not in ("1", "on", "true", "yes"):
+         errors.append("Please tick the box to allow the hospital to store your "
+                       "details for this appointment.")
+-    # MUST consent for Fast Track premium service
+-    is_ft_check = (request.form.get("is_fast_track") or "").strip() in ("1","on","true","yes") or True
++    # MUST consent for Fast Track premium service — only enforced when Fast Track is actually selected.
++    is_ft_check = (request.form.get("is_fast_track") or "").strip() in ("1","on","true","yes")
+     if is_ft_check and request.form.get("fast_track_consent") not in ("1","on","true","yes"):
+         errors.append("To use Fast Track, you must agree that it is a premium service and you will pay a little more for quick, private care.")
+     if day and dept and slot in slots and services.slot_is_full(org.id, dept.id, day, slot):
+@@ -138,7 +148,7 @@ def portal_submit():
+     from ..patient_places import is_fast_track_dept
+     # Fast Track — Booking is now Fast Track premium linked to Reception
+     is_ft = ((request.form.get("is_fast_track") or "").strip() in ("1","on","true","yes")
+-             or is_fast_track_dept(dept) or True)
++             or is_fast_track_dept(dept))
+     ft_reason = (request.form.get("fast_track_reason") or "PREMIUM").strip().upper()[:40] or "PREMIUM"
+     ft_price = int(services.get_setting(org.id, "fast_track_price") or 15000)
+     ft_requires_pay = bool(services.get_setting(org.id, "fast_track_booking_requires_payment"))
+diff --git a/app/views/queue.py b/app/views/queue.py
+index 3b9ae2d..eac3649 100644
+--- a/app/views/queue.py
++++ b/app/views/queue.py
+@@ -160,6 +160,12 @@ def join_submit():
+         from .. import personal_tv as ptv
+         sess = ptv.ensure_personal_session(org.id, ticket=t)
+         ptv.update_session_from_ticket(sess, t)
++        # Request 3 — entry routing by patient history: returning patients (existing Patient record)
++        # skip the paper-folder Reception stage and start at HIMS; new patients start at RECEPTION.
++        entry_stage = "HIMS" if patient_id else "RECEPTION"
++        if sess and hasattr(sess, 'current_stage') and sess.current_stage != entry_stage:
++            sess.current_stage = entry_stage
++            db.session.add(sess)
+     except Exception:
+         current_app.logger.exception("personal TV session create failed")
+ 
+diff --git a/tests/test_f039_consent_partial.py b/tests/test_f039_consent_partial.py
+index 17b78d1..f7df8e2 100644
+--- a/tests/test_f039_consent_partial.py
++++ b/tests/test_f039_consent_partial.py
+@@ -28,7 +28,12 @@ def test_consent_statement_exists_in_exactly_one_template():
+ 
+ 
+ def test_both_patient_forms_render_the_consent(client, seeded):
+-    for url in ("/book", "/queue/join"):
++    # /book/fast-track, not /book: the booking portal is now TWO doors and only
++    # the Fast Track one offers the premium service. When there was a single
++    # door it posted is_fast_track=1 for everybody (the bug), so the consent
++    # statement legitimately appeared on /book. Showing a paid-service consent
++    # on a form that cannot create a paid booking would be its own dishonesty.
++    for url in ("/book/fast-track", "/queue/join"):
+         r = client.get(url)
+         assert r.status_code == 200, (url, r.status_code)
+         assert CONSENT_MARK in r.get_data(as_text=True), url
+@@ -37,7 +42,15 @@ def test_both_patient_forms_render_the_consent(client, seeded):
+ def test_consent_wording_is_single_version(client, seeded):
+     """The three historical wordings are gone — every rendered form shows the
+     same 'quiet, private lounge' promise."""
+-    for url in ("/book", "/queue/join"):
++    for url in ("/book/fast-track", "/queue/join"):
+         html = client.get(url).get_data(as_text=True)
+         assert "quiet, private lounge" in html, url
+         assert "quiet, comfortable lounge" not in html
++
++
++def test_normal_booking_door_does_not_advertise_a_paid_service(client, seeded):
++    """/book is the ordinary visit: no gold Fast Track box, no premium consent,
++    and no is_fast_track field for the browser to post."""
++    html = client.get("/book").get_data(as_text=True)
++    assert CONSENT_MARK not in html
++    assert 'name="is_fast_track"' not in html
+diff --git a/tests/test_fasttrack_doors.py b/tests/test_fasttrack_doors.py
+new file mode 100644
+index 0000000..a55a30c
+--- /dev/null
++++ b/tests/test_fasttrack_doors.py
+@@ -0,0 +1,148 @@
++"""Fast Track: two honest doors, and entry routing by patient history.
++
++WHY THIS FILE EXISTS
++--------------------
++`test_booking.py` posts `is_fast_track="1"` by hand. That is a perfectly good
++unit test of the *server*, and it is exactly why a broken *form* went unnoticed:
++the fields a patient's browser really submits are the thing that decides whether
++a premium booking is stored as premium.
++
++So every booking assertion here parses the hidden inputs out of the rendered
++page and posts those — nothing hand-added. If the template and the server ever
++disagree again, this file fails instead of a patient silently getting the wrong
++service (in either direction: charged for Fast Track they did not choose, or
++given a normal booking after tapping the gold card).
++"""
++import re
++from datetime import timedelta
++
++from app.models import Appointment, Patient, db, now_naive
++from app.models_v2 import PersonalTvSession
++
++from conftest import csrf
++
++HIDDEN_INPUT = re.compile(r'<input[^>]*type="hidden"[^>]*>')
++
++
++def _hidden_fields(html: str) -> dict:
++    """Every hidden input the page renders — what the browser sends untouched."""
++    out = {}
++    for tag in HIDDEN_INPUT.findall(html):
++        name = re.search(r'name="([^"]+)"', tag)
++        value = re.search(r'value="([^"]*)"', tag)
++        if name:
++            out[name.group(1)] = value.group(1) if value else ""
++    return out
++
++
++def _submit_as_browser(client, seeded, page: str, idem: str, **extra):
++    """Fill in the visible fields a patient would, post the rest as rendered."""
++    html = client.get(page).get_data(as_text=True)
++    data = _hidden_fields(html)
++    data["_csrf"] = csrf(client, page)
++    data["idem"] = idem
++    data.update({
++        "consent": "1",
++        "department_id": seeded["dept"],
++        "appointment_date": (now_naive().date() + timedelta(days=1)).isoformat(),
++        "appointment_time": "09:00",
++        "patient_name": "Chinwe Obi",
++        "phone": "08033334444",
++    })
++    data.update(extra)
++    return client.post("/book/submit", data=data, follow_redirects=True)
++
++
++def _join_queue(client, seeded, name: str, phone: str = ""):
++    return client.post("/queue/join", data={
++        "_csrf": csrf(client, "/queue/join"),
++        "department_id": seeded["dept"],
++        "patient_name": name, "phone": phone,
++    }, follow_redirects=True)
++
++
++# ---------------------------------------------------------------- two doors
++def test_normal_door_renders_no_fast_track_field(client, seeded):
++    html = client.get("/book").get_data(as_text=True)
++    assert 'name="is_fast_track"' not in html, (
++        "/book must not post is_fast_track — that hidden field is what turned "
++        "every booking into a premium Fast Track one")
++
++
++def test_booking_through_the_normal_door_is_not_fast_track(client, seeded):
++    _submit_as_browser(client, seeded, "/book", "door-normal")
++    apt = db.session.query(Appointment).first()
++    assert apt is not None
++    assert apt.is_fast_track is False
++
++
++def test_fast_track_door_renders_the_flag_and_stores_it(client, seeded):
++    html = client.get("/book/fast-track").get_data(as_text=True)
++    assert 'name="is_fast_track"' in html, (
++        "/book/fast-track must post is_fast_track, or the server cannot tell "
++        "this is a premium booking")
++    _submit_as_browser(client, seeded, "/book/fast-track", "door-ft",
++                       fast_track_consent="1")
++    apt = db.session.query(Appointment).first()
++    assert apt is not None
++    assert apt.is_fast_track is True, (
++        "patient tapped the gold Fast Track card and consented, but the booking "
++        "was stored as a normal visit")
++
++
++def test_fast_track_consent_still_enforced_server_side(client, seeded):
++    r = _submit_as_browser(client, seeded, "/book/fast-track", "door-ft-noconsent")
++    assert b"premium service" in r.data
++    assert db.session.query(Appointment).count() == 0
++
++
++# ------------------------------------------------- the hub points where it says
++def test_hub_gold_card_and_plain_tile_use_different_doors(client, seeded):
++    html = client.get("/welcome").get_data(as_text=True)
++    lux = re.search(r'<a class="lux-card" href="([^"]+)"', html)
++    tile = re.search(r'<a class="hub-tile t-book" href="([^"]+)"', html)
++    assert lux and tile
++    assert lux.group(1).startswith("/book/fast-track"), (
++        "the gold Fast Track card must lead to the Fast Track form")
++    assert tile.group(1).startswith("/book"), "the plain tile stays on /book"
++    assert not tile.group(1).startswith("/book/fast-track")
++
++
++# ------------------------------------------------------- queue join: no opt-in
++def test_queue_join_does_not_opt_anyone_into_a_paid_service(client, seeded):
++    html = client.get("/queue/join").get_data(as_text=True)
++    ft = re.search(r'<input[^>]*name="is_fast_track"[^>]*>', html)
++    consent = re.search(r'<input[^>]*name="fast_track_consent"[^>]*>', html)
++    assert ft and "checked" not in ft.group(0), (
++        "Fast Track is a paid premium service — it cannot arrive pre-ticked")
++    assert consent and "required" not in consent.group(0), (
++        "consent cannot be compulsory for patients who never chose Fast Track")
++
++
++def test_queue_join_copy_matches_the_new_routing(client, seeded):
++    html = client.get("/queue/join").get_data(as_text=True)
++    assert "all patients start at Reception" not in html, (
++        "stale copy: returning patients now go straight to Records")
++    assert "returning patients go straight to Records" in html
++
++
++# ------------------------------------------------- Request 3: entry routing
++def test_first_time_patient_starts_at_reception(client, seeded):
++    _join_queue(client, seeded, "New Person", "08099990000")
++    sess = db.session.query(PersonalTvSession).order_by(PersonalTvSession.id.desc()).first()
++    assert sess is not None
++    assert sess.current_stage == "RECEPTION"
++
++
++def test_returning_patient_starts_at_records(client, seeded):
++    p = Patient(org_id=seeded["org"], hospital_number="TEST/2026/00001",
++                surname="Obi", first_name="Chinwe", sex="F", phone="08099991111")
++    db.session.add(p)
++    db.session.commit()
++
++    _join_queue(client, seeded, "Chinwe Obi", "08099991111")
++    sess = db.session.query(PersonalTvSession).order_by(PersonalTvSession.id.desc()).first()
++    assert sess is not None
++    assert sess.patient_id == p.id
++    assert sess.current_stage == "HIMS", (
++        "a patient with an existing folder should skip the paper Reception stage")

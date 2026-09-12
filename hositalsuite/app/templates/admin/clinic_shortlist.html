@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Shortlist for {{ clinic.name }}{% endblock %}
+{% block content %}
+<h1>🎯 Where can {{ clinic.name }} send patients?</h1>
+<p class="muted">Code <code>{{ clinic.code }}</code> · {{ clinic.description or '' }}</p>
+
+<div class="card pad-lg mb">
+<p class="hint">If you tick nothing, doctors in {{ clinic.name }} will see <b>all active destinations</b>. If you tick some, they will see <b>only those</b>. This stops a dentist being offered Maternity by mistake. If all ticked destinations are later suspended, doctors will see a warning, not every destination — that is deliberate, so the problem is noticed instead of hidden.</p>
+
+<form method="post" action="/admin/servicepoints/clinics/{{ clinic.id }}/shortlist">
+  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+  <div class="grid cols2">
+  {% for d in destinations %}
+    <label style="font-weight:400;margin:4px 0">
+      <input type="checkbox" name="destination_ids" value="{{ d.id }}" {% if d.id in linked %}checked{% endif %} style="width:auto">
+      {{ d.name }} <span class="muted" style="font-size:.8rem">({{ d.code }}) {% if not d.active %}— suspended{% endif %}</span>
+    </label>
+  {% endfor %}
+  </div>
+  <div class="mt">
+    <button class="btn big">Save shortlist</button>
+    <a class="btn secondary" href="/admin/servicepoints#clinics">Cancel</a>
+  </div>
+</form>
+</div>
+
+<div class="card pad-lg">
+<h3>Quick presets</h3>
+<p class="hint">Dental → Lab, Pharmacy, Radiology, Billing, Megalex, Theater, Wards. ANC → Lab, Pharmacy, Radiology, O&G, Maternity, Billing, MSSD. These were seeded automatically, but you can change them here any time.</p>
+</div>
+{% endblock %}

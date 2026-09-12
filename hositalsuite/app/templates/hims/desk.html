@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+{% block title %}HIMS Register{% endblock %}
+{% block content %}
+{% set show_always = True %}
+{% include "_emergency_banner.html" %}
+
+
+<div class="spread mb">
+  <h1 style="margin:0">📁 HIMS Register</h1>
+  <div style="display:flex;gap:8px">
+    {% if current_user.role in ('SUPER_ADMIN','HEAD_ADMIN_HR','MD_CEO','HOD') %}
+    <a class="btn small" href="{{ url_for('hims.import_form') }}">📚 Import paper register</a>
+    {% endif %}
+    {% if current_user.role in ('SUPER_ADMIN','HEAD_ADMIN_HR','MD_CEO') %}
+    <a class="btn small ghost" href="/hims/export">⬇ Download register</a>
+    {% endif %}
+  </div>
+</div>
+
+<div class="grid cols4 mb">
+  <div class="card center"><h2 style="margin:0">{{ stats.folders }}</h2><span class="muted">folders in the register</span></div>
+  <div class="card center"><h2 style="margin:0">{{ stats.new_today }}</h2><span class="muted">new folders today</span></div>
+  <div class="card center"><h2 style="margin:0">{{ stats.visits_today }}</h2><span class="muted">visits today</span></div>
+  <div class="card center"><h2 style="margin:0">{{ stats.waiting_triage }}</h2><span class="muted">waiting for Triage</span></div>
+</div>
+
+<!-- ------------------------------------------------ 1. SEARCH FIRST -->
+<div class="card mb">
+  <h2>① Search for a returning patient</h2>
+  <p class="hint">Always search first. Type the <b>hospital number</b>, the
+    <b>phone number</b>, or the <b>patient's name</b> — any one of them works.</p>
+  <form method="get" action="/hims/">
+    <div class="row">
+      <input type="search" name="q" value="{{ term }}" autofocus
+             style="flex:1" placeholder="e.g. IJD/2026/00042, 08012345678, or Abatan Lekan">
+      <button class="btn">Search</button>
+    </div>
+  </form>
+</div>
+
+{% if searched %}
+<div class="card mb">
+  {% if results %}
+  <h2>{{ results|length }} folder{{ '' if results|length == 1 else 's' }} found</h2>
+  <div class="table-wrap" style="padding:0">
+  <table>
+    <tr><th>Hospital number</th><th>Patient</th><th>Age / Sex</th><th>Phone</th>
+        <th>Payment</th><th>Last visit</th><th></th></tr>
+    {% for p in results %}
+    <tr>
+      <td><b>{{ p.hospital_number }}</b></td>
+      <td>{{ p.full_name }}
+        {% if p.care_flags %}<br>{% for a in p.care_flags %}<span class="pill amber">{{ a }}</span> {% endfor %}{% endif %}
+      </td>
+      <td>{{ p.age_display }} · {{ 'Female' if p.sex == 'F' else 'Male' }}</td>
+      <td>{{ p.phone|mask_phone if p.phone else '—' }}</td>
+      <td><span class="pill blue">{{ payer_labels.get(p.payer_type, p.payer_type).split('—')[0] }}</span></td>
+      <td>{% if p.last_visit_at %}{{ p.last_visit_at.strftime('%d %b %Y') }}
+          {% else %}<span class="muted">never — first visit</span>{% endif %}</td>
+      <td class="right"><a class="btn small" href="/hims/folder/{{ p.id }}">Open folder</a></td>
+    </tr>
+    {% endfor %}
+  </table>
+  </div>
+  {% else %}
+  <h2>No folder found for “{{ term }}”</h2>
+  <p class="muted">Check the spelling, or try the phone number instead. If this really is
+    the patient's first visit, open a new folder for them.</p>
+  {% endif %}
+  {% if current_user.role in ('SUPER_ADMIN','HEAD_ADMIN_HR','ADMIN_MANAGER','HOD') %}
+  <a class="btn {{ '' if results else 'mt' }}" href="/hims/register?q={{ term|urlencode }}">
+    ➕ Open a new folder for “{{ term }}”</a>
+  {% endif %}
+</div>
+{% endif %}
+
+<!-- ------------------------------------------------ PAID WAITING FOR FOLDER -->
+<div class="card mb">
+  <h2>📥 Patients who have PAID — waiting for folder</h2>
+  <p class="hint">These patients came from Reception → Billing → Pay Point and have paid. <b>HIMS is the most appropriate to open the folder</b> (not Reception). Press <b>Open folder</b> to create the hospital folder and send them to Triage. This fixes \"patient sent to billing is not showing\" — each desk now sees its own queue.</p>
+  {% if paid_waiting %}
+    {% for i in paid_waiting %}
+    <div class="card pad-lg mb" style="border-left:4px solid #22c55e">
+      <div class="spread">
+        <div>
+          <div style="font-weight:800">{{ i.full_name }}</div>
+          <div class="muted" style="font-size:.85rem">{{ i.ref }} · {{ payer_labels.get(i.payer_type, i.payer_type) }}{% if i.payer_number %} · {{ i.payer_number }}{% endif %} · {{ i.phone|mask_phone if i.phone else '' }}</div>
+          <div class="muted" style="font-size:.85rem">Paid {{ i.paid_at.strftime('%H:%M') if i.paid_at else '' }} · Receipt {{ i.payment_ref or '—' }} · Bill {{ i.bill_ref or '—' }}</div>
+        </div>
+        <span class="pill green">PAID</span>
+      </div>
+      {% if i.care_flags %}
+      <div class="notice mt" style="text-align:left"><b>⚠ Needs help:</b> {{ i.care_flags | join(' · ') }}</div>
+      {% endif %}
+      <form method="post" action="/hims/intake/{{ i.id }}/open-folder" class="mt">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        <button class="btn">📂 Open folder & send to Triage</button>
+      </form>
+    </div>
+    {% endfor %}
+  {% else %}
+    <p class="muted">No paid patients waiting. When Pay Point records payment, patients appear here automatically.</p>
+  {% endif %}
+</div>
+
+<!-- ------------------------------------------------ 2. NEW FOLDER -->
+{% if current_user.role in ('SUPER_ADMIN','HEAD_ADMIN_HR','ADMIN_MANAGER','HOD') %}
+<div class="card mb">
+  <h2>② Open a folder for a new / first-visit patient</h2>
+  <p class="hint">Only after searching. Opening a second folder for a patient who already
+    has one splits their history in two — the system will warn you if it spots a match. For patients who came through Reception, use the <b>Paid — waiting for folder</b> list above instead.</p>
+  <a class="btn" href="/hims/register">➕ Open a new folder (walk-in, no reception flow)</a>
+</div>
+{% endif %}
+
+<!-- ------------------------------------------------ today -->
+<div class="card">
+  <h2>Today's attendances</h2>
+  {% if visits %}
+  <div class="table-wrap" style="padding:0">
+  <table>
+    <tr><th>Time</th><th>Visit</th><th>Patient</th><th>Reason</th><th>Status</th></tr>
+    {% for v in visits %}
+    <tr>
+      <td>{{ v.started_at.strftime('%H:%M') }}</td>
+      <td>{{ v.visit_no }}</td>
+      <td><a href="/hims/folder/{{ v.patient_id }}">{{ v.patient.full_name }}</a><br>
+          <span class="muted">{{ v.patient.hospital_number }}</span></td>
+      <td>{{ v.reason or '—' }}</td>
+      <td><span class="pill {{ 'amber' if v.status == 'REGISTERED' else 'blue' }}">{{ v.status.replace('_',' ') }}</span></td>
+    </tr>
+    {% endfor %}
+  </table>
+  </div>
+  {% else %}
+  <p class="muted">No patients registered yet today.</p>
+  {% endif %}
+</div>
+{% endblock %}

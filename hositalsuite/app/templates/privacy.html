@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block title %}Privacy Notice{% endblock %}
+{% block content %}
+{% with back_to="/welcome" %}{% include "_patient_nav.html" %}{% endwith %}
+<div class="card pad-lg" style="max-width:760px;margin:24px auto">
+  <h1>Privacy Notice</h1>
+  <p class="muted">How {{ hospital.name if hospital else 'this hospital' }} handles your
+    personal information — in line with the Nigeria Data Protection Act (NDPA) 2023.</p>
+  <p class="muted"><small>Last updated: {{ today.strftime('%d %B %Y') }}</small></p>
+
+  <h2>1. Who is responsible for your data</h2>
+  <p>{{ hospital.name if hospital else 'The hospital' }} is the <b>data controller</b> for the
+    information collected through this service.
+    {% if hospital and hospital.address %}Address: {{ hospital.address }}.{% endif %}
+    {% if hospital and hospital.email %}Email: {{ hospital.email }}.{% endif %}
+    {% if hospital and hospital.phone %}Phone: {{ hospital.phone }}.{% endif %}
+  </p>
+  <p>If any of the contact details above are missing, ask at the hospital reception for the
+    officer responsible for data protection.</p>
+
+  <h2>2. What we collect, and why</h2>
+  <table class="table">
+    <thead><tr><th>When you…</th><th>We collect</th><th>Why (lawful basis)</th></tr></thead>
+    <tbody>
+      <tr><td>Make a complaint</td><td>Department, category, your description, phone number,
+        optional photo</td><td>Your <b>consent</b>, so we can investigate and reply to you</td></tr>
+      <tr><td>Make a complaint <b>anonymously</b></td><td>Only the complaint itself — <b>no phone
+        number</b></td><td>Our <b>legitimate interest</b> in improving care quality</td></tr>
+      <tr><td>Book an appointment</td><td>Patient name, phone number, date and time</td>
+        <td>Your <b>consent</b>, to manage the appointment and send reminders</td></tr>
+      <tr><td>Give feedback</td><td>Star rating, optional comment, optional phone number</td>
+        <td>Your <b>consent</b>, to improve services and follow up if you asked us to</td></tr>
+      <tr><td>Join the queue</td><td>Your name (staff screens only) and a ticket number</td>
+        <td>Our <b>legitimate interest</b> in running an orderly clinic</td></tr>
+      <tr><td>Use the assistant chat</td><td>The messages you type</td>
+        <td>Our <b>legitimate interest</b> in answering your questions</td></tr>
+    </tbody>
+  </table>
+  <p><b>We never ask for, and you should never enter, clinical details such as your diagnosis,
+    test results or medications through these forms.</b> The public display screens show ticket
+    numbers only — never patient names.</p>
+
+  <h2>3. Who can see it</h2>
+  <p>Only authorised staff of {{ hospital.name if hospital else 'the hospital' }}: the Admin
+    Manager on duty, the head of the department concerned, and hospital management. Access is
+    controlled by role, and every view or change is recorded in a tamper-evident audit log.</p>
+  <p>We use service providers to deliver SMS and WhatsApp messages on our behalf. They process
+    only the phone number and message needed for delivery. <b>We do not sell your data, and we
+    do not use it for advertising.</b></p>
+  <p><b>About the assistant chat:</b> this app answers most questions from the hospital's own
+    prepared answers. When it can't, the message you typed — and the recent messages in that
+    conversation — may be sent to an external AI service provider (currently Groq, Google
+    Gemini, or OpenRouter) that helps generate a reply. They process that text only to produce
+    the answer, under their own privacy terms. Please don't type clinical details (diagnoses,
+    test results, medicines) into the chat or any form here — this app is not a clinical
+    channel, and the person who can act on those details is a clinician you visit.</p>
+
+  <h2>4. How long we keep it</h2>
+  <p>Records are kept for the hospital's configured retention period
+    (default: <b>6 years</b>), after which personal identifiers — your name, phone number and
+    the free-text description — are <b>automatically erased</b>. Anonymous statistics may be
+    kept longer for quality reporting, because they can no longer identify you.</p>
+
+  <h2>5. Your rights under the NDPA</h2>
+  <ul>
+    <li><b>Access</b> — ask for a copy of the data we hold about you.</li>
+    <li><b>Correction</b> — ask us to fix anything that is wrong.</li>
+    <li><b>Erasure</b> — ask us to delete your data, where the law allows.</li>
+    <li><b>Withdraw consent</b> — at any time, without affecting care you have already received.</li>
+    <li><b>Complain</b> — to the Nigeria Data Protection Commission (NDPC) if you are unhappy
+      with how we responded.</li>
+  </ul>
+  <p><a class="btn" href="/privacy/request">Make a data request →</a></p>
+
+  <h2>6. How we protect it</h2>
+  <p>Traffic is encrypted with HTTPS. Passwords are stored using one-way scrypt hashing and are
+    never readable by anyone, including us. Staff accounts use role-based permissions, failed
+    logins are throttled and locked out, and all sensitive actions are written to a hash-chained
+    audit trail that shows if anyone tampers with it. Backups are taken regularly.</p>
+
+  <h2>7. Changes</h2>
+  <p>If we change this notice we will update the date at the top of this page.</p>
+</div>
+{% include "_help_desk.html" %}
+{% endblock %}

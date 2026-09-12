@@ -1,0 +1,260 @@
+{% extends "base.html" %}
+{% block title %}Admin Manager{% endblock %}
+{% block content %}
+<h1>🧑‍💼 Admin Manager</h1>
+<p class="muted">Today's inspection and every past report — one page, no extra menus.</p>
+<a class="btn mb" href="/admin-manager/walk">🚶 Hospital walk-round — score every area</a>
+
+{# ---------------- TODAY ---------------- #}
+<div id="today" class="card pad-lg mb">
+  <div class="spread">
+    <div>
+      <div class="muted" style="font-size:.75rem;text-transform:uppercase;letter-spacing:.06em">Today · {{ today.strftime('%A, %d %B %Y') }}</div>
+      <div style="font-size:1.1rem;font-weight:800">
+        On duty: {{ duty.name if duty else "— no one assigned —" }}
+      </div>
+    </div>
+    {% if existing %}
+      <span class="pill green" style="font-size:.95rem;padding:8px 16px">🟢 Submitted {{ existing.total_score }}/25 · {{ existing.rating }}</span>
+    {% elif is_on_duty or current_user.is_super %}
+      <span class="pill amber" style="font-size:.95rem;padding:8px 16px">🔴 Pending</span>
+    {% else %}
+      <span class="pill gray">View only</span>
+    {% endif %}
+  </div>
+</div>
+
+{% if show_form %}
+  {% if existing %}
+    <div class="flash success">✅ Today's inspection is already submitted ({{ existing.ref }} —
+      {{ existing.total_score }}/25, {{ existing.rating }}).
+      <a href="/inspections/{{ existing.id }}">Open the report</a>.</div>
+  {% elif not is_on_duty and duty and not current_user.is_super %}
+    <div class="flash error">Today's inspection is assigned to <b>{{ duty.name }}</b>.
+      Only the Admin Manager on duty can submit today's inspection.</div>
+  {% else %}
+    {% if not duty and not current_user.is_super %}
+      <div class="notice">No duty roster entry found for today. Contact the administrator if this is unexpected.</div>
+    {% endif %}
+    <div id="draft-note" class="notice" style="display:none">📝 A saved draft from earlier was restored.</div>
+
+    <form id="insp-form" method="post" action="/inspections/submit" enctype="multipart/form-data">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <input type="hidden" name="lat" id="lat"><input type="hidden" name="lng" id="lng">
+      <input type="hidden" name="started_ts" id="started-ts" value="">
+
+      <div class="card mb">
+        <h2>1 · Where did you inspect?</h2>
+        <label>Department <span class="req">*</span></label>
+        <select name="department_id" id="dept" required>
+          <option value="">— Select department —</option>
+          {% for d in depts %}<option value="{{ d.id }}">{{ d.name }}</option>{% endfor %}
+        </select>
+        <label>Section (optional)</label>
+        <select name="section_id" id="section" disabled><option value="">— Whole department —</option></select>
+        <label>Unit (optional)</label>
+        <select name="unit_id" id="unit" disabled><option value="">—</option></select>
+        {% if gps_mode != 'disabled' %}
+        <p class="hint" id="gps-status">GPS: {{ 'mandatory' if gps_mode=='mandatory' else 'optional' }} at this hospital.</p>
+        {% endif %}
+      </div>
+
+      <div class="card mb">
+        <h2>2 · Score each criterion (1 = Critical … 5 = Excellent)</h2>
+        <p class="hint">A written or spoken explanation is <b>required</b> for any score of 1 or 2.</p>
+        {% for no, crit in criteria.items() %}
+        <div class="card crit-card mb" style="box-shadow:none">
+          <h3>C{{ no }} — {{ crit.title }}</h3>
+          <div class="hint mb">{{ crit['items'] | join(' · ') }}</div>
+          <div class="score-row" role="radiogroup" aria-label="Criterion {{ no }} score">
+            {% for s in (1,2,3,4,5) %}
+            <label class="score-opt" data-s="{{ s }}">
+              <input type="radio" name="score_{{ no }}" value="{{ s }}" required>
+              <span>{{ s }}</span>
+            </label>
+            {% endfor %}
+          </div>
+          <div class="expl-box" id="expl-box-{{ no }}" style="display:none">
+            <div class="tag">⚠ Explanation required (score 1–2)</div>
+            <textarea name="explanation_{{ no }}" id="explanation_{{ no }}"
+                      placeholder="Describe the problem found…"></textarea>
+            <button type="button" class="mic-btn" data-lang="en-NG"
+                    onclick="hmsVoice.start(this,'explanation_{{ no }}')">🎤 Speak</button>
+            <label style="margin-top:8px">Photo evidence (optional)</label>
+            <input type="file" name="evidence_{{ no }}" accept="image/jpeg,image/png,image/webp"
+                   style="font-size:.85rem">
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+
+      {# ---------------- Admin Manager's overall closing comment ---------------- #}
+      <div class="card pad-lg mt">
+        <h2 style="margin-top:0">📝 Your final comment</h2>
+        <p class="muted" style="margin-top:0">Your overall remarks on today's inspection.
+          This appears on the PDF sent to the MD/CEO. Optional, but strongly encouraged —
+          it is where you say what the scores alone cannot.</p>
+        <textarea name="final_comment" id="final_comment" rows="4" maxlength="4000"
+                  placeholder="e.g. The ward was clean and staff attentive, but the second
+                               suction machine has been faulty for three weeks and needs
+                               urgent attention from maintenance."></textarea>
+        <button type="button" class="mic-btn" data-lang="{{ speech_lang }}"
+                onclick="hmsVoice.start(this,'final_comment')">🎤 Speak your comment</button>
+      </div>
+
+      <button type="button" class="btn big" id="review-btn">Review &amp; Submit</button>
+
+      <div class="card pad-lg mt" id="review" style="display:none">
+        <h2>Review before submitting</h2>
+        <div id="review-body"></div>
+        <div id="review-comment" class="notice" style="display:none;text-align:left"></div>
+        <div class="notice">Once submitted the report is locked, a PDF is generated and it is sent
+          to the MD/CEO via WhatsApp. Corrections afterwards go through the formal amendment process.</div>
+        <div class="btn-row grid cols2 mt">
+          <button type="button" class="btn secondary" onclick="document.getElementById('review').style.display='none'">← Edit</button>
+          <button type="submit" class="btn" id="final-submit">✅ SUBMIT INSPECTION</button>
+        </div>
+      </div>
+    </form>
+  {% endif %}
+{% endif %}
+
+{# ---------------- HISTORY (same page) ---------------- #}
+<div id="history" class="spread mt mb">
+  <h2 style="margin:0">Inspection history</h2>
+  <a class="btn small secondary" href="/reports/inspection-daily?format=csv&date={{ today.isoformat() }}">⬇ CSV</a>
+</div>
+
+<form class="card mb grid cols4" method="get" action="/inspections" style="align-items:end">
+  <div><label style="margin-top:0">Department</label>
+    <select name="dept"><option value="">All</option>
+      {% for d in depts %}<option value="{{ d.id }}" {{ 'selected' if args.get('dept')==d.id|string }}>{{ d.name }}</option>{% endfor %}
+    </select></div>
+  <div><label style="margin-top:0">Admin Manager</label>
+    <select name="inspector"><option value="">All</option>
+      {% for u in inspectors %}<option value="{{ u.id }}" {{ 'selected' if args.get('inspector')==u.id|string }}>{{ u.name }}</option>{% endfor %}
+    </select></div>
+  <div><label style="margin-top:0">Rating</label>
+    <select name="rating"><option value="">All</option>
+      {% for r in ratings %}<option {{ 'selected' if args.get('rating')==r }}>{{ r }}</option>{% endfor %}
+    </select></div>
+  <div><label style="margin-top:0">From / To</label>
+    <div class="row"><input type="date" name="from" value="{{ args.get('from','') }}">
+    <input type="date" name="to" value="{{ args.get('to','') }}"></div></div>
+  <button class="btn small">Filter</button>
+</form>
+
+{% if items %}
+<div class="table-wrap card" style="padding:0">
+<table>
+  <tr><th>Date</th><th>Ref</th><th>Department</th><th>Admin Manager</th><th>Total</th><th>Rating</th><th></th></tr>
+  {% for i in items %}
+  <tr>
+    <td>{{ i.duty_date.strftime('%d %b %Y') }}</td>
+    <td><a href="/inspections/{{ i.id }}">{{ i.ref }}</a></td>
+    <td>{{ i.department.name }}{% if i.section %} / {{ i.section.name }}{% endif %}{% if i.unit %} / {{ i.unit.name }}{% endif %}</td>
+    <td>{{ i.inspector.name }}</td>
+    <td><b>{{ i.total_score }}</b>/25</td>
+    <td>{% set r = i.rating %}
+      <span class="pill {{ 'green' if r in ('EXCELLENT','GOOD') else ('amber' if r.startswith('FAIR') else ('orange' if r=='POOR' else 'red')) }}">{{ r }}</span></td>
+    <td>{% if i.critical_count %}<span class="pill red">{{ i.critical_count }} critical</span>{% endif %}
+        {% if i.status != 'SUBMITTED' %}<span class="pill gray">{{ i.status }}</span>{% endif %}</td>
+  </tr>
+  {% endfor %}
+</table>
+</div>
+{% else %}<div class="card center muted">No inspections match these filters.</div>{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if show_form and not existing %}
+<script nonce="{{ csp_nonce }}">
+var CRITERIA = {{ criteria | tojson }};
+var GPS_MODE = "{{ gps_mode }}";
+var started = document.getElementById('started-ts');
+if (started) started.value = Date.now();
+var form = document.getElementById('insp-form');
+if (form) {
+  hmsDeptCascade(document.getElementById('dept'), document.getElementById('section'),
+                 document.getElementById('unit'), "{{ csrf_token() }}");
+  hmsGps(GPS_MODE, document.getElementById('lat'), document.getElementById('lng'),
+         document.getElementById('gps-status'));
+  hmsScoreEnforce(form);
+  hmsDraft(form, 'hms-insp-draft-{{ today.isoformat() }}');
+
+  var reviewBtn = document.getElementById('review-btn');
+  if (reviewBtn) reviewBtn.addEventListener('click', function () {
+    var deptSel = document.getElementById('dept');
+    if (!deptSel.value) { alert('Please select a department.'); deptSel.focus(); return; }
+    var scores = {}, missing = [], explMissing = [];
+    [1,2,3,4,5].forEach(function (n) {
+      var sel = form.querySelector("input[name='score_" + n + "']:checked");
+      if (!sel) missing.push(n); else scores[n] = parseInt(sel.value, 10);
+      var ex = document.getElementById('explanation_' + n);
+      if (sel && scores[n] <= 2 && ex && !ex.value.trim()) explMissing.push(n);
+    });
+    if (missing.length) { alert('Please score criterion(s): ' + missing.join(', ')); return; }
+    if (explMissing.length) { alert('Explanation REQUIRED for criterion(s) ' + explMissing.join(', ') +
+        ' (score 1 or 2). Type it or use the 🎤 voice button.'); return; }
+    var total = Object.values(scores).reduce(function(a,b){return a+b;},0);
+    var rating = total>=22?'EXCELLENT':total>=18?'GOOD':total>=13?'FAIR / NEEDS IMPROVEMENT':total>=8?'POOR':'CRITICAL';
+    var pct = Math.round(total/25*100);
+    var html = '<p><b>' + deptSel.options[deptSel.selectedIndex].text + '</b>';
+    var sec = document.getElementById('section'), un = document.getElementById('unit');
+    if (sec.value) html += ' › ' + sec.options[sec.selectedIndex].text;
+    if (un.value) html += ' › ' + un.options[un.selectedIndex].text;
+    html += ' · {{ today.strftime("%d %b %Y") }}</p><table><tr><th>Criterion</th><th>Score</th><th>Explanation</th></tr>';
+    [1,2,3,4,5].forEach(function (n) {
+      var ex = document.getElementById('explanation_' + n).value.trim();
+      html += '<tr><td>C' + n + ' ' + CRITERIA[n].title + '</td><td><b>' + scores[n] + '</b></td><td>' +
+              (scores[n] <= 2 ? (ex || '—') : '—') + '</td></tr>';
+    });
+    html += '</table><p style="font-size:1.1rem"><b>Total: ' + total + '/25 (' + pct + '%) — ' +
+           rating + '</b></p>';
+    if (GPS_MODE !== 'disabled' && !document.getElementById('lat').value)
+      html += '<div class="notice">GPS location was not captured' +
+              (GPS_MODE==='mandatory' ? ' — submission will be blocked.' : '.') + '</div>';
+    document.getElementById('review-body').innerHTML = html;
+    // Show the closing comment on the review screen so nothing is submitted unseen.
+    var fc = document.getElementById('final_comment');
+    var fcBox = document.getElementById('review-comment');
+    if (fc && fcBox) {
+      var txt = (fc.value || '').trim();
+      fcBox.textContent = '';
+      if (txt) {
+        var b = document.createElement('b'); b.textContent = 'Your final comment: ';
+        fcBox.appendChild(b);
+        fcBox.appendChild(document.createTextNode(txt));   // textContent = XSS-safe
+      } else {
+        fcBox.textContent = 'No final comment added — you can go back and add one.';
+      }
+      fcBox.style.display = 'block';
+    }
+    document.getElementById('review').style.display = 'block';
+    document.getElementById('review').scrollIntoView({behavior:'smooth'});
+  });
+
+  form.addEventListener('submit', function (e) {
+    if (navigator.onLine) return;
+    e.preventDefault();
+    var data = { department_id: parseInt(document.getElementById('dept').value, 10) };
+    var sec = document.getElementById('section'), un = document.getElementById('unit');
+    if (sec.value) data.section_id = parseInt(sec.value, 10);
+    if (un.value) data.unit_id = parseInt(un.value, 10);
+    [1,2,3,4,5].forEach(function (n) {
+      var sel = form.querySelector("input[name='score_" + n + "']:checked");
+      data['score_' + n] = parseInt(sel.value, 10);
+      data['explanation_' + n] = document.getElementById('explanation_' + n).value.trim();
+    });
+    var fcEl = document.getElementById('final_comment');
+    data.final_comment = fcEl ? fcEl.value.trim() : '';
+    data.lat = document.getElementById('lat').value || null;
+    data.lng = document.getElementById('lng').value || null;
+    data.started_ts = document.getElementById('started-ts').value || null;
+    hmsQueueSubmit('/inspections/submit', data, "{{ csrf_token() }}");
+    return false;
+  });
+}
+</script>
+{% endif %}
+{% endblock %}

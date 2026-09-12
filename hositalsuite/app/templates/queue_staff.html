@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}Queue control{% endblock %}
+{% block content %}
+<div class="spread mb">
+  <h1 style="margin:0">Patient on Queue — {{ today.strftime('%d %b %Y') }} — Today's priority</h1>
+  <div class="row">
+    <a class="btn small ghost" href="/queue/screen" target="_blank">📺 Public display</a>
+    <a class="btn small secondary" href="/queue/join">➕ Public join page</a>
+    <span class="pill blue" style="background:#e7f0f8;color:#0e5a8a">Queue links only to Reception — all patients start at Reception</span>
+  </div>
+</div>
+<div class="card pad mb" style="background:#e7f0f8;border-left:4px solid #0e5a8a;font-size:.88rem;line-height:1.4">
+  <b>📋 Patient on Queue — Today's date only, priority first</b><br>
+  All patients join via Reception (front desk). Priority lane: Elderly 60+, Pregnant, Child under 5, Wheelchair — seen first automatically at every desk. TV shows ⭐ badge, half wait time. Voice announces. Today's queue only — tomorrow starts fresh.
+</div>
+
+<div class="card pad-lg mb" style="background:#f3e8ff;border-left:4px solid #8b5cf6">
+  <b>💜 Priority Lane Active</b> — ⭐ Elderly 60+, Pregnant, Child under 5, Wheelchair shown first automatically. TV shows ⭐ badge, half wait time, journey estimate. Voice announces priority patients.
+</div>
+
+<form class="card mb row" method="get">
+  <label style="margin:0">Department</label>
+  <select name="dept" style="width:auto" onchange="this.form.submit()">
+    <option value="">All</option>
+    {% for d in depts %}<option value="{{ d.id }}" {{ 'selected' if dept_id==d.id }}>{{ d.name }}</option>{% endfor %}
+  </select>
+  <span class="pill green">{{ waiting|length }} waiting</span>
+  <span class="pill blue">{{ called|length }} called</span>
+  <span class="pill gray">{{ done_count }} finished</span>
+</form>
+
+{% if dept_id and waiting %}
+<form method="post" action="/queue/0/call-next" class="mb">
+  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+  <input type="hidden" name="department_id" value="{{ dept_id }}">
+  <button class="btn big" style="width:100%">📢 CALL NEXT PATIENT (Priority first)</button>
+</form>
+{% endif %}
+
+<div class="grid cols2">
+  <div class="card">
+    <h2>Waiting — Priority first</h2>
+    {% for t in waiting %}
+    <div class="list-item" style="{% if t.is_fast_track %}background:#f3e8ff;border-left:4px solid #8b5cf6;padding-left:10px;border-radius:6px{% endif %}">
+      <div class="spread">
+        <span class="t" style="font-size:1.1rem">{% if t.is_fast_track %}⭐ {% endif %}{{ t.code }} {% if t.is_fast_track %}<span style="background:#8b5cf6;color:#fff;padding:2px 8px;border-radius:999px;font-size:.7rem">⭐ {{ t.fast_track_reason or 'Priority' }}</span>{% endif %}</span>
+        <span class="muted">{{ t.created_at.strftime('%H:%M') }}</span>
+      </div>
+      <div>{{ t.patient_name }}{% if t.phone %} · <span title="Full number visible to admin only">{{ t.phone|mask_phone }}</span>{% endif %} {% if t.is_fast_track %}· ⭐ Priority Lane{% endif %}</div>
+      <div class="muted">{{ t.department.name }}{% if t.source=='booking' %} · from booking{% endif %}</div>
+      <div class="row mt" style="gap:6px;flex-wrap:wrap">
+        <form method="post" action="/queue/{{ t.id }}/call-next" style="display:inline">
+          <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+          <button class="btn small" style="{% if t.is_fast_track %}background:#8b5cf6{% endif %}">📢 Call {% if t.is_fast_track %}⭐{% endif %}</button>
+        </form>
+        <form method="post" action="/queue/{{ t.id }}/to-reception" style="display:inline">
+          <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+          <button class="btn small secondary" title="Convert this QR ticket into a Reception intake — one journey, not two">➡ To Reception {% if t.is_fast_track %}⭐{% endif %}</button>
+        </form>
+      </div>
+    </div>
+    {% else %}<p class="muted">Nobody waiting.</p>{% endfor %}
+  </div>
+
+  <div class="card">
+    <h2>Called / serving</h2>
+    {% for t in called %}
+    <div class="list-item" style="{% if t.is_fast_track %}background:#f3e8ff;border-left:4px solid #8b5cf6;padding-left:10px;border-radius:6px{% endif %}">
+      <div class="spread">
+        <span class="t" style="font-size:1.1rem">{% if t.is_fast_track %}⭐ {% endif %}{{ t.code }}</span>
+        <span class="muted">called {{ t.called_at.strftime('%H:%M') }}</span>
+      </div>
+      <div>{{ t.patient_name|first_name }} · {{ t.department.name }} {% if t.is_fast_track %}· ⭐ {{ t.fast_track_reason }}{% endif %}</div>
+      <form method="post" action="/queue/{{ t.id }}/finish" class="row mt">
+        <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+        <button class="btn small" name="outcome" value="done" style="background:var(--green)">✅ Served</button>
+        <button class="btn small ghost" name="outcome" value="no_show">No-show</button>
+      </form>
+    </div>
+    {% else %}<p class="muted">Nobody called.</p>{% endfor %}
+  </div>
+</div>
+{% endblock %}

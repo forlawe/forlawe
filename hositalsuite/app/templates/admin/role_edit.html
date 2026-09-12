@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}{{ role.name }}{% endblock %}
+{% block content %}
+<h1>🔐 {{ role.name }}</h1>
+{% if role.builtin %}
+<p class="muted">This is a built-in role. You may change what it does, but its
+  name and the fact that it exists are fixed.</p>
+{% endif %}
+
+<form method="post" action="/admin/roles/{{ role.id }}">
+  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+
+  <div class="card mb">
+    <h2>How much of the hospital does this role see?</h2>
+    <p class="hint">This is about SIGHT, not power. Two people can hold exactly
+      the same ticks and still see different amounts of the hospital.</p>
+    <select name="scope">
+      {% for code, label in scopes %}
+      <option value="{{ code }}" {{ 'selected' if code == role.scope }}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    {% if not role.builtin %}
+    <label class="mt">Name</label>
+    <input name="name" value="{{ role.name }}" maxlength="120">
+    <label class="mt">Description</label>
+    <input name="description" value="{{ role.description or '' }}" maxlength="300">
+    {% endif %}
+  </div>
+
+  {% for group, pairs in groups %}
+  <div class="card mb">
+    <h2>{{ group }}</h2>
+    {% for key, label in pairs %}
+    <label class="row" style="gap:8px;align-items:flex-start;margin:8px 0">
+      <input type="checkbox" name="perm" value="{{ key }}"
+             {{ 'checked' if key in ticked }}
+             style="width:22px;height:22px;flex:0 0 auto;margin-top:2px">
+      <span>{{ label }}
+        {% if key == 'admin' %}
+        <span class="pill red">full control</span>
+        <div class="hint">Anyone with this can change everything, including
+          this page. Give it to as few people as possible.</div>
+        {% endif %}
+      </span>
+    </label>
+    {% endfor %}
+  </div>
+  {% endfor %}
+
+  <button class="btn">Save what this role may do</button>
+  <a class="btn secondary" href="/admin/roles">Cancel</a>
+</form>
+
+<div class="card mt">
+  <h2>Who holds this role</h2>
+  {% if holders or extra %}
+  <ul>
+    {% for u in holders %}<li>{{ u.name }} <span class="muted">— main role</span></li>{% endfor %}
+    {% for g in extra %}<li>{{ g.user.name if g.user else '—' }}
+      <span class="muted">— extra role{% if g.department %} in {{ g.department.name }}{% endif %}</span></li>{% endfor %}
+  </ul>
+  <p class="hint">Every one of these people is affected the moment you press
+    Save.</p>
+  {% else %}
+  <p class="muted">Nobody holds this role yet.</p>
+  {% endif %}
+</div>
+{% endblock %}

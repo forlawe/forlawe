@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="{{ lang if lang else 'en' }}">
+<head>
+{% include "_auth_head.html" %}
+<title>Sign up{% if hospital %} — {{ hospital.name }}{% endif %}</title>
+</head>
+<body>
+<div class="login-wrap">
+  <div class="card login-card pad-lg">
+    {% set subtitle = "Sign up" %}
+    {% include "_auth_brand.html" %}
+    <p class="hint center" style="margin-top:0">The System Admin must approve you before you can sign in.</p>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for cat, msg in messages %}<div class="flash {{ cat }}">{{ msg }}</div>{% endfor %}
+    {% endwith %}
+    <form method="post" action="{{ '/signup/' + org_code if org_code else '/signup' }}">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <label>Full name</label>
+      <input type="text" name="name" value="{{ name or '' }}" required autocomplete="name">
+      <label>Username</label>
+      <input type="text" name="username" value="{{ username or '' }}" required
+             autocapitalize="none" autocomplete="username">
+      <label>Email</label>
+      <input type="email" name="email" value="{{ email or '' }}" required autocomplete="email">
+      {% with name="password", id="signup-password", label="Password", autocomplete="new-password" %}
+        {% include "_pw_field.html" %}
+      {% endwith %}
+      {% with name="confirm_password", id="signup-confirm", label="Type the password again", autocomplete="new-password" %}
+        {% include "_pw_field.html" %}
+      {% endwith %}
+      <div class="hint">At least 10 characters. One CAPITAL, one small letter,
+        one number, one symbol (like ! @ #).</div>
+      <div class="mt">
+        <button class="btn big" type="submit" style="width:100%">Create account</button>
+      </div>
+    </form>
+    <nav class="auth-links">
+      <a href="/login">Sign in</a>
+      <a href="/forgot-password">Forgot password</a>
+    </nav>
+  </div>
+  {% include "_auth_footer.html" %}
+</div>
+<script src="{{ url_for('static', filename='js/auth.js') }}?v={{ app_version }}" nonce="{{ csp_nonce }}"></script>
+</body>
+</html>

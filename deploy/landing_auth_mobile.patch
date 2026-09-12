@@ -1,0 +1,274 @@
+diff --git a/app/static/css/app.css b/app/static/css/app.css
+index 8336876..9a35f60 100644
+--- a/app/static/css/app.css
++++ b/app/static/css/app.css
+@@ -364,6 +364,21 @@ summary{cursor:pointer;font-weight:750;font-size:var(--fs-sm)}
+ .auth-links{flex-wrap:wrap}
+ .pw-wrap input{box-sizing:border-box}
+ .pw-eye{z-index:2}
++
++/* ---------------- auth screens: the way back + notch safety ---------------- */
++/* The auth card is the only content on the page, so the wrap is a COLUMN: the
++   card, then the "CareQueue home / Patient view" row beneath it. Every one of
++   the 11 .login-wrap pages holds exactly one card, so stacking is safe. */
++.login-wrap{flex-direction:column;gap:16px;
++  padding:calc(20px + env(safe-area-inset-top,0px)) 20px
++           calc(20px + env(safe-area-inset-bottom,0px))}
++.auth-footer{display:flex;flex-wrap:wrap;justify-content:center;gap:4px 20px;
++  width:100%;max-width:min(410px,calc(100vw - 32px));text-align:center}
++/* 44px minimum target: these are tapped with one thumb on a cheap Android */
++.auth-footer a{color:rgba(255,255,255,.94);font-weight:700;font-size:.9rem;
++  min-height:44px;display:inline-flex;align-items:center;
++  text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1.5px}
++.auth-footer a:hover,.auth-footer a:focus-visible{color:#fff}
+ .nav-toggle{display:none;margin:8px 12px;min-height:42px;padding:8px 16px;border-radius:999px;
+   border:1.5px solid var(--line);background:#fff;color:var(--primary-700);font-weight:800;
+   font-size:.95rem;cursor:pointer}
+diff --git a/app/templates/_auth_footer.html b/app/templates/_auth_footer.html
+new file mode 100644
+index 0000000..1569b10
+--- /dev/null
++++ b/app/templates/_auth_footer.html
+@@ -0,0 +1,10 @@
++{# Shared "back to the front door" row for every auth screen.
++
++Why this exists: staff reach /login from a QR poster, a WhatsApp link or an old
++bookmark, and the only way back to the product page was the browser Back button.
++One row under the card fixes that. url_for() only (F-024) so a blueprint rename
++fails loudly instead of rotting into a 404. #}
++<nav class="auth-footer" aria-label="CareQueue">
++  <a href="{{ url_for('main.sales_landing') }}">← CareQueue home</a>
++  <a href="{{ url_for('main.patient_hub') }}">Patient view</a>
++</nav>
+diff --git a/app/templates/forgot_password.html b/app/templates/forgot_password.html
+index 7ec029f..8bff523 100644
+--- a/app/templates/forgot_password.html
++++ b/app/templates/forgot_password.html
+@@ -27,6 +27,7 @@
+       <a href="/signup">Sign up</a>
+     </nav>
+   </div>
++  {% include "_auth_footer.html" %}
+ </div>
+ </body>
+ </html>
+diff --git a/app/templates/landing_sales.html b/app/templates/landing_sales.html
+index a1e1841..b7792eb 100644
+--- a/app/templates/landing_sales.html
++++ b/app/templates/landing_sales.html
+@@ -60,8 +60,10 @@ img{max-width:100%;display:block}
+ .btn-ghost:hover{border-color:var(--ink);transform:translateY(-1px)}
+ 
+ /* ===== NAV — sticky glass ===== */
+-.nav{position:sticky;top:0;z-index:60;backdrop-filter:saturate(180%) blur(20px);-webkit-backdrop-filter:saturate(180%) blur(20px);background:rgba(252,251,249,.82);border-bottom:1px solid var(--line2)}
+-.nav-inner{display:flex;align-items:center;justify-content:space-between;height:68px}
++/* safe-area: the page asks for viewport-fit=cover, so on notched phones the
++   sticky bar must not sit under the status bar. */
++.nav{position:sticky;top:0;z-index:60;backdrop-filter:saturate(180%) blur(20px);-webkit-backdrop-filter:saturate(180%) blur(20px);background:rgba(252,251,249,.82);border-bottom:1px solid var(--line2);padding-top:env(safe-area-inset-top,0)}
++.nav-inner{display:flex;align-items:center;justify-content:space-between;gap:14px;min-height:68px;flex-wrap:wrap}
+ .brand{display:flex;align-items:center;gap:11px;font-weight:900;letter-spacing:-.02em;font-size:1.15rem}
+ .brand-mark{width:38px;height:38px;border-radius:11px;background:var(--black);color:var(--gold);display:flex;align-items:center;justify-content:center;font-size:1.2rem;box-shadow:0 6px 16px rgba(0,0,0,.12)}
+ .nav-links{display:flex;gap:26px;align-items:center;font-size:.92rem;font-weight:600;color:var(--muted)}
+@@ -70,7 +72,50 @@ img{max-width:100%;display:block}
+ .nav-links a:hover{color:var(--ink)}
+ .nav-links a:hover:after{transform:scaleX(1)}
+ .nav-cta{display:flex;gap:10px;align-items:center}
+-@media(max-width:900px){.nav-links{display:none}}
++
++/* Hamburger — the phone door. Above 900px the desktop row is used instead, so
++   this stays hidden and costs nothing. It is a real <button>: keyboard and
++   screen readers get it for free, and aria-expanded tells them the state. */
++.nav-toggle{display:none;align-items:center;gap:8px;min-height:44px;min-width:44px;padding:10px 16px;
++  border:1px solid var(--line);background:#fff;border-radius:var(--r-pill);font-weight:800;font-size:.9rem;
++  color:var(--ink);cursor:pointer;box-shadow:var(--shadow-sm)}
++.nav-toggle[aria-expanded="true"]{background:var(--black);color:var(--gold);border-color:var(--black)}
++.nav-toggle .bars{display:block;width:18px;height:12px;position:relative}
++.nav-toggle .bars:before,.nav-toggle .bars:after,.nav-toggle .bars i{
++  content:"";position:absolute;left:0;right:0;height:2px;background:currentColor;border-radius:2px;
++  transition:transform .2s ease,opacity .2s ease}
++.nav-toggle .bars:before{top:0}
++.nav-toggle .bars i{top:5px}
++.nav-toggle .bars:after{bottom:0}
++.nav-toggle[aria-expanded="true"] .bars:before{transform:translateY(5px) rotate(45deg)}
++.nav-toggle[aria-expanded="true"] .bars i{opacity:0}
++.nav-toggle[aria-expanded="true"] .bars:after{transform:translateY(-5px) rotate(-45deg)}
++
++/* The compact CTA row that stays visible on a phone next to the hamburger */
++.nav-mini{display:none;align-items:center;gap:8px}
++
++@media(max-width:900px){
++  .nav-inner{min-height:60px;padding-top:8px;padding-bottom:8px}
++  .nav-links{display:none}
++  .nav-toggle,.nav-mini{display:inline-flex}
++  /* the desktop CTA pair does not fit beside brand + hamburger on a 360px
++     screen, so on a phone it lives inside the drawer instead of being clipped
++     off the right edge by overflow-x:hidden */
++  .nav-cta{display:none}
++  /* drawer */
++  .nav-drawer{display:none;width:100%;order:3;flex-basis:100%;
++    border-top:1px solid var(--line2);margin-top:6px;padding:10px 0 6px}
++  .nav-drawer.open{display:block}
++  .nav-drawer .nav-links{display:flex;flex-direction:column;align-items:stretch;gap:0}
++  .nav-drawer .nav-links a{padding:13px 10px;min-height:46px;display:flex;align-items:center;
++    border-radius:10px;font-size:1rem;font-weight:700;color:var(--ink)}
++  .nav-drawer .nav-links a:hover{background:#fff}
++  .nav-drawer .nav-links a:after{display:none}
++  .nav-drawer .nav-cta{display:flex;flex-direction:column;align-items:stretch;gap:8px;
++    margin-top:10px;padding-top:12px;border-top:1px solid var(--line2)}
++  .nav-drawer .nav-cta .btn,.nav-drawer .nav-cta .pill{justify-content:center;min-height:46px;white-space:normal;text-align:center}
++  .nav-drawer .nav-cta .pill{padding:12px 16px;font-size:.95rem}
++}
+ 
+ /* ===== Ambient orbs — subtle motion ===== */
+ .ambient{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+@@ -227,9 +272,24 @@ img{max-width:100%;display:block}
+ .cta .btns{display:flex;gap:12px;justify-content:center;margin-top:26px;flex-wrap:wrap;position:relative}
+ 
+ /* Footer */
+-.foot{padding:42px 0 28px;color:var(--muted2);font-size:.88rem;border-top:1px solid var(--line2);background:#fff;margin-top:48px}
++.foot{padding:42px 0 calc(28px + env(safe-area-inset-bottom,0));color:var(--muted2);font-size:.88rem;border-top:1px solid var(--line2);background:#fff;margin-top:48px}
+ .foot-grid{display:grid;grid-template-columns:1.6fr 1fr 1fr 1fr;gap:24px}
+ @media(max-width:860px){.foot-grid{grid-template-columns:1fr 1fr}}
++/* phones: one column, and every footer link a comfortable 40px target */
++@media(max-width:560px){
++  .foot{padding-top:32px}
++  .foot-grid{grid-template-columns:1fr;gap:20px}
++  .foot a{padding:8px 0;margin:0;min-height:40px;display:flex;align-items:center;font-size:1rem}
++}
++/* phones: CTA buttons stack full width — a half-width gold button on a 360px
++   screen is a fiddly tap and reads as a desktop page shrunk down */
++@media(max-width:600px){
++  .cta{padding:38px 18px;border-radius:var(--r-lg)}
++  .cta .btns{flex-direction:column;align-items:stretch}
++  .cta .btns .btn{width:100%;min-height:50px}
++  .ctas{flex-direction:column;align-items:stretch}
++  .ctas .btn{width:100%;min-height:50px}
++}
+ .foot b{color:var(--ink);display:block;margin-bottom:12px;font-size:.92rem}
+ .foot a{display:block;margin:7px 0;color:var(--muted);font-size:.90rem;transition:color .18s}
+ .foot a:hover{color:var(--ink)}
+@@ -240,6 +300,13 @@ img{max-width:100%;display:block}
+ <nav class="nav">
+   <div class="wrap nav-inner">
+     <a class="brand" href="/sales" aria-label="CareQueue home"><span class="brand-mark">CQ</span> CareQueue</a>
++    <div class="nav-mini">
++      <a href="/start" class="btn btn-primary" style="padding:11px 16px;font-size:.86rem">Set up</a>
++      <button type="button" class="nav-toggle" id="nav-toggle"
++              aria-expanded="false" aria-controls="nav-drawer" aria-label="Open menu">
++        <span class="bars" aria-hidden="true"><i></i></span> Menu
++      </button>
++    </div>
+     <div class="nav-links">
+       <a href="#features">Features</a>
+       <a href="#product">Product</a>
+@@ -248,9 +315,26 @@ img{max-width:100%;display:block}
+       <a href="#faq">FAQ</a>
+     </div>
+     <div class="nav-cta">
++      <a href="/login" class="pill pill-light">Staff login</a>
+       <a href="/welcome" class="pill pill-light">Patient view →</a>
+       <a href="/start" class="btn btn-primary" style="padding:11px 18px;font-size:.88rem">Set up hospital</a>
+     </div>
++    <!-- phone drawer: the same destinations, stacked, 46px tap targets -->
++    <div class="nav-drawer" id="nav-drawer">
++      <div class="nav-links">
++        <a href="#features">Features</a>
++        <a href="#product">How it works</a>
++        <a href="#benefits">Why CareQueue</a>
++        <a href="#pricing">Pricing</a>
++        <a href="#faq">FAQ</a>
++      </div>
++      <div class="nav-cta">
++        <a href="/start" class="btn btn-gold">👑 Set up my hospital</a>
++        <a href="/login" class="pill pill-light">Staff login</a>
++        <a href="/signup" class="pill pill-light">Staff sign up</a>
++        <a href="/welcome" class="pill pill-light">Patient view →</a>
++      </div>
++    </div>
+   </div>
+ </nav>
+ 
+@@ -501,7 +585,7 @@ img{max-width:100%;display:block}
+       </div>
+     </div>
+     <div><b>Product</b><a href="#features">Features</a><a href="#product">How it works</a><a href="#benefits">Why CareQueue</a><a href="#pricing">Pricing</a><a href="/welcome">Patient demo</a></div>
+-    <div><b>Hospitals</b><a href="/login">Staff login</a><a href="/privacy">Privacy</a><a href="/privacy/request">Data request</a><a href="/sales">Sales</a></div>
++    <div><b>Hospitals</b><a href="/login">Staff login</a><a href="/signup">Staff sign up</a><a href="/privacy">Privacy</a><a href="/privacy/request">Data request</a><a href="/sales">Sales</a></div>
+     <div><b>Get started</b><a href="#pricing">Book demo</a><a href="/welcome">Try patient view</a><a href="/tv">See live TV</a><a href="#faq">FAQ</a></div>
+   </div>
+   <div class="wrap" style="margin-top:28px;padding-top:18px;border-top:1px solid var(--line2);display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px">
+@@ -511,6 +595,26 @@ img{max-width:100%;display:block}
+ </footer>
+ 
+ <script nonce="{{ csp_nonce }}">
++// ===== Mobile nav drawer — no library, keyboard and screen-reader safe =====
++(function(){
++  const btn = document.getElementById('nav-toggle');
++  const drawer = document.getElementById('nav-drawer');
++  if(!btn || !drawer){ return; }
++  const setOpen = (open)=>{
++    drawer.classList.toggle('open', open);
++    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
++    btn.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
++  };
++  btn.addEventListener('click', ()=> setOpen(!drawer.classList.contains('open')));
++  // tapping any link inside the drawer closes it (anchors scroll, pages navigate)
++  drawer.addEventListener('click', (e)=>{ if(e.target.closest('a')) setOpen(false); });
++  document.addEventListener('keydown', (e)=>{ if(e.key === 'Escape') setOpen(false); });
++  // going back to desktop width must not leave a stale "open" drawer behind
++  const mq = window.matchMedia('(min-width:901px)');
++  const reset = (ev)=>{ if(ev.matches) setOpen(false); };
++  if(mq.addEventListener){ mq.addEventListener('change', reset); } else { mq.addListener(reset); }
++})();
++
+ // ===== Scroll reveal + stagger + ambient microinteractions — no external libs =====
+ (function(){
+   const els = document.querySelectorAll('.reveal');
+diff --git a/app/templates/login.html b/app/templates/login.html
+index 62dd229..fed6244 100644
+--- a/app/templates/login.html
++++ b/app/templates/login.html
+@@ -30,6 +30,7 @@
+       <a href="/forgot-password">Forgot password</a>
+     </nav>
+   </div>
++  {% include "_auth_footer.html" %}
+ </div>
+ <script src="{{ url_for('static', filename='js/auth.js') }}?v={{ app_version }}" nonce="{{ csp_nonce }}"></script>
+ {% include "_install.html" %}
+diff --git a/app/templates/request_access.html b/app/templates/request_access.html
+index 5297be5..cab2f1e 100644
+--- a/app/templates/request_access.html
++++ b/app/templates/request_access.html
+@@ -39,6 +39,7 @@
+       <a href="/forgot-password">Forgot password</a>
+     </nav>
+   </div>
++  {% include "_auth_footer.html" %}
+ </div>
+ <script src="{{ url_for('static', filename='js/auth.js') }}?v={{ app_version }}" nonce="{{ csp_nonce }}"></script>
+ </body>
+diff --git a/app/templates/reset_password.html b/app/templates/reset_password.html
+index 9856d9a..214f722 100644
+--- a/app/templates/reset_password.html
++++ b/app/templates/reset_password.html
+@@ -36,6 +36,7 @@
+       <a href="/login">Sign in</a>
+     </nav>
+   </div>
++  {% include "_auth_footer.html" %}
+ </div>
+ <script src="{{ url_for('static', filename='js/auth.js') }}?v={{ app_version }}" nonce="{{ csp_nonce }}"></script>
+ </body>
+diff --git a/app/templates/signup_pick.html b/app/templates/signup_pick.html
+index e9a28aa..f2f269f 100644
+--- a/app/templates/signup_pick.html
++++ b/app/templates/signup_pick.html
+@@ -17,6 +17,7 @@
+       <a href="/login">Sign in</a>
+     </nav>
+   </div>
++  {% include "_auth_footer.html" %}
+ </div>
+ </body>
+ </html>

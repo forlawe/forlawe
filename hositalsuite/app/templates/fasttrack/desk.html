@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% block title %}Fast Track Desk{% endblock %}
+{% block content %}
+<style nonce="{{ csp_nonce }}">
+  .gold-card{background: linear-gradient(135deg,#FFD700 0%,#FFC400 50%,#FFA500 100%);color:#000;border-radius:18px;padding:18px 20px;box-shadow:0 8px 24px rgba(255,165,0,0.3);margin-bottom:16px;border:1px solid rgba(0,0,0,0.06)}
+  .gold-card h1{margin:0;font-size:1.45rem;font-weight:900;letter-spacing:-0.01em}
+  .gold-card p{margin:8px 0 0;font-size:.9rem;line-height:1.5;font-weight:500}
+  .stat-grid{display:grid;grid-template-columns: repeat(4,1fr);gap:10px;margin-bottom:16px}
+  @media(max-width:700px){.stat-grid{grid-template-columns:1fr 1fr}}
+  .stat-gold{background:#fff;border:2px solid #FFD700;border-radius:12px;padding:12px;text-align:center;font-weight:900;box-shadow:0 2px 8px rgba(255,215,0,0.15)}
+  .stat-gold .v{font-size:1.6rem;color:#000}
+  .stat-gold .l{font-size:.68rem;text-transform:uppercase;letter-spacing:0.06em;margin-top:2px;color:#6b5a00}
+  .fast-row{border-left:6px solid #FFD700;background:#fff;border-radius:12px;padding:14px 16px;margin-bottom:10px;box-shadow:0 2px 8px rgba(0,0,0,0.06);border:1px solid #f0e6c0}
+  .fast-row .name{font-weight:900;font-size:1.02rem;color:#000;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .badge-gold{background:#000;color:#FFD700;padding:3px 10px;border-radius:999px;font-size:.7rem;font-weight:900}
+  .badge-fast{background:#FFD700;color:#000;padding:3px 10px;border-radius:999px;font-size:.7rem;font-weight:900}
+</style>
+
+<div class="gold-card">
+  <h1>👑 Fast Track Desk — {{ s.fast_track_building_name if s else 'Executive Lounge' }}</h1>
+  <p>Fast Track is our premium service. Patients who choose it are seen quickly in a quiet, comfortable space — {{ s.fast_track_building_name if s else 'Executive Lounge' }}. No long queue. Our team handles everything — from reception to payment to the doctor. {% if s and s.fast_track_price %}Price: {{ s.fast_track_currency }} {{ '{:,}'.format(s.fast_track_price) }} — {{ s.fast_track_price_note or 'Pay a little more, be seen quickly.' }}{% endif %}</p>
+</div>
+
+<div class="stat-grid">
+  <div class="stat-gold"><div class="v">{{ stats.intakes }}</div><div class="l">At front desk</div></div>
+  <div class="stat-gold"><div class="v">{{ stats.visits }}</div><div class="l">With nurse / doctor</div></div>
+  <div class="stat-gold"><div class="v">{{ stats.tickets }}</div><div class="l">Queue tickets</div></div>
+  <div class="stat-gold"><div class="v">{{ stats.onward }}</div><div class="l">Lab / Pharmacy etc</div></div>
+</div>
+
+<div class="card pad-lg mb" style="background:#FFFEF0;border-left:5px solid #FFD700;padding:14px">
+  <b>How Fast Track works:</b>
+  <div style="font-size:.86rem;line-height:1.6;margin-top:6px;color:#3a2a00">
+    • Patient books or joins queue and picks Fast Track<br>
+    • They appear here and at reception right away — marked gold<br>
+    • We guide them: payment → registration → nurse → doctor → lab / pharmacy → home<br>
+    • They are seen first at every desk. TV shows gold. Voice calls them in 4 languages.
+  </div>
+</div>
+
+<h2 style="font-size:1.15rem;font-weight:900;margin:18px 0 10px">🎟️ Fast Track Queue — Waiting to be welcomed</h2>
+{% if not tickets %}
+<p class="muted">No Fast Track patients waiting right now. When someone joins via phone or QR, they will appear here and at reception.</p>
+{% else %}
+{% for t in tickets %}
+<div class="fast-row">
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
+    <div style="flex:1">
+      <div class="name">👑 {{ t.patient_name|first_name }} <span class="badge-gold">{{ t.code }}</span> <span class="badge-fast">{{ all_labels.get(t.fast_track_reason, t.fast_track_reason or 'Premium') }}</span></div>
+      <div class="muted" style="font-size:.82rem;margin-top:4px">{{ t.department.name if t.department else '' }} · {{ t.queue_date }} · {{ t.phone|mask_phone if t.phone else '' }}</div>
+    </div>
+    <span class="pill" style="background:#000;color:#FFD700">{{ t.status }}</span>
+  </div>
+  <form method="post" action="/fasttrack/ticket/{{ t.id }}/to-reception" class="mt">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <button class="btn" style="background:#000;color:#FFD700;width:100%;font-weight:900;border-radius:999px">👑 Welcome — Take to reception (gold)</button>
+  </form>
+</div>
+{% endfor %}
+{% endif %}
+
+<h2 style="font-size:1.15rem;font-weight:900;margin:22px 0 10px">🏥 At front desks — Payment and registration</h2>
+{% if not intake_rows %}
+<p class="muted">No Fast Track patients at front desks right now.</p>
+{% else %}
+{% for r in intake_rows %}
+<div class="fast-row">
+  <div style="display:flex;justify-content:space-between;gap:10px">
+    <div style="flex:1">
+      <div class="name">👑 {{ r.intake.full_name|first_name }} <span class="badge-gold">{{ r.intake.ref }}</span> <span class="badge-fast">{{ r.label }}</span></div>
+      <div class="muted" style="font-size:.82rem;margin-top:3px">{{ r.intake.stage_label }}</div>
+      {% if r.journey and r.journey.total %}<div style="margin-top:6px;background:#FFFEF0;border-radius:8px;padding:6px 10px;font-size:.78rem;border:1px solid #f0e6c0">⏱ About {{ (r.journey.total)|hm }} total left</div>{% endif %}
+    </div>
+    <div style="text-align:right"><span class="pill" style="background:#000;color:#FFD700">{{ (r.waited)|hm }}</span></div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px">
+    {% if r.intake.stage == 'RECEPTION' %}
+    <form method="post" action="/fasttrack/{{ r.intake.id }}/to-billing"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="btn small" style="background:#000;color:#FFD700;width:100%;border-radius:999px">→ Billing</button></form>
+    {% elif r.intake.stage == 'BILLING' %}
+    <form method="post" action="/fasttrack/{{ r.intake.id }}/to-payment"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><input type="hidden" name="bill_ref" value="{{ r.intake.bill_ref or '' }}"><button class="btn small" style="background:#000;color:#FFD700;width:100%;border-radius:999px">→ Pay</button></form>
+    {% elif r.intake.stage == 'PAYMENT' %}
+    <form method="post" action="/fasttrack/{{ r.intake.id }}/paid"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="btn small" style="background:#000;color:#FFD700;width:100%;border-radius:999px">✅ Paid → Register</button></form>
+    {% elif r.intake.stage == 'PAID' %}
+    <form method="post" action="/fasttrack/{{ r.intake.id }}/open-folder"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="btn small" style="background:#000;color:#FFD700;width:100%;border-radius:999px">📁 Open folder → Nurse</button></form>
+    {% endif %}
+  </div>
+</div>
+{% endfor %}
+{% endif %}
+
+<h2 style="font-size:1.15rem;font-weight:900;margin:22px 0 10px">🩺 With nurse / doctor</h2>
+{% if not visit_rows %}
+<p class="muted">No Fast Track patients with nurse or doctor right now.</p>
+{% else %}
+{% for r in visit_rows %}
+<div class="fast-row">
+  <div style="display:flex;justify-content:space-between;gap:10px">
+    <div style="flex:1">
+      <div class="name">👑 {{ r.patient.full_name|first_name if r.patient else 'Patient #' ~ r.visit.patient_id }} <span class="badge-gold">{{ r.patient.hospital_number if r.patient else '' }}</span></div>
+      <div class="muted" style="font-size:.82rem;margin-top:3px">{{ r.visit.clinic }} {% if r.visit.consulting_room %}· {{ r.visit.consulting_room }}{% endif %} · {{ r.visit.status }}</div>
+    </div>
+    <div style="text-align:right"><span class="pill" style="background:#000;color:#FFD700">{{ (r.waited)|hm }}</span></div>
+  </div>
+</div>
+{% endfor %}
+{% endif %}
+
+<h2 style="font-size:1.15rem;font-weight:900;margin:22px 0 10px">➡️ Lab / Pharmacy / Other desks</h2>
+{% if not onward_rows %}
+<p class="muted">No Fast Track patients waiting at lab or pharmacy.</p>
+{% else %}
+{% for r in onward_rows %}
+<div class="fast-row">
+  <div style="display:flex;justify-content:space-between;gap:10px">
+    <div style="flex:1">
+      <div class="name">👑 {{ r.patient.full_name|first_name if r.patient else '—' }} <span class="badge-gold">{{ r.step.destination }}</span></div>
+      <div class="muted" style="font-size:.82rem;margin-top:3px">{{ r.patient.hospital_number if r.patient else '' }} · Sent {{ (r.waited)|hm }} ago</div>
+    </div>
+    <span class="pill" style="background:#000;color:#FFD700">{{ (r.waited)|hm }}</span>
+  </div>
+  <form method="post" action="/onward/{{ r.step.id }}/done" class="mt"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="btn small" style="background:#000;color:#FFD700;width:100%;border-radius:999px">✅ Done — {{ r.step.destination }}</button></form>
+</div>
+{% endfor %}
+{% endif %}
+
+<div class="card pad-lg mt" style="background:#000;color:#FFD700;border-radius:14px">
+  <h3 style="margin-top:0;color:#FFD700;font-size:1rem">Executive lounge — what patients get</h3>
+  <p style="margin:0;line-height:1.6;font-size:.86rem;color:#FFEC99">Quiet space, fast attention, no long queue, our staff handles everything, TV shows gold, voice calls in 4 languages, shorter total time. For anyone who values time and comfort.</p>
+</div>
+
+{% endblock %}

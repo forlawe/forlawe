@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+{% block title %}{{ c.ref }}{% endblock %}
+{% block content %}
+<div class="spread mb">
+  <h1 style="margin:0">{{ c.ref }}</h1>
+  <span>
+    {% if c.escalated %}<span class="pill red" style="font-size:.9rem;padding:6px 12px">ESCALATED</span>{% endif %}
+    <span class="pill {{ 'green' if c.status in ('RESOLVED','CLOSED') else ('amber' if c.status=='NEW' else 'blue') }}"
+          style="font-size:.9rem;padding:6px 12px">{{ c.status }}</span>
+  </span>
+</div>
+
+<div class="grid cols2 mb">
+  <div class="card">
+    <h2>Complaint</h2>
+    <p><b>Department:</b> {{ c.department.name }}<br>
+       <b>Category:</b> {{ c.category }}<br>
+       <b>Submitted:</b> {{ c.submitted_at.strftime('%d %b %Y %H:%M') }} ({{ c.source|upper }}{% if c.qr_location %} · {{ c.qr_location.name }}{% endif %})<br>
+       <b>Complainant phone:</b> {% if current_user.role == 'SUPER_ADMIN' %}{{ c.phone }}{% else %}{{ c.phone|mask_phone }}{% endif %} (prefers: {{ c.contact_method }})<br>
+       <b>HOD responsible:</b> {{ hod.name if hod else '— not configured —' }}
+       {% if c.attachment_path %}<br><b>Evidence:</b> <a href="/complaints/{{ c.id }}/attachment">📎 view attachment</a>{% endif %}
+    </p>
+    <p style="white-space:pre-wrap">{{ c.description }}</p>
+  </div>
+  <div class="card">
+    <h2>SLA &amp; timeline</h2>
+    <p><b>SLA deadline:</b> {{ c.sla_deadline_at.strftime('%d %b %Y %H:%M') }}
+      {% if c.sla_extended_at %}<span class="pill amber">extended</span>{% endif %}<br>
+      {% if c.status not in ('RESOLVED','CLOSED') %}
+        {% set hrs = ((c.sla_deadline_at - now).total_seconds()/3600) %}
+        {% if hrs > 0 %}<span class="pill {{ 'amber' if hrs < 4 else 'green' }}">{{ hrs|round(1) }}h remaining</span>
+        {% else %}<span class="pill red">breached {{ (-hrs)|round(1) }}h ago</span>{% endif %}
+      {% endif %}
+    </p>
+    <div class="timeline">
+      <div class="ev">Submitted — {{ c.submitted_at.strftime('%d %b %H:%M') }}</div>
+      {% if c.acknowledged_at %}<div class="ev">Acknowledged — {{ c.acknowledged_at.strftime('%d %b %H:%M') }}</div>{% endif %}
+      {% if c.escalated_at %}<div class="ev red">Escalated to MD/CEO — {{ c.escalated_at.strftime('%d %b %H:%M') }}</div>{% endif %}
+      {% if c.resolved_at %}<div class="ev green">Resolved — {{ c.resolved_at.strftime('%d %b %H:%M') }}</div>{% endif %}
+    </div>
+    {% if c.action_taken %}<p><b>Action taken:</b><br><span style="white-space:pre-wrap">{{ c.action_taken }}</span></p>{% endif %}
+    {% if c.resolution_notes %}<div class="notice" style="border-left-color:var(--green);background:var(--green-bg)">
+      <b>Resolution:</b> {{ c.resolution_notes }}</div>{% endif %}
+  </div>
+</div>
+
+{# ============ escalate BEFORE it times out ============ #}
+{% if may_escalate %}
+<div class="card mb" style="border-left:6px solid #b58900">
+  <h2 style="margin-top:0">⬆ Escalate to higher authority</h2>
+  {% if hours_left > 0 %}
+  <p>You have <b>{{ hours_left|round(1) }} hours</b> left on this complaint.</p>
+  {% else %}
+  <p class="pill red">This complaint is already {{ (-hours_left)|round(1) }} hours past its deadline.</p>
+  {% endif %}
+  <p class="hint">If this is not something your department can fix — no budget,
+    no power, another department involved — send it up NOW rather than waiting
+    for the clock to run out. Escalating early is recorded as a decision you
+    made, not as a failure to answer in time.</p>
+  <form method="post" action="/complaints/{{ c.id }}/escalate">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <label>Escalate to <span class="req">*</span></label>
+    <select name="to_user_id" required>
+      <option value="">— choose who should take this —</option>
+      {% for u in authorities %}
+      <option value="{{ u.id }}">{{ u.name }} — {{ u.role_name }}</option>
+      {% endfor %}
+    </select>
+    <label class="mt">Why does this need them? <span class="req">*</span></label>
+    <textarea name="reason" required minlength="10"
+      placeholder="e.g. The theatre generator has failed and there is no budget at department level to repair it."></textarea>
+    <button class="btn mt" style="background:#b58900">⬆ Escalate now</button>
+  </form>
+  <p class="hint" style="margin-bottom:0">The deadline is <b>not</b> extended by
+    escalating. It is the same promise to the same patient — otherwise
+    "escalate" would just become the button everyone presses to clear the red
+    light.</p>
+</div>
+{% endif %}
+
+{% if can_act and c.status not in ('CLOSED',) %}
+<div class="card mb">
+  <h2>Take action</h2>
+  <div class="btn-row grid cols2">
+    {% if c.status == 'NEW' %}
+    <form method="post" action="/complaints/{{ c.id }}/update">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <input type="hidden" name="action_type" value="acknowledge">
+      <button class="btn block">👍 Acknowledge complaint</button>
+    </form>
+    {% endif %}
+  </div>
+  <form method="post" action="/complaints/{{ c.id }}/update" class="mt">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <input type="hidden" name="action_type" value="progress">
+    <label>Action taken (recorded on the complaint)</label>
+    <textarea name="action_taken" placeholder="e.g. Spoke with the nurse in charge; arranged review of the patient's file…"></textarea>
+    <button class="btn mt">Record action → IN PROGRESS</button>
+  </form>
+  <form method="post" action="/complaints/{{ c.id }}/update" class="mt">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <input type="hidden" name="action_type" value="resolve">
+    <label>Resolution notes <span class="req">*</span></label>
+    <textarea name="resolution_notes" required></textarea>
+    <button class="btn mt" style="background:var(--green)">✅ Mark RESOLVED</button>
+  </form>
+  {% if c.status == 'RESOLVED' %}
+  <form method="post" action="/complaints/{{ c.id }}/update" class="mt">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <input type="hidden" name="action_type" value="close">
+    <button class="btn secondary">Close complaint</button>
+  </form>
+  {% endif %}
+</div>
+{% endif %}
+
+{% if current_user.role in ('SUPER_ADMIN','MD_CEO') and not c.escalated %}
+<details>
+  <summary>⏱ Extend SLA (recorded in audit trail)</summary>
+  <form method="post" action="/complaints/{{ c.id }}/extend-sla">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <div class="grid cols2">
+      <div><label>Extra hours (1–168)</label><input type="number" name="hours" min="1" max="168" value="24"></div>
+      <div><label>Reason <span class="req">*</span></label><input type="text" name="reason" required></div>
+    </div>
+    <button class="btn mt">Extend SLA</button>
+  </form>
+</details>
+{% endif %}
+
+<div class="card mt">
+  <h2>Status history</h2>
+  {% for h in c.history %}
+  <div class="row mb">
+    <span class="pill gray">{{ h.at.strftime('%d %b %H:%M') }}</span>
+    <span>{{ h.from_status or '—' }} → <b>{{ h.to_status }}</b></span>
+    <span class="muted">{{ h.note or '' }}{% if h.user %} · {{ h.user.name }}{% endif %}</span>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

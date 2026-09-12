@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Triage & Consulting Rooms — how it should work</title>
+<style>
+  :root{
+    --primary:#0e5a8a; --primary-700:#0a4468; --accent:#12b5a5;
+    --ink:#152433; --muted:#5b6b7c; --line:#dbe4ec; --bg:#f2f5f8; --card:#fff;
+    --green:#1a7f37; --amber:#9a7400; --red:#c0262c; --green-bg:#e6f4ea;
+    --amber-bg:#fdf3d7; --red-bg:#fdeaea; --primary-light:#e8f2f8;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+    background:var(--bg);color:var(--ink);line-height:1.5;font-size:16px}
+  .top{background:linear-gradient(120deg,#0a4468,#0e5a8a);color:#fff;padding:22px 18px 20px}
+  .top h1{margin:0 0 6px;font-size:1.35rem}
+  .wrap{max-width:760px;margin:0 auto;padding:16px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin:12px 0;
+    box-shadow:0 1px 2px rgba(16,42,67,.06)}
+  h2{margin:0 0 8px;font-size:1.12rem}
+  .pill{display:inline-block;padding:3px 10px;border-radius:999px;font-size:.75rem;font-weight:800}
+  .yes{background:var(--green-bg);color:var(--green)}
+  .no{background:var(--red-bg);color:var(--red)}
+  .soon{background:var(--amber-bg);color:var(--amber)}
+  .label{background:var(--primary-light);color:var(--primary-700)}
+  table{width:100%;border-collapse:collapse;font-size:.9rem}
+  th{text-align:left;font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;color:var(--primary-700);
+    background:var(--primary-light);padding:8px}
+  td{padding:8px;border-bottom:1px solid #eef1f4;vertical-align:top}
+  .flow{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+  .step{background:#fff;border:1.5px solid var(--line);border-radius:12px;padding:10px 12px;min-width:110px;
+    text-align:center;font-weight:700;font-size:.82rem}
+  .step.on{border-color:var(--primary);background:var(--primary-light);color:var(--primary-700)}
+  .step.miss{border-color:#f3c1c3;background:#fffafa;color:var(--red)}
+  .arrow{color:var(--muted);font-weight:800}
+  .notice{border-left:5px solid var(--amber);background:var(--amber-bg);padding:10px 12px;border-radius:8px;font-size:.92rem}
+  .ok{border-left:5px solid var(--green);background:var(--green-bg);padding:10px 12px;border-radius:8px;font-size:.92rem}
+  ol.plain{padding-left:1.2rem}
+  ol.plain li{margin:6px 0}
+  .rooms{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  @media(max-width:560px){.rooms{grid-template-columns:1fr}}
+  .room{border:1px dashed var(--line);border-radius:10px;padding:10px;background:#fafcfe}
+  footer{padding:24px 16px;text-align:center;color:#8595a6;font-size:.75rem}
+</style>
+</head>
+<body>
+<div class="top">
+  <div style="opacity:.85;font-size:.75rem;letter-spacing:.06em;text-transform:uppercase">Hospital Suite · founder briefing</div>
+  <h1>Triage &amp; the Doctor’s Consulting Room</h1>
+  <div>Plain answer, then how it should fit what you already have.</div>
+</div>
+<div class="wrap">
+
+  <div class="notice"><b>Short answer:</b> they are <b>not</b> a working feature yet.
+    The hospital map has a door labelled “Triage” (under Emergency) and “General OPD”.
+    Those are names only — like writing on a door. Nobody can work that door yet.</div>
+
+  <div class="card">
+    <h2>What exists today vs what you asked for</h2>
+    <table>
+      <tr><th>Thing</th><th>Status</th><th>Meaning</th></tr>
+      <tr><td>A unit named “Triage”</td><td><span class="pill label">name only</span></td>
+        <td>Emergency → Accident &amp; Emergency → Triage</td></tr>
+      <tr><td>OPD / clinic names</td><td><span class="pill label">name only</span></td>
+        <td>Internal Medicine → Outpatient Clinic</td></tr>
+      <tr><td>Working nurse-first triage</td><td><span class="pill no">not built</span></td>
+        <td>Queue is one stop: waiting → called → served</td></tr>
+      <tr><td>Doctor rooms (Room 1, Room 2…)</td><td><span class="pill no">not built</span></td>
+        <td>Staff call the next person for a whole department, not a room</td></tr>
+      <tr><td>Patient file / diagnosis / drugs</td><td><span class="pill no">not now</span></td>
+        <td>On purpose. This product runs the <i>visit</i>, not the medicine.</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>Today’s visit (already working)</h2>
+    <div class="flow">
+      <div class="step on">1. Book</div><span class="arrow">→</span>
+      <div class="step on">2. Check in<br><small>get a number</small></div><span class="arrow">→</span>
+      <div class="step on">3. One queue<br><small>call → served</small></div><span class="arrow">→</span>
+      <div class="step on">4. Rate visit</div><span class="arrow">→</span>
+      <div class="step on">5. Refer a friend</div>
+    </div>
+    <p style="color:var(--muted);font-size:.9rem;margin:10px 0 0">
+      Good front door. Missing the two tables inside the hospital: the <b>nurse desk</b> and the <b>doctor’s room</b>.</p>
+  </div>
+
+  <div class="card">
+    <h2>How a real Nigerian hospital visit usually works</h2>
+    <p>Two tables, not one.</p>
+    <div class="rooms">
+      <div class="room">
+        <b>Stop 1 — Reception</b><br>
+        <small>You already have this. Patient booked or walked in. Staff tap Check-in. They get a number like <code>E-014</code>. Name never on the TV.</small>
+      </div>
+      <div class="room">
+        <b>Stop 2 — Triage nurse</b><br>
+        <small>Nurse sees them first (2–4 minutes). Not to treat. To decide: can they wait? which room? one short note for the doctor.</small>
+      </div>
+      <div class="room">
+        <b>Stop 3 — Consulting room</b><br>
+        <small>Each doctor has a room and only their list. Call next. Done. Or no-show.</small>
+      </div>
+      <div class="room">
+        <b>After — you already have this</b><br>
+        <small>“How was your experience?” Low stars → recovery ticket. High stars → book again + share-link.</small>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>How it should blend (same ticket, two stops)</h2>
+    <div class="flow" style="margin-bottom:10px">
+      <div class="step on">Book</div><span class="arrow">→</span>
+      <div class="step on">Check-in</div><span class="arrow">→</span>
+      <div class="step miss">Triage wait</div><span class="arrow">→</span>
+      <div class="step miss">Nurse sends to a room</div><span class="arrow">→</span>
+      <div class="step miss">Doctor calls</div><span class="arrow">→</span>
+      <div class="step on">Rate + refer</div>
+    </div>
+    <p style="font-size:.92rem">Blue = already built. Pink = what we would add. The patient keeps <b>one number</b> the whole day. They do not collect a new ticket at every door.</p>
+    <table>
+      <tr><th>Already built</th><th>How triage + rooms use it</th></tr>
+      <tr><td>Booking + SMS + reference</td><td>Unchanged. Check-in still creates one ticket.</td></tr>
+      <tr><td>Queue number + private phone page</td><td>Same number. Page will say “go to Triage”, then “go to Room 2”.</td></tr>
+      <tr><td>Public TV (numbers only)</td><td>Still no names. Can show <i>where</i>: “Triage: E-014” / “Room 2: E-012”.</td></tr>
+      <tr><td>Call next / Served / No-show</td><td>Same big buttons. Nurse sees the triage list. Doctor sees only their room.</td></tr>
+      <tr><td>Feedback + referrals</td><td>Still after the doctor taps Done — the visit is finished.</td></tr>
+      <tr><td>Complaints + audit</td><td>Queue-jumping and long waits stay visible and written down.</td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2>What each person would see</h2>
+    <p><b>Patient (phone, no account)</b></p>
+    <ol class="plain">
+      <li>Gets <code>E-014</code> at check-in (already works).</li>
+      <li>“Please go to the Triage desk when your number is called.”</li>
+      <li>After the nurse: “Please sit. You will be called for Room 2.”</li>
+      <li>After the doctor: “How was your experience?” — the page you already have.</li>
+    </ol>
+    <p><b>Triage nurse</b> — one page, four large taps:</p>
+    <p>
+      <span class="pill yes">Routine</span>
+      <span class="pill soon">Soon</span>
+      <span class="pill" style="background:#ffedd5;color:#c2660a">Urgent</span>
+      <span class="pill no">Emergency</span>
+      then send to <b>Room 1 / Room 2 / Emergency bay</b>.
+    </p>
+    <p style="font-size:.9rem;color:var(--muted)">Urgent and Emergency go ahead of Routine in that room. The skip is logged — not a secret favour.</p>
+    <p><b>Doctor</b> — “My consulting room”: only their list, Call next, Done or No-show. No medical file in this version.</p>
+  </div>
+
+  <div class="ok">
+    <b>Safety rule you already set:</b> the computer must never decide who is an emergency.
+    A human nurse always taps Routine / Soon / Urgent / Emergency.
+    We will not add diagnosis, drugs, or a full patient file here.
+    This platform is the front door and the waiting chairs — not the doctor’s notebook.
+  </div>
+
+  <div class="card">
+    <h2>First version I would build (if you say yes)</h2>
+    <ol class="plain">
+      <li>Admin can add rooms: Triage desk, Consulting Room 1, Room 2, Emergency bay.</li>
+      <li>Check-in sends the ticket to <b>Triage wait</b> (or straight to a room if that department has no triage).</li>
+      <li>Nurse page: call → urgency → send to a room.</li>
+      <li>Doctor page: call → done / no-show.</li>
+      <li>Patient phone page + public TV show the stage and room.</li>
+      <li>After Done, the existing rating + refer screens.</li>
+      <li>Dashboard: how many waiting at triage, how many at each room.</li>
+    </ol>
+    <p style="font-size:.9rem;color:var(--muted);margin:0">Left for later on purpose: payment, pharmacy/lab queues, vitals chart, auto-assign doctor from the roster, clinical notes.</p>
+  </div>
+
+  <div class="card">
+    <h2>What you can say next</h2>
+    <p>Reply <b>“build triage + rooms”</b> and I will add this onto the queue you already have — same simple style, same tests, same preview.</p>
+    <p style="margin:0;color:var(--muted);font-size:.9rem">This does not replace the other menu items (AI recovery, satisfaction dashboard, attendance, founder’s guide). It finishes the <i>inside</i> of the visit.</p>
+  </div>
+</div>
+<footer>Hospital Admin Manager Suite · founder briefing · not a medical device</footer>
+</body>
+</html>

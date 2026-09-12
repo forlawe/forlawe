@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="{{ lang if lang else 'en' }}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+{% include "_pwa_head.html" %}
+<title>Activate your email — Hospital Suite</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}?v={{ app_version }}">
+</head>
+<body>
+<div class="login-wrap">
+  <div class="card login-card pad-lg">
+    <div class="center mb">
+      <div style="font-size:2.4rem">✉️</div>
+      <h1 style="margin:4px 0 2px">Activate your email</h1>
+      {% if sent %}
+      <div class="muted">We sent a 6-digit code to
+      <b>{{ email }}</b>. It dies in 15 minutes. After this we open your
+      staff card. If you do not see the mail, look in Spam.</div>
+      {% else %}
+      <div class="muted">The 6-digit code for <b>{{ email }}</b> did
+      <b>not</b> leave the hospital.
+      {% if send_error %}<div class="hint mt">{{ send_error }}</div>{% endif %}
+      Ask the System Admin to open <b>Users</b> and tap
+      <b>Confirm email</b>, or to set up the mail van on System Health.</div>
+      {% endif %}
+    </div>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for cat, msg in messages %}<div class="flash {{ cat }}">{{ msg }}</div>{% endfor %}
+    {% endwith %}
+    <form method="post" action="/verify-email">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <label>6-digit code</label>
+      <input type="text" name="code" inputmode="numeric" pattern="[0-9]{6}" maxlength="6"
+             required placeholder="000000" autofocus
+             style="letter-spacing:.4em;font-weight:800">
+      <div class="mt">
+        <button class="btn big" type="submit" style="width:100%">Activate</button>
+      </div>
+    </form>
+    <form method="post" action="/verify-email/resend" class="center mt">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <button class="btn ghost small" type="submit">Send a new code</button>
+    </form>
+    <p class="center mt"><a href="/login">Back to sign in</a></p>
+  </div>
+</div>
+</body>
+</html>

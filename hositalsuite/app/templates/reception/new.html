@@ -1,0 +1,220 @@
+{% extends "base.html" %}
+{% block title %}New patient — Reception{% endblock %}
+{% block content %}
+<h1>🛎️ New patient</h1>
+<p class="muted">Ask these once. HIMS will use the same answers to open the
+  folder, so the patient is never asked the same question twice.</p>
+
+{% if errors %}
+<div class="flash error">
+  <b>Please check the following:</b>
+  <ul style="margin:.4rem 0 0 1rem">{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul>
+</div>
+{% endif %}
+
+<div class="card mb" style="border:2px solid #0e5a8a">
+  <h2>🔍 Returning patient? Auto-fill to save time</h2>
+  <p class="hint">Type hospital number or phone — we fill the form for you. No need to ask again.</p>
+  <div class="row">
+    <input type="search" id="returning-search" placeholder="e.g. GHI/2026/00011 or 08012345678" style="flex:1">
+    <button type="button" class="btn" onclick="lookupPatient()">Search & Fill</button>
+  </div>
+  <div id="returning-results" style="margin-top:8px"></div>
+</div>
+
+<form method="post" action="/reception/new">
+  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+
+  <div class="card mb">
+    <h2>1 · Who is the patient?</h2>
+    <div class="grid cols2">
+      <div><label>Surname <span class="req">*</span></label>
+        <input name="surname" required value="{{ form.get('surname','') }}"></div>
+      <div><label>First name <span class="req">*</span></label>
+        <input name="first_name" required value="{{ form.get('first_name','') }}"></div>
+    </div>
+    <div class="grid cols2">
+      <div><label>Other names</label>
+        <input name="other_names" value="{{ form.get('other_names','') }}"></div>
+      <div><label>Sex</label>
+        <select name="sex">
+          <option value="">—</option>
+          {% for code, label in sexes %}
+          <option value="{{ code }}" {{ 'selected' if form.get('sex')==code }}>{{ label }}</option>
+          {% endfor %}
+        </select></div>
+    </div>
+    <div class="grid cols2">
+      <div><label>Date of birth</label>
+        <input name="date_of_birth" type="date" value="{{ form.get('date_of_birth','') }}">
+        <p class="hint">If they know it, enter it — the age fills in by itself.</p></div>
+      <div><label>Age (years)</label>
+        <input name="age_years" type="number" min="0" max="120"
+               value="{{ form.get('age_years','') }}">
+        <p class="hint">If they don't know their birthday, just ask their age.
+          One of these two is required.</p></div>
+    </div>
+    <div class="grid cols2">
+      <div><label>Marital status</label>
+        <select name="marital_status">
+          <option value="">—</option>
+          {% for m in marital_statuses %}
+          <option value="{{ m }}" {{ 'selected' if form.get('marital_status')==m }}>{{ m }}</option>
+          {% endfor %}
+        </select></div>
+      <div><label>Occupation</label>
+        <input name="occupation" value="{{ form.get('occupation','') }}"></div>
+    </div>
+    <div class="grid cols2">
+      <div><label>Religion</label>
+        <input name="religion" list="religions" value="{{ form.get('religion','') }}">
+        <datalist id="religions">
+          {% for r in religions %}<option value="{{ r }}">{% endfor %}
+        </datalist></div>
+      <div><label>State of origin</label>
+        <select name="state_of_origin">
+          <option value="">—</option>
+          {% for st in states %}
+          <option value="{{ st }}" {{ 'selected' if form.get('state_of_origin')==st }}>{{ st }}</option>
+          {% endfor %}
+        </select></div>
+    </div>
+    <div class="grid cols2">
+      <div><label>Tribe</label>
+        <input name="tribe" value="{{ form.get('tribe','') }}"></div>
+      <div><label>Ethnic group</label>
+        <input name="ethnic_group" value="{{ form.get('ethnic_group','') }}"></div>
+    </div>
+  </div>
+
+  <div class="card mb">
+    <h2>2 · How do we reach them?</h2>
+    <label>Phone number</label>
+    <input name="phone" inputmode="tel" value="{{ form.get('phone','') }}">
+    <label>Home address</label>
+    <textarea name="address" rows="2">{{ form.get('address','') }}</textarea>
+    <label>Town</label>
+    <input name="town" value="{{ form.get('town','') }}">
+  </div>
+
+  <div class="card mb">
+    <h2>3 · Next of kin <span class="req">*</span></h2>
+    <p class="hint">Somebody must be reachable in an emergency.</p>
+    <div class="grid cols2">
+      <div><label>Name <span class="req">*</span></label>
+        <input name="nok_name" required value="{{ form.get('nok_name','') }}"></div>
+      <div><label>Phone number <span class="req">*</span></label>
+        <input name="nok_phone" inputmode="tel" required value="{{ form.get('nok_phone','') }}"></div>
+    </div>
+    <label>Relationship to the patient <span class="req">*</span></label>
+    <select name="nok_relationship" required>
+      <option value="">— Select —</option>
+      {% for r in relationships %}
+      <option value="{{ r }}" {{ 'selected' if form.get('nok_relationship')==r }}>{{ r }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="card mb">
+    <h2>4 · Special needs & Fast Track</h2>
+    <p class="hint">You are the first to meet them. If they need help, tick it — it is read out loud to the team. Fast Track is our premium quick service for anyone who values time and comfort.</p>
+    <label>Preferred language</label>
+    <select name="preferred_lang">
+      {% for code, label in langs %}
+      <option value="{{ code }}" {{ 'selected' if form.get('preferred_lang',
+        'en')==code }}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <label>What help do they need?</label>
+    {% set picked = (form.get('assistance') or '').split(',') %}
+    <div class="grid cols2">
+      {% for code, label in assistance_needs %}
+      <label style="font-weight:400">
+        <input type="checkbox" name="assistance" value="{{ code }}" style="width:auto"
+               {{ 'checked' if code in picked }}> {{ label }}
+      </label>
+      {% endfor %}
+    </div>
+    <label>Anything else the team should know</label>
+    <textarea name="care_note" id="care_note" rows="2" maxlength="200">{{ form.get('care_note','') }}</textarea>
+    <button type="button" class="mic-btn" data-lang="en-NG"
+            onclick="hmsVoice.start(this,'care_note')">🎤 Speak</button>
+
+    <div style="margin-top:16px;padding:14px;background:#f3e8ff;border:2px solid #8b5cf6;border-radius:12px">
+      <label style="font-weight:800;font-size:1.05rem;color:#6b21a8">
+        <input type="checkbox" name="is_fast_track" value="1" style="width:auto" {{ 'checked' if form.get('is_fast_track') }}>
+        👑 Fast Track — Quick, calm, private — seen first
+      </label>
+      <p class="hint" style="margin:6px 0 8px">Tick if patient chose Fast Track premium — quick, calm, private. Seen first at every desk. Voice will announce them.</p>
+      <label>Fast Track reason</label>
+      <select name="fast_track_reason">
+        <option value="PREMIUM" selected>Premium — Fast service, comfortable lounge</option>
+        <option value="BUSINESS">Busy — I have little time today</option>
+      </select>
+      <p class="hint" style="margin-top:8px">Elderly 60+, pregnant, child under 5, wheelchair — seen first automatically via Priority Lane, no need for Fast Track. Tick assistance above and we prioritize with care.</p>
+    </div>
+  </div>
+
+  <div class="card mb">
+    <h2>5 · How will they pay?</h2>
+    <label>Payment route</label>
+    <select name="payer_type">
+      {% for code, label in payers %}
+      <option value="{{ code }}" {{ 'selected' if form.get('payer_type','SELF')==code }}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <div class="grid cols2">
+      <div><label>Scheme / policy number</label>
+        <input name="payer_number" value="{{ form.get('payer_number','') }}">
+        <p class="hint">Required for LAHSMA, NHIS and HMO — Billing cannot claim without it.</p></div>
+      <div><label>HMO or employer name</label>
+        <input name="payer_name" value="{{ form.get('payer_name','') }}"></div>
+    </div>
+    <label style="font-weight:400;margin-top:12px">
+      <input type="checkbox" name="needs_blood_sugar" value="1" style="width:auto"
+             {{ 'checked' if form.get('needs_blood_sugar','1') }}>
+      Bill for a blood sugar test as well as the folder
+    </label>
+  </div>
+
+  <button class="btn big">Take them in &amp; send to Billing</button>
+  <a class="btn secondary" href="/reception/">Cancel</a>
+</form>
+
+<script nonce="{{ csp_nonce }}">
+async function lookupPatient(){
+  const q = document.getElementById('returning-search').value.trim();
+  if(!q){ alert('Type hospital number or phone first'); return; }
+  const res = document.getElementById('returning-results');
+  res.innerHTML = 'Searching…';
+  try{
+    const r = await fetch('/hims/api/lookup?q=' + encodeURIComponent(q), {credentials:'same-origin'});
+    const data = await r.json();
+    if(!data || data.length===0){ res.innerHTML = '<span class="muted">No folder found for "'+q+'". This is a new patient — fill form.</span>'; return; }
+    if(data.error){ res.innerHTML = '<span style="color:red">'+data.error+'</span>'; return; }
+    let html = '<b>'+data.length+' found — tap to fill:</b><br>';
+    data.forEach(p=>{
+      html += '<button type="button" class="btn small ghost" style="margin:4px" onclick=\'fillPatient('+JSON.stringify(p).replace(/\'/g,"&#39;")+')\'>'+p.hospital_number+' — '+p.full_name+' ('+(p.phone||'')+')</button> ';
+    });
+    res.innerHTML = html;
+  }catch(e){ res.innerHTML = '<span style="color:red">Search failed: '+e+'</span>'; }
+}
+function fillPatient(p){
+  const set = (name,val)=>{ const el=document.querySelector('[name='+name+']'); if(el && val) el.value=val; };
+  set('surname', p.surname);
+  set('first_name', p.first_name);
+  set('other_names', p.other_names);
+  set('sex', p.sex);
+  set('phone', p.phone);
+  set('address', p.address);
+  set('nok_name', p.nok_name);
+  set('nok_phone', p.nok_phone);
+  set('nok_relationship', p.nok_relationship);
+  if(p.age_years) set('age_years', p.age_years);
+  if(p.date_of_birth) set('date_of_birth', p.date_of_birth);
+  document.getElementById('returning-results').innerHTML = '<span style="color:green">✓ Filled from '+p.hospital_number+' — check and save.</span>';
+  // voice
+  try{ if(window.hmsVoice) hmsVoice.speak(p.first_name+' found — form filled'); }catch(e){}
+}
+</script>
+{% endblock %}

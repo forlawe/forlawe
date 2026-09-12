@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Import Paper Register{% endblock %}
+{% block content %}
+<div class="page" style="max-width:640px">
+  <h1>📚 Import Paper Patient Register</h1>
+  <p style="color:#666">Upload your old paper register as CSV. We will create folders, skip duplicates by phone/name, and tell you what was imported.</p>
+
+  <div class="card">
+    <h3>CSV Format</h3>
+    <p>Columns: <b>Surname, First Name, Other Names, Sex (M/F), Phone, Age, Address, LGA, NOK Name, NOK Phone, Payer</b>. Only Surname and First Name required. Download current register to see example.</p>
+    <a class="btn small ghost" href="{{ url_for('hims.export') }}">⬇ Download current register CSV</a>
+  </div>
+
+  <form method="post" enctype="multipart/form-data" style="margin-top:16px">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <label>Choose CSV file
+      <input type="file" name="file" accept=".csv" required>
+    </label>
+    <button class="btn primary mt">Import</button>
+    <a class="btn" href="{{ url_for('hims.desk') }}">Cancel</a>
+  </form>
+</div>
+{% endblock %}

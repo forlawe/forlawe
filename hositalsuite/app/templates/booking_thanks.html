@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Booking confirmed{% endblock %}
+{% block content %}
+{% with back_to="/welcome" %}{% include "_patient_nav.html" %}{% endwith %}
+<div class="card pad-lg center" style="max-width:560px;margin:20px auto">
+  <div style="font-size:3rem">✅</div>
+  <h1 style="font-size:1.4rem;font-weight:900">Your visit is booked — Thank you</h1>
+  {% if apt %}
+  <p style="font-size:.95rem;line-height:1.5;color:#425466">
+    <b>{{ apt.department.name }}</b><br>
+    {{ apt.appointment_date.strftime('%A, %d %B %Y') }} at <b>{{ apt.appointment_time }}</b>
+    {% if apt.is_fast_track %}<br><span style="background:#000;color:#FFD700;padding:4px 10px;border-radius:999px;font-size:.75rem;font-weight:900;margin-top:8px;display:inline-block">⭐ FAST TRACK — Be Seen Fast</span>{% endif %}
+  </p>
+  {% if apt.is_fast_track and s %}
+  <div style="background: linear-gradient(135deg,#FFFEF0,#FFF8DC);border:2px solid #FFD700;border-radius:12px;padding:12px;margin:12px 0;text-align:left;font-size:.88rem;line-height:1.5">
+    {% if s.fast_track_building_name %}📍 <b>{{ s.fast_track_building_name }}</b><br>{% endif %}
+    {% if apt.fast_track_payment_status == 'PAID' %}
+      <span style="background:#10b981;color:#fff;padding:4px 10px;border-radius:999px;font-weight:800;font-size:.8rem">✅ Paid — {{ apt.fast_track_payment_ref or 'Confirmed' }}</span>
+    {% elif apt.fast_track_payment_status == 'PENDING' and s.fast_track_booking_requires_payment %}
+      <span style="background:#f59e0b;color:#000;padding:4px 10px;border-radius:999px;font-weight:800;font-size:.8rem">⏳ Please pay before you arrive</span><br>
+      <span style="margin-top:6px;display:inline-block">{{ s.fast_track_payment_instructions or 'Show your payment receipt at reception.' }}</span>
+    {% else %}
+      Show this reference at reception. You will be guided to the executive lounge.
+    {% endif %}
+  </div>
+  {% endif %}
+  {% endif %}
+  <div class="notice" style="text-align:left;margin-top:14px">
+    <b>Your reference:</b><br>
+    <span style="font-size:1.35rem;font-weight:900;letter-spacing:.03em">{{ ref }}</span><br>
+    <small style="color:#5a6b7b;line-height:1.4">Write it down. You will need it at reception and to check your booking later.</small>
+  </div>
+  <p class="hint" style="margin-top:12px;font-size:.85rem;line-height:1.4">We sent your confirmation by WhatsApp first, then SMS if WhatsApp was not available. Please arrive 15 minutes early.</p>
+  <a class="btn secondary mt" href="/book/status?ref={{ ref }}" style="width:100%;border-radius:999px">Check your booking</a>
+  <a class="btn mt" href="/queue/join" style="width:100%;background:#000;color:#FFD700;border-radius:999px;font-weight:900">🎟️ Join Queue — Fast Track</a>
+</div>
+{% include "_help_desk.html" %}
+{% endblock %}

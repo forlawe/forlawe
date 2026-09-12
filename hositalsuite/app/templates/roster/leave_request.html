@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Request Leave{% endblock %}
+{% block content %}
+<div class="page" style="max-width:560px">
+  <h1>🌴 Request Leave</h1>
+  <p style="color:#666">Your HOD or HR will review. When approved, your roster will show you are on leave so nobody books you for duty.</p>
+  <form method="post" action="{{ url_for('roster.leave_request_submit') }}">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <label>Type of Leave
+      <select name="leave_type" required>
+        <option value="">— choose —</option>
+        {% for code,label in leave_types %}
+        <option value="{{ code }}">{{ label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Start Date
+      <input type="date" name="start_date" required>
+    </label>
+    <label>End Date
+      <input type="date" name="end_date" required>
+    </label>
+    <label>Reason (optional)
+      <textarea name="reason" rows="3" placeholder="e.g. Family event, medical, etc." maxlength="300"></textarea>
+    </label>
+    <div style="margin-top:16px">
+      <button class="btn primary">Send Request</button>
+      <a class="btn" href="{{ url_for('roster.leave_list') }}">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}
