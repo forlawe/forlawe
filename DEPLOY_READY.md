@@ -146,6 +146,26 @@ a paid service with no price and no consent box on screen. Three fixes:
 
 All three are locked by tests in `tests/test_fasttrack_doors.py` (13 tests).
 
+The driver is committed so this can be re-run by anyone, not just re-read:
+
+```
+python tools/e2e_booking_doors.py http://127.0.0.1:8078 data/e2e.db --clear
+...
+ALL CHECKS PASSED        (exit code 0)
+```
+
+It GETs each door, keeps only the fields that page rendered, POSTs them with a
+real cookie session, then reads the rows back out of the database and asserts
+`is_fast_track` per door, that the free door never lists the paid lounge, and
+that the two refusals are refusals.
+
+One thing to know when booting locally: with an **empty** database the patient
+doors return **503** and `/signup` returns 404 — that is the app correctly
+refusing to serve a hospital that is not configured yet, not a regression.
+`python -c "from app import create_app; from app.seeddata import seed_data; seed_data(create_app(), announce=False)"`
+creates the starter hospital (1 org, 32 departments, 10 users) and every
+endpoint then returns 200.
+
 ---
 
 ## 4. ✅ Supabase-specific paths, checked in the code

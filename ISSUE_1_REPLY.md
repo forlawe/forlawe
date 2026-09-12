@@ -2,6 +2,8 @@
 
 One branch, complete, on this repo (`forlawe/forlawe`). The application lives under the **`hositalsuite/`** subdirectory of that branch — that folder is the deploy root, i.e. it is what maps to the root of `Hcarepro2026/hositalsuite`.
 
+**Deploy root:** `hositalsuite/`. That folder is what maps onto the root of `Hcarepro2026/hositalsuite`, and `render.yaml`, `requirements.txt`, `run.py`, `runtime.txt`, `alembic.ini`, `migrations/`, `Dockerfile`, `app/` and `tests/` all sit inside it side by side — so `buildCommand: pip install -r requirements.txt` resolves correctly. Point Render's root directory at `hositalsuite/`. (A root-level `requirements.txt` / `runtime.txt` shim and a root `README.md` were added in this commit so the same command also works if it is typed from the repo root; they are not a second copy of the app.)
+
 ### 1. Everything needed to run is present
 
 Checked with `git cat-file -e` against the pushed commit, not by eye:

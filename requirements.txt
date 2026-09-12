@@ -1,0 +1,16 @@
+# ---------------------------------------------------------------------------
+# SHIM — the application is NOT in this directory.
+#
+# This repository is a workspace. The complete, deployable application lives in
+# hositalsuite/, and that folder IS the deploy root (its contents map 1:1 onto
+# the root of the production repo Hcarepro2026/hositalsuite).
+#
+# render.yaml, requirements.txt, run.py, runtime.txt, alembic.ini, migrations/
+# and Dockerfile are all inside hositalsuite/, side by side, so the build
+# command in render.yaml resolves correctly when Render's root directory is
+# hositalsuite/.
+#
+# This file exists only so that "pip install -r requirements.txt" typed from
+# THIS directory also works. pip resolves the -r path relative to this file.
+# ---------------------------------------------------------------------------
+-r hositalsuite/requirements.txt
