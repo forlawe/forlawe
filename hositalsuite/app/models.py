@@ -1189,7 +1189,14 @@ class Patient(db.Model):
     # --- next of kin (required: somebody must be reachable in an emergency)
     nok_name = db.Column(db.String(120))
     nok_relationship = db.Column(db.String(40))
-    nok_phone = db.Column(EncryptedString(32))
+    # 256, not 32: with FIELD_ENCRYPTION_KEY set this column holds a Fernet
+    # token (~120+ chars), not a phone number. k27 widened migration-built
+    # databases to 256 but this declaration said 32, so every database built
+    # by create_all (the test rig, ensure_schema boot path) still had
+    # varchar(32) — SQLite accepts the over-long token silently, PostgreSQL
+    # rejects the INSERT: patient registration would crash the moment
+    # encryption was switched on. Found by the full suite on a real PG 16.
+    nok_phone = db.Column(EncryptedString(256))
     nok_address = db.Column(EncryptedText())
     # Blind search index (HMAC) so staff can still find a patient by NOK
     # number without the DB storing a readable copy — see crypto_fields.
@@ -1455,7 +1462,8 @@ class ReceptionIntake(db.Model):
 
     # --- next of kin: name, phone AND relationship, as the founder specified
     nok_name = db.Column(db.String(120))
-    nok_phone = db.Column(EncryptedString(32))         # F-015 field-encrypted
+    # 256 to match k27's widened storage — see the comment on Patient.nok_phone
+    nok_phone = db.Column(EncryptedString(256))        # F-015 field-encrypted
     nok_phone_bx = db.Column(db.String(32), index=True)
     nok_relationship = db.Column(db.String(40))
 

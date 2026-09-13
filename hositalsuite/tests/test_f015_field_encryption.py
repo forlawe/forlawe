@@ -26,10 +26,14 @@ def encrypting_app(app, monkeypatch):
 
 
 def _raw_column(db, table, col, org_id):
-    with db.engine.connect() as conn:
-        rows = conn.execute(
-            db.text(f"SELECT {col} FROM {table} WHERE org_id = :o"),  # noqa: S608
-            {"o": org_id}).fetchall()
+    # Runs through the SESSION, not db.engine.connect(): a bare engine
+    # connection bypasses the RLS after_begin listener, so on PostgreSQL
+    # (RLS armed) it would fail closed and see nothing. The session path
+    # still returns RAW stored values — raw SQL results never pass through
+    # the ORM's decrypting TypeDecorator, which is this helper's whole point.
+    rows = db.session.execute(
+        db.text(f"SELECT {col} FROM {table} WHERE org_id = :o"),  # noqa: S608
+        {"o": org_id}).fetchall()
     return [r[0] for r in rows]
 
 
@@ -124,9 +128,15 @@ def test_backfill_command_encrypts_legacy_rows(app, seeded, monkeypatch):
     from app import encrypt_phi_backfill as bf
     assert bf.main() == 0
     with app.app_context():
-        raw = _raw_column(db, "patient", "nok_phone", seeded["org"])
-        assert any(r and r.startswith("gAAAA") for r in raw)
-        assert all("08055500011" not in (r or "") for r in raw)
+        # bf.main() boots its own app, which re-arms row-level security on
+        # these tables — on PostgreSQL the verification queries below must
+        # declare their cross-hospital intent or they fail closed and see
+        # nothing (same reality as test_autoseed).
+        from app.rls import background_all_orgs
+        with background_all_orgs():
+            raw = _raw_column(db, "patient", "nok_phone", seeded["org"])
+            assert any(r and r.startswith("gAAAA") for r in raw)
+            assert all("08055500011" not in (r or "") for r in raw)
         p = Patient.query.filter_by(hospital_number="IJ/2026/BF").first()
         assert p.nok_phone == "08055500011"
         assert p.nok_phone_bx

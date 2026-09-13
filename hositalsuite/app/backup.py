@@ -123,12 +123,19 @@ def create_backup(app, *, kind: str = "auto") -> tuple[str, int]:
                 for table in tables:
                     # Large binaries are excluded: they already live in stored_file and
                     # would balloon the archive past what a free host can hold in memory.
+                    # NOTE the double quotes around the table name: `user` is a
+                    # reserved word in PostgreSQL, and an unquoted FROM user does
+                    # not name the table — it is the CURRENT_USER construct. The
+                    # backup then "succeeded" with a one-column CSV (header
+                    # `user`, value = the connection role) and NO user accounts
+                    # in it at all. Found by the automated restore drill on a
+                    # real PostgreSQL 16 server; quoting is valid on SQLite too.
                     if table == "stored_file":
                         stmt = _text(
-                            f"SELECT id, key, org_id, folder, filename, content_type, size, sha256 "  # noqa: S608
-                            f"FROM {table}")
+                            f'SELECT id, key, org_id, folder, filename, content_type, size, sha256 '  # noqa: S608
+                            f'FROM "{table}"')
                     else:
-                        stmt = _text(f"SELECT * FROM {table}")  # noqa: S608
+                        stmt = _text(f'SELECT * FROM "{table}"')  # noqa: S608
                     result = conn.execute(stmt)
                     count = 0
                     with zf.open(f"{table}.csv", "w") as raw_fh:

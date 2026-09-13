@@ -77,6 +77,22 @@ def test_fast_track_shortens_within_tier_only(app, monkeypatch):
 
 
 # ------------------------------------------------------------------ F-013 position
+def _mk_patient(org, n):
+    """A real Patient row — the intake's FK must actually point somewhere.
+
+    On SQLite a made-up patient_id inserted fine (foreign keys unenforced);
+    on PostgreSQL it failed with ForeignKeyViolation. The tests below
+    originally passed ids 1, 2, 9, 11, 12 without creating those patients.
+    """
+    from app.models import Patient
+    p = Patient(org_id=org, hospital_number=f"ESTP/{n:05d}",
+                surname=f"P{n}", first_name="Pat", sex="F",
+                age_years=30, payer_type="SELF", category="GENERAL")
+    db.session.add(p)
+    db.session.flush()
+    return p
+
+
 def _intake(org, patient_id, stage, created_at, n):
     """Minimal valid ReceptionIntake row (ref unique, names required)."""
     return ReceptionIntake(
@@ -104,8 +120,10 @@ def test_position_in_stage_counts_only_people_ahead(app, seeded):
     the earlier one sees nobody."""
     with app.app_context():
         org = seeded["org"]
-        early = _intake(org, 1, "RECEPTION", now_naive() - timedelta(minutes=20), 1)
-        late = _intake(org, 2, "RECEPTION", now_naive(), 2)
+        early = _intake(org, _mk_patient(org, 1).id, "RECEPTION",
+                        now_naive() - timedelta(minutes=20), 1)
+        late = _intake(org, _mk_patient(org, 2).id, "RECEPTION",
+                       now_naive(), 2)
         db.session.add_all([early, late])
         db.session.commit()
         assert qe.position_in_stage(org, "RECEPTION", intake=early) == 0
@@ -115,7 +133,8 @@ def test_position_in_stage_counts_only_people_ahead(app, seeded):
 def test_position_in_stage_falls_back_to_open_count_when_patient_unknown(app, seeded):
     with app.app_context():
         org = seeded["org"]
-        db.session.add(_intake(org, 9, "BILLING", now_naive(), 3))
+        db.session.add(_intake(org, _mk_patient(org, 9).id, "BILLING",
+                               now_naive(), 3))
         db.session.commit()
         # no intake/visit given for this patient — they join behind everyone
         assert qe.position_in_stage(org, "BILLING") == qe.count_open_segments(org, "BILLING")
@@ -127,8 +146,10 @@ def test_journey_estimates_differ_by_real_position(app, seeded):
     with app.app_context():
         org = seeded["org"]
         now = now_naive()
-        early = _intake(org, 11, "RECEPTION", now - timedelta(minutes=30), 4)
-        late = _intake(org, 12, "RECEPTION", now, 5)
+        early = _intake(org, _mk_patient(org, 11).id, "RECEPTION",
+                        now - timedelta(minutes=30), 4)
+        late = _intake(org, _mk_patient(org, 12).id, "RECEPTION",
+                       now, 5)
         db.session.add_all([early, late])
         db.session.commit()
         early_est = qe.estimate_intake_journey(org, early)["total"]

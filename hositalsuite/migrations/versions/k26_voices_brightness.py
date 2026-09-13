@@ -20,10 +20,14 @@ def upgrade():
     insp = sa.inspect(bind)
     if 'tv_screen' not in insp.get_table_names():
         return
+    # Boolean defaults: SQLite wants 0/1, PostgreSQL wants false/true — an
+    # integer literal is rejected by PostgreSQL and aborts the migration
+    # (verified against a real PostgreSQL 16 server).
+    _false = "0" if bind.dialect.name == "sqlite" else "false"
     cols = {c["name"] for c in insp.get_columns('tv_screen')}
     for col, typ, default in [
         ('brightness', sa.Integer(), '100'),
-        ('night_mode', sa.Boolean(), '0'),
+        ('night_mode', sa.Boolean(), _false),
     ]:
         if col not in cols:
             op.add_column('tv_screen', sa.Column(col, typ, nullable=True, server_default=sa.text(default)))
@@ -32,12 +36,12 @@ def upgrade():
         op.execute("UPDATE tv_screen SET voice_languages='en,yo,ha,ig' WHERE voice_languages='en,yo' OR voice_languages IS NULL OR voice_languages=''")
     except Exception:
         pass
-    for col, _typ, _default in [('brightness', sa.Integer(), '100'), ('night_mode', sa.Boolean(), '0')]:
+    for col, _typ, _default in [('brightness', sa.Integer(), '100'), ('night_mode', sa.Boolean(), _false)]:
         try:
             if col == 'brightness':
                 op.execute("UPDATE tv_screen SET brightness=100 WHERE brightness IS NULL")
             else:
-                op.execute("UPDATE tv_screen SET night_mode=0 WHERE night_mode IS NULL")
+                op.execute(f"UPDATE tv_screen SET night_mode={_false} WHERE night_mode IS NULL")
         except Exception:
             pass
 

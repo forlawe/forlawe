@@ -213,7 +213,10 @@ def test_the_protected_list_covers_the_data_that_matters():
     """A table quietly dropped from the list is a silent hole."""
     must_cover = ("patient", "patient_visit", "complaint", "reception_intake",
                   "journey_segment", "audit_log", "stored_file", "work_claim",
-                  "user", "setting", "department", "section", "unit")
+                  "user", "setting", "department", "section", "unit",
+                  # the real WhatsApp table — the old entry "whatsapp_message"
+                  # matched nothing and left this table unprotected
+                  "whats_app_message")
     for table in must_cover:
         assert table in rls.PROTECTED_TABLES, \
             f"'{table}' is no longer protected by row-level security"
@@ -228,8 +231,37 @@ def test_the_tenant_is_never_taken_from_the_browser():
                    "request.cookies"):
         assert danger not in body, \
             f"the tenant is being read from {danger} — it must come from the session"
-    # Locking `user` without opening the door first logs everyone out.
-    open_at = body.index("all_orgs()")
+    # Locking `user` without opening the door first logs everyone out: the
+    # all-orgs sentinel is the DEFAULT tenant, set before current_user is
+    # touched (the account lookup itself runs with the door open).
+    default_at = body.index("ALL_ORGS)")
     load_at = body.index("current_user")
-    assert open_at < load_at, \
-        "the account must be loaded AFTER all_orgs(), or signed-in staff vanish"
+    assert default_at < load_at, \
+        "the account must be loaded AFTER the all-orgs default is in place, " \
+        "or signed-in staff vanish"
+    # The tenant must be re-applied on EVERY transaction begin — a mid-request
+    # commit must not leave later transactions unscoped (the /book 500s).
+    assert "after_begin" in body, \
+        "the tenant hook must listen to 'after_begin' so every transaction " \
+        "of a request is scoped, not just the first"
+
+
+def test_enable_warns_when_the_connection_role_can_bypass_every_policy(app):
+    """Superusers and BYPASSRLS roles are exempt from ALL policies.
+
+    FORCE ROW LEVEL SECURITY stops the table owner — it does NOT stop a
+    superuser. Found by running this suite against a real PostgreSQL 16
+    server: connected as superuser, every enforcement test above failed
+    while the boot log cheerfully said "row-level security active on 43
+    table(s)"; connected as a non-superuser, they all passed. Supabase's
+    `postgres` role is not a superuser, which is why production is safe —
+    but a self-hosted deployment using the default superuser account would
+    have RLS that looks active and protects nothing. enable() must detect
+    that and say so loudly.
+    """
+    source = open(rls.__file__, encoding="utf-8").read()
+    body = source[source.index("def enable("):]
+    body = body[:body.index("# ------------------------------------------------------------------ per request")]
+    assert "_bypassing_role()" in body, (
+        "enable() must check for a superuser/BYPASSRLS connection role and "
+        "warn — otherwise RLS can be silently inert")

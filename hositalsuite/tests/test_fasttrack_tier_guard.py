@@ -78,6 +78,17 @@ def _visit(patient, *, clinic, fast, started_min_ago, status="TRIAGED",
 @pytest.fixture()
 def tier_scenario(app):
     with app.app_context():
+        # The plain `app` fixture builds an EMPTY database — these tests'
+        # whole world is org 1, so it must exist before anything references
+        # it. On SQLite the missing org was invisible (foreign keys are not
+        # enforced there); on PostgreSQL every INSERT failed with
+        # ForeignKeyViolation: Key (org_id)=(1) is not present in
+        # "organization". Found by the full suite on a real PG 16 server.
+        from app.models import Organization
+        db.session.add(Organization(id=1, code="FTG",
+                                    name="Tier Guard Hospital",
+                                    phone="08030002222"))
+        db.session.flush()
         # A paying Fast Track patient who has waited a LONG time…
         fast_old = _visit(_patient(1), clinic="OPD", fast=True,
                           started_min_ago=90)
@@ -151,6 +162,12 @@ def test_tier_expression_tolerates_messy_clinic_strings(app):
     case or stray spaces (a patient is not protected by a string comparison)."""
     with app.app_context():
         from sqlalchemy import select
+        # org 1 must exist — same FK reality as tier_scenario (see there).
+        from app.models import Organization
+        db.session.add(Organization(id=1, code="FTG",
+                                    name="Tier Guard Hospital",
+                                    phone="08030002222"))
+        db.session.flush()
         messy = _visit(_patient(9), clinic=" emergency ", fast=False,
                        started_min_ago=1)
         db.session.commit()

@@ -19,6 +19,14 @@ Usage:
     # 2. run this against it
     python tools/e2e_booking_doors.py http://127.0.0.1:8078 data/e2e.db
 
+The second argument may also be a PostgreSQL URL — the row-readback then
+runs against real PostgreSQL (verified 2026-09-13 on PostgreSQL 16; see
+POSTGRES_VERIFICATION.md). Plain-HTTP rigs need COOKIE_SECURE=0 on the
+server, since Secure session cookies are never sent over http:
+
+    python tools/e2e_booking_doors.py http://127.0.0.1:8077 \
+        postgresql://user:pw@127.0.0.1:5432/hospital --clear
+
 Exits non-zero if any expectation fails.
 """
 
@@ -37,6 +45,26 @@ EXPECTED = {
     "/book": {"is_fast_track": False},
     "/book/fast-track": {"is_fast_track": True},
 }
+
+
+def _connect(spec: str):
+    """SQLite path (dev) or postgresql:// URL (PostgreSQL verification runs).
+
+    The Postgres branch declares the cross-hospital sentinel exactly like the
+    app's own background jobs do (rls.all_orgs()): this harness legitimately
+    reads appointments across hospitals, and without it row-level security
+    would — correctly — show it nothing.
+    """
+    if spec.startswith(("postgres://", "postgresql://")):
+        import psycopg2
+        import psycopg2.extras
+        dsn = spec.replace("postgresql+psycopg2://", "postgresql://", 1)
+        con = psycopg2.connect(dsn)
+        with con.cursor() as cur:
+            cur.execute("SELECT set_config('app.current_org', '-1', false)")
+        con.commit()
+        return con, True
+    return sqlite3.connect(spec), False
 
 
 def rendered_fields(html: str) -> set[str]:
@@ -114,8 +142,9 @@ def main() -> int:
     failures: list[str] = []
 
     if "--clear" in sys.argv:
-        con = sqlite3.connect(db_path)
-        con.execute("DELETE FROM appointment")
+        con, _ = _connect(db_path)
+        cur = con.cursor()
+        cur.execute("DELETE FROM appointment")
         con.commit(); con.close()
         print("cleared previous appointments from " + db_path)
 
@@ -154,10 +183,17 @@ def main() -> int:
                         f"refused with 422, got HTTP {runs[3]['status']}")
 
     print("\n=== what actually landed in the database ===")
-    con = sqlite3.connect(db_path)
-    con.row_factory = sqlite3.Row
-    rows = con.execute("SELECT ref, patient_name, is_fast_track, fast_track_reason, "
-                       "status FROM appointment ORDER BY id DESC LIMIT 4").fetchall()
+    con, is_pg = _connect(db_path)
+    if is_pg:
+        import psycopg2.extras
+        cur = con.cursor(cursor_factory=psycopg2.extras.DictCursor)
+        cur.execute("SELECT ref, patient_name, is_fast_track, fast_track_reason, "
+                    "status FROM appointment ORDER BY id DESC LIMIT 4")
+        rows = cur.fetchall()
+    else:
+        con.row_factory = sqlite3.Row
+        rows = con.execute("SELECT ref, patient_name, is_fast_track, fast_track_reason, "
+                           "status FROM appointment ORDER BY id DESC LIMIT 4").fetchall()
     stored = {r["patient_name"]: r for r in rows}
     for r in rows:
         print(f"  {r['ref']}  {r['patient_name']:34} "

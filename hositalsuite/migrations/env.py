@@ -107,6 +107,18 @@ def run_migrations_online() -> None:
                                      poolclass=pool.NullPool)
     with connectable.connect() as connection:
         _take_migration_lock(connection)
+        # The lock statements above triggered SQLAlchemy 2.0's autobegin, so
+        # this connection is now inside an open transaction. Alembic treats a
+        # connection that is ALREADY in a transaction as externally managed
+        # (MigrationContext sets _in_external_transaction at configure time),
+        # and context.begin_transaction() then neither begins nor commits
+        # anything: every migration runs only to be silently ROLLED BACK when
+        # the connection closes — `alembic upgrade head` exits 0 having
+        # changed nothing. Verified against a real PostgreSQL 16 server with
+        # statement logging (log_statement=all): CREATE TABLE ... ROLLBACK.
+        # Ending the lock's transaction returns ownership to Alembic. The
+        # advisory lock itself is SESSION-scoped and survives the commit.
+        connection.commit()
         try:
             context.configure(connection=connection,
                               target_metadata=target_metadata,

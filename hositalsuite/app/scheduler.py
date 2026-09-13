@@ -415,19 +415,24 @@ def tick(app):
         # automation genuinely works across all of them (SLA escalation,
         # reminders, retries), so it declares that intent explicitly rather
         # than relying on an unset variable — which would see nothing.
-        from .rls import all_orgs
+        # background_all_orgs() keeps that declaration alive across the
+        # commits the jobs make: a bare all_orgs() covered only the first
+        # transaction, and every commit after it ran unscoped — which made
+        # job_whatsapp_queue crash with ObjectDeletedError on PostgreSQL.
+        from .rls import all_orgs, background_all_orgs
         all_orgs()
-        try:
-            for job in JOB_SEQUENCE:
-                try:
-                    job(app)
-                except Exception as exc:  # noqa: BLE001 — one job must not kill the rest
-                    app.logger.exception("Scheduler job %s failed: %s", job.__name__, exc)
-                    db.session.rollback()
-            db.session.commit()
-        except Exception as exc:  # noqa: BLE001
-            app.logger.exception("Scheduler tick failed: %s", exc)
-            db.session.rollback()
+        with background_all_orgs():
+            try:
+                for job in JOB_SEQUENCE:
+                    try:
+                        job(app)
+                    except Exception as exc:  # noqa: BLE001 — one job must not kill the rest
+                        app.logger.exception("Scheduler job %s failed: %s", job.__name__, exc)
+                        db.session.rollback()
+                db.session.commit()
+            except Exception as exc:  # noqa: BLE001
+                app.logger.exception("Scheduler tick failed: %s", exc)
+                db.session.rollback()
 
 
 def _loop(app, interval: int):
@@ -453,14 +458,24 @@ def _loop(app, interval: int):
     from sqlalchemy import text
 
     SCHEDULER_LEADER_LOCK_KEY = 736559103   # sibling of audit chain lock
+    # db.engine (Flask-SQLAlchemy 3.x) requires an APPLICATION CONTEXT, and
+    # this thread has none. Resolving it inside the loop raised
+    # "Working outside of application context" on EVERY tick — the loop's
+    # defensive except swallowed it, the scheduler reported "running" and
+    # never ticked: no backups, no SLA escalations, on ANY engine. Found by
+    # watching the logs of a real gunicorn process. Resolve the engine ONCE,
+    # in a context, before the loop; raw Connections then need no context.
+    with app.app_context():
+        _is_pg = db.engine.url.get_backend_name() == "postgresql"
+        _engine = db.engine if _is_pg else None
     leader_conn = None
     consecutive_failures = 0
     while True:
         try:
-            if db.engine.url.get_backend_name() == "postgresql":
+            if _is_pg:
                 if leader_conn is None:
                     try:
-                        leader_conn = db.engine.connect()
+                        leader_conn = _engine.connect()
                         # defensive: make sure we start from a clean slate
                         leader_conn.rollback()
                     except Exception:  # noqa: BLE001 — DB down; retry next tick
@@ -503,7 +518,9 @@ def _loop(app, interval: int):
 
             if need_backup:
                 with app.app_context():
-                    job_nightly_backup(app)
+                    from .rls import background_all_orgs
+                    with background_all_orgs():
+                        job_nightly_backup(app)
                     # Mark as done in Setting table for ALL orgs (survives restarts)
                     try:
                         from .models import Organization, Setting
