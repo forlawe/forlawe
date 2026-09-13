@@ -63,8 +63,12 @@ def _portal_render(fast_track: bool):
         # It belongs on /book/fast-track, where both are shown.
         from ..patient_places import is_fast_track_dept
         depts = [d for d in depts if not is_fast_track_dept(d)]
+    # Owner 2026-09-13: the service dropdown shows only the three patient
+    # services (see _service_choices).
+    choices = _service_choices(org.id, fast_track, loc_code)
     return render_template("booking_portal.html", org=org, depts=depts, qr_loc=qr_loc,
                            ref_code=ref_code, s=s, fast_track=fast_track,
+                           choices=choices,
                            min_date=today.isoformat(),
                            max_date=(today + timedelta(days=window)).isoformat(),
                            slots=services.get_setting(org.id, "booking_slots") or [],
@@ -74,6 +78,33 @@ def _portal_render(fast_track: bool):
 def _new_idem() -> str:
     import secrets
     return secrets.token_urlsafe(16)
+
+
+def _service_choices(org_id: int, fast_track: bool, loc_code: str = "",
+                     form=None) -> list[dict]:
+    """Owner 2026-09-13: "Which service do you need?" shows ONLY the three
+    patient services — Reception/Front Desk, HIMS/Records,
+    Fast-Track/Premium Service. On the FREE door the Fast-Track line is a
+    door, not a value: picking it walks the patient to /book/fast-track
+    where the price and the premium consent are on screen (the rule
+    tests/test_fasttrack_doors.py pins). The free door therefore never
+    POSTs the premium department.
+    """
+    from ..patient_places import is_fast_track_dept, service_choices, service_label
+    ft_url = url_for("bookings.portal_fast_track")
+    if loc_code:
+        ft_url = f"{ft_url}?loc={loc_code}"
+    choices = []
+    for d in service_choices(org_id):
+        label = service_label(d)
+        if is_fast_track_dept(d) and not fast_track:
+            choices.append({"id": "", "label": label, "goto": ft_url, "selected": False})
+        else:
+            selected = bool(form is not None and form.get("department_id") == str(d.id))
+            if fast_track and is_fast_track_dept(d):
+                selected = True
+            choices.append({"id": d.id, "label": label, "goto": "", "selected": selected})
+    return choices
 
 
 @bp.post("/book/submit")
@@ -155,6 +186,8 @@ def portal_submit():
         return render_template("booking_portal.html", org=org, depts=depts, qr_loc=qr_loc_err,
                                ref_code=(request.form.get("r") or ""), s=s_err,
                                fast_track=is_ft_check,   # keep the gold door gold after a typo
+                               choices=_service_choices(org.id, is_ft_check, loc_code_err,
+                                                        request.form),
                                min_date=now.date().isoformat(),
                                max_date=(now.date() + timedelta(days=int(
                                    services.get_setting(org.id, "booking_window_days") or 30))).isoformat(),

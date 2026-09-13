@@ -31,47 +31,29 @@
     {% for cat, msg in messages %}<div class="flash {{ cat }}">{{ msg }}</div>{% endfor %}
   {% endwith %}
 
-  {% if is_emergency %}
-  <div class="hero" style="background:linear-gradient(135deg,#fdecec,#fff3cd);border:2px solid #c62828">
-    <h1 style="color:#8c1d1d">🚨 Emergency — Go to Accident & Emergency Now</h1>
-    <p style="color:#8c1d1d">Do not wait online. Go straight to <b>Accident & Emergency Unit — open 24/7</b>. Tell reception it's an emergency. You will be seen immediately.</p>
-    {# F-040: one instruction, not three — the emergency number form stays
-       below as the single action; chat/phone/voice are demoted to one line. #}
-    <div style="margin-top:8px;font-size:.75rem;color:#8c1d1d;line-height:1.5">
-      Can't come in right now?
-      {% if hospital and hospital.phone %}
-      <a href="tel:{{ hospital.phone | replace(' ', '') }}" style="color:#8c1d1d;font-weight:700">📞 Call Help Desk — {{ hospital.phone }}</a>
-      {% else %}
-      <a href="#help-desk" onclick="document.querySelector('.help-desk')?.scrollIntoView({behavior:'smooth'});return false;" style="color:#8c1d1d;font-weight:700">📞 Help desk numbers below</a>
-      {% endif %}
-      · <a href="/chat?q=emergency" style="color:#8c1d1d">💬 ask for directions</a>
-      · <button type="button" style="background:none;border:none;padding:0;color:#8c1d1d;text-decoration:underline;font-size:inherit;cursor:pointer" onclick="try{if(window.hmsVoice&&hmsVoice.speak){hmsVoice.speak('Emergency — Go straight to Accident and Emergency now. It is open twenty four seven. Tell reception it is an emergency, you will be seen immediately. Do not wait online.');}}catch(e){}">🔊 listen</button>
-      · Your emergency number below shows at the desk.
-    </div>
-  </div>
-  {% else %}
+  {# 2026-09-13: emergencies have their OWN landing page (/emergency). This
+     page is the ordinary join-a-queue form only — no red hero, no A&E copy. #}
   <div class="hero">
     <h1>Track Your Visit — Receive Your Queue Number</h1>
     <p>You'll get a number and a private tracker showing your live position through every stage of your visit (Reception, Billing, Triage, Doctor, Pharmacy) — first-time patients start at Reception, returning patients go straight to Records. Your number only shows on the TV screen — not your name. Today only — elderly (60+), pregnant, children under 5, and wheelchair users are seen first automatically.</p>
   </div>
-  {% endif %}
 
   <form class="card pad-lg" method="post" action="/queue/join">
     <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
     <input type="hidden" name="loc" value="{{ loc or '' }}">
 
-    <div class="step-label">1 · Where do you need to go?</div>
+    <div class="step-label">1 · Which service do you need?</div>
     <select name="department_id" required class="input-big" id="q-dept">
       <option value="">— Select —</option>
-      {% for d in depts %}
+      {% for d, label in choices %}
       <option value="{{ d.id }}" data-fast="{{ 1 if 'fast track' in d.name|lower else 0 }}"
               {{ 'selected' if pre == d.id }}>
-        {% if 'fast track' in d.name|lower %}⭐ {% endif %}{{ d.name }}{% if d.name|lower == 'reception' %} — Front Desk (all patients start here){% endif %}
+        {% if 'fast track' in d.name|lower %}⭐ {% endif %}{{ label }}
       </option>
       {% endfor %}
     </select>
     <p style="font-size:.8rem;color:#6b7d90;margin:6px 0 0;line-height:1.4">
-      {% if is_emergency %}Emergency goes to Accident & Emergency — you will be seen immediately.{% else %}First-time patients start at Reception; if we already have your file, we'll take you straight to Records — no need to repeat paperwork. Fast Track is premium at top — be seen faster in the quiet, private lounge.{% endif %}
+      First-time patients start at Reception / Front Desk; if we already have your file, HIMS / Records takes you straight to it — no need to repeat paperwork. Fast-Track is premium at top — be seen faster in the quiet, private lounge.
       Today's queue only — priority (elderly, pregnant, child, wheelchair) seen first automatically.
     </p>
 

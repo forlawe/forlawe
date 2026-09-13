@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="{{ lang }}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+{% include "_pwa_head.html" %}
+<meta name="theme-color" content="#c62828">
+<title>Emergency — Accident & Emergency — {{ org.name }}</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}?v={{ app_version }}">
+<style nonce="{{ csp_nonce }}">
+  .hero-red{border-radius:18px;padding:18px 20px 16px;margin-bottom:14px;background:linear-gradient(135deg,#fdecec 0%,#fff3cd 100%);border:2px solid #c62828}
+  .hero-red h1{margin:0;font-size:1.25rem;font-weight:900;color:#8c1d1d}
+  .hero-red p{margin:8px 0 0;font-size:.88rem;line-height:1.5;color:#8c1d1d}
+  .step-label{font-size:.75rem;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:#6b7d90;margin:16px 0 6px}
+  .card{border-radius:16px}
+  .input-big{font-size:1rem;padding:12px 14px;border-radius:10px;border:2px solid #e6edf3;width:100%}
+  .input-big:focus{border-color:#c62828;outline:none}
+  .btn.red{padding:14px;font-size:1.05rem;border-radius:999px;background:#c62828;color:#fff;border:none;font-weight:900;width:100%;box-shadow:0 6px 16px rgba(198,40,40,.25)}
+</style>
+</head>
+<body>
+<div class="portal-head" style="background:linear-gradient(135deg,#8c1d1d 0%,#c62828 100%)">
+  {% include "_brand_mark.html" %}
+  <div>Emergency — Accident & Emergency</div>
+  {% include "_langbar.html" %}
+</div>
+<main class="wrap" style="max-width:560px">
+  {% with back_to="/welcome" %}{% include "_patient_nav.html" %}{% endwith %}
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for cat, msg in messages %}<div class="flash {{ cat }}">{{ msg }}</div>{% endfor %}
+  {% endwith %}
+
+  {# 2026-09-13, owner: the emergency landing page is its OWN page. It carries
+     emergency information only — no service dropdown, no Fast-Track box, no
+     booking fields, no queue explainer. Those live on /queue/join and /book. #}
+  <div class="hero-red">
+    <h1>🚨 Emergency — Go to Accident & Emergency Now</h1>
+    <p>Do not wait online. Go straight to <b>Accident & Emergency Unit — open 24/7</b>. Tell reception it's an emergency. You will be seen immediately.</p>
+    {# F-040: one instruction, not three — the emergency number form below is
+       the single action; chat/phone/voice are demoted to one line. #}
+    <div style="margin-top:8px;font-size:.75rem;color:#8c1d1d;line-height:1.5">
+      Can't come in right now?
+      {% if hospital and hospital.phone %}
+      <a href="tel:{{ hospital.phone | replace(' ', '') }}" style="color:#8c1d1d;font-weight:700">📞 Call Help Desk — {{ hospital.phone }}</a>
+      {% else %}
+      <a href="#help-desk" onclick="document.querySelector('.help-desk')?.scrollIntoView({behavior:'smooth'});return false;" style="color:#8c1d1d;font-weight:700">📞 Help desk numbers below</a>
+      {% endif %}
+      · <a href="/chat?q=emergency" style="color:#8c1d1d">💬 ask for directions</a>
+      · <button type="button" style="background:none;border:none;padding:0;color:#8c1d1d;text-decoration:underline;font-size:inherit;cursor:pointer" onclick="try{if(window.hmsVoice&&hmsVoice.speak){hmsVoice.speak('Emergency — Go straight to Accident and Emergency now. It is open twenty four seven. Tell reception it is an emergency, you will be seen immediately. Do not wait online.');}}catch(e){}">🔊 listen</button>
+    </div>
+  </div>
+
+  {# The single action on this page: register the arrival so the desk already
+     has an emergency number for the patient. It posts to the ordinary queue
+     engine with the A&E department fixed — there is nothing to choose. #}
+  <form class="card pad-lg" method="post" action="/queue/join">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <input type="hidden" name="loc" value="{{ loc or '' }}">
+    <input type="hidden" name="department_id" value="{{ emergency_dept.id }}">
+
+    <div class="step-label">1 · Your name</div>
+    <input type="text" name="patient_name" required class="input-big" placeholder="e.g. Aisha Bello">
+
+    <div class="step-label">2 · Phone (optional, for updates)</div>
+    <input type="tel" name="phone" inputmode="tel" class="input-big" placeholder="e.g. 08012345678">
+
+    <button class="btn red mt" type="submit">🚑 Get my emergency number</button>
+    <p style="font-size:.8rem;color:#8c1d1d;margin-top:10px;text-align:center;line-height:1.4">
+      Your emergency number shows at the desk and on the staff screen — not your name.
+      Emergencies are always seen first, ahead of every other patient.
+    </p>
+  </form>
+
+  <div style="margin-top:14px;background:#fff;border-radius:12px;padding:14px;border:1px solid #e6edf3">
+    <div style="font-weight:900;font-size:.9rem;color:#8c1d1d">What to do now</div>
+    <div style="font-size:.84rem;color:#5a6b7b;margin-top:6px;line-height:1.6">
+      1. Go straight to <b>Accident & Emergency</b> — do not wait online<br>
+      2. Tell reception it's an emergency and show your number<br>
+      3. You will be seen immediately — emergencies always come first<br>
+      4. Cannot come in? Call the help desk numbers below
+    </div>
+  </div>
+
+  {% include "_help_desk.html" %}
+</main>
+<div class="footer"><a href="/privacy">Privacy</a> · Accident & Emergency is open 24/7</div>
+<script src="{{ url_for('static', filename='js/app.js') }}?v={{ app_version }}" nonce="{{ csp_nonce }}"></script>
+{% include "_install.html" %}
+</body>
+</html>

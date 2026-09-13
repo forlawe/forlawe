@@ -21,10 +21,16 @@ def test_hub_banner_has_one_primary_action(client, seeded):
     assert "ask for directions" in html
 
 
-def test_join_page_emergency_banner_same_rule(client, seeded):
-    html = client.get("/queue/join?emergency=1").get_data(as_text=True)
+def test_emergency_landing_page_same_rule(client, seeded):
+    """2026-09-13: the emergency content moved to its OWN page (/emergency) —
+    the join-a-queue form no longer wears the red hat. Same F-040 rule there:
+    one instruction, one primary action, everything else demoted."""
+    html = client.get("/emergency").get_data(as_text=True)
     assert "Go to Accident & Emergency Now" in html
     assert "🔗 Linked to A&E" not in html          # repetition removed
     assert "ask for directions" in html            # demoted secondary line
     # the ONE action on this page is the emergency-number form itself
-    assert "emergency number below shows at the desk" in html
+    assert "shows at the desk" in html
+    # and the old address still lands people on the emergency page
+    r = client.get("/queue/join?emergency=1")
+    assert r.status_code == 302 and "/emergency" in r.headers["Location"]

@@ -15,7 +15,7 @@
       <span style="font-weight:500;font-size:.82rem;color:#6b1a1a">Go straight to A&E now. Tell reception it's an emergency. You will be seen immediately. Do not wait for queue.</span>
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <a class="btn small" href="/queue/join?emergency=1" style="background:#c62828;color:#fff;font-weight:900;border-radius:999px;padding:7px 14px;text-decoration:none">🚑 Emergency Number → A&E</a>
+      <a class="btn small" href="/emergency" style="background:#c62828;color:#fff;font-weight:900;border-radius:999px;padding:7px 14px;text-decoration:none">🚑 Emergency Number → A&E</a>
       <button type="button" class="btn small secondary" style="border-radius:999px;padding:7px 12px;font-size:.8rem" onclick="try{if(window.hmsVoice&&hmsVoice.speak){hmsVoice.speak('Emergency — Accident and Emergency patient needs immediate attention. Team, please respond now. Go to Accident and Emergency, you will be seen immediately.', 'emergency');} if(navigator.vibrate) navigator.vibrate([500,200,500,200,1000]);}catch(e){}">🔊 Voice alarm to all</button>
     </div>
   </div>

@@ -59,14 +59,25 @@
 
     <label class="step-label" for="bp-dept">1 · Which service do you need?</label>
     <select name="department_id" id="bp-dept" required class="input-big">
-      <option value="">— Select a place —</option>
-      {% for d in depts %}
-      <option value="{{ d.id }}" {{ 'selected' if form and form.get('department_id')==d.id|string }}>
-        {% if 'fast track' in d.name|lower %}⭐ {% endif %}{{ d.name }}
+      <option value="">— Select a service —</option>
+      {% for c in choices %}
+      <option value="{{ c.id }}" {% if c.goto %}data-goto="{{ c.goto }}"{% endif %} {{ 'selected' if c.selected }}>
+        {% if 'fast-track' in c.label|lower %}⭐ {% endif %}{{ c.label }}
       </option>
       {% endfor %}
     </select>
-    <div class="hint">Only places a patient visits. Fast Track is at the top.</div>
+    <div class="hint">Three services: Reception / Front Desk, HIMS / Records, and Fast-Track (premium, price shown on its own page).</div>
+    <script nonce="{{ csp_nonce }}">
+      (function () {
+        var sel = document.getElementById('bp-dept');
+        if (!sel) return;
+        sel.addEventListener('change', function () {
+          var opt = sel.options[sel.selectedIndex];
+          var goto = opt && opt.getAttribute('data-goto');
+          if (goto) window.location.href = goto;   // Fast-Track line is a door, not a value
+        });
+      })();
+    </script>
 
     <label class="step-label" for="bp-date">2 · Which day?</label>
     <input type="date" name="appointment_date" id="bp-date" min="{{ min_date }}" max="{{ max_date }}"
