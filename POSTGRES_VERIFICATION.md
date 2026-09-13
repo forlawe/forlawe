@@ -355,13 +355,47 @@ zip entries: 66
 
 ## 5. Full test suite against PostgreSQL
 
+Two full runs, each against a real PostgreSQL 16.2 server:
+
+**Run 1 — code with findings 2.1–2.9 fixed (before the last two bugs were
+found BY this run):**
+
 ```
 $ TEST_DATABASE_URL=postgresql+psycopg2://… pytest -q
-<!-- SUITE RESULT -->
+8 failed, 1059 passed, 1 skipped, 2 warnings, 4 errors in 5246.70s (1:27:26)
 ```
 
-<!-- SUITE_PLACEHOLDER: to be replaced with the final tally when the run
-     completes; see the PR for the live log. -->
+Every one of the 12 problems was diagnosed — none were flakes: 4 failures
+were finding 2.10 (field encryption crashed registration on PostgreSQL),
+1 was finding 2.11 (the backfill CLI silently no-opped), 5 were the three
+test files that relied on SQLite not enforcing foreign keys or column
+lengths (§2.12). All fixed, each re-verified on both engines.
+
+**Run 2 — the final code, exactly what shipped in the PR:**
+
+```
+$ TEST_DATABASE_URL=postgresql+psycopg2://… pytest -q
+1073 passed, 1 skipped, 2 warnings, 1 error in 4011.16s (1:06:51)
+```
+
+(The count is 1074 now: two new tests lock the emergency-numbers
+requirement from the 2026-09-13 live go-live.)
+
+The single ERROR was at **teardown** of
+`test_quickedit.py::test_the_hospitals_own_answer_beats_the_shared_one`
+— the test itself PASSED (it is included in the 1073); the cleanup after
+it hit `psycopg2.errors.DeadlockDetected` racing a lingering connection's
+locks during `drop_all`. Verified not a product failure: the whole file
+was re-run in isolation on PostgreSQL three times —
+
+```
+20 passed in 52.49s
+20 passed in 65.65s (0:01:05)
+20 passed in 82.46s (0:01:22)
+```
+
+— 20/20 every time. Noted as a rare test-harness race in §6, not a bug in
+the application.
 
 ## 6. Open items — decisions for the consultant, not silently patched
 
@@ -382,6 +416,12 @@ $ TEST_DATABASE_URL=postgresql+psycopg2://… pytest -q
    like the scheduler jobs.~~ **Confirmed and fixed** — see finding 2.11: the
    full suite on real PostgreSQL proved the CLI silently saw zero rows under
    RLS; its rewrite loop now declares `background_all_orgs()`.
+4. **A rare test-harness teardown race on PostgreSQL** (seen once in two
+   full runs): the per-test `drop_all` deadlocked against a lingering
+   connection's locks after `test_quickedit.py` (the test itself passed;
+   the file is green ×3 in isolation). Not an application bug — the app
+   holds no long transactions there — but the conftest teardown could
+   `engine.dispose()` before dropping to make it impossible.
 
 ## 7. How to re-run all of this
 
