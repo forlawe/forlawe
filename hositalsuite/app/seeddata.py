@@ -35,6 +35,8 @@ def _pw(username: str, overrides: dict | None) -> str:
 
 def seed_data(app, demo: bool = False, passwords: dict | None = None,
               hospital_name: str | None = None, hospital_code: str | None = None,
+              hospital_phone: str | None = None,
+              hospital_phone_alt: str | None = None,
               announce: bool = True):
     """Create the starter hospital if (and only if) the database is empty."""
     from .models import (ComplaintCategory, Department, DutyRoster, Organization,
@@ -43,7 +45,8 @@ def seed_data(app, demo: bool = False, passwords: dict | None = None,
         if db.session.query(Organization).first():
             return None
         org = Organization(code=(hospital_code or "HOSP")[:12],
-                           name=hospital_name or "Lagos City Teaching Hospital")
+                           name=hospital_name or "Lagos City Teaching Hospital",
+                           phone=hospital_phone, phone_alt=hospital_phone_alt)
         db.session.add(org)
         db.session.flush()
 
@@ -187,6 +190,12 @@ def auto_seed(app):
 
     Credentials: from SEED_<USERNAME> env vars when provided, otherwise
     strong random passwords printed ONCE to the server log.
+
+    SEED_HOSPITAL_PHONE / SEED_HOSPITAL_PHONE_ALT set the hospital's
+    contact numbers on the seeded org — the patient welcome page shows
+    them on the emergency card and help desk, so a fresh deployment is
+    never missing its emergency numbers (owner requirement after the
+    2026-09-13 Render go-live).
     """
     from .models import Organization, db
     with app.app_context():
@@ -202,4 +211,6 @@ def auto_seed(app):
         overrides = {uname: secrets.token_urlsafe(10) + "A1!" for uname in DEFAULT_PASSWORDS}
     seed_data(app, passwords=overrides,
               hospital_name=os.environ.get("SEED_HOSPITAL_NAME"),
-              hospital_code=os.environ.get("SEED_HOSPITAL_CODE"))
+              hospital_code=os.environ.get("SEED_HOSPITAL_CODE"),
+              hospital_phone=os.environ.get("SEED_HOSPITAL_PHONE"),
+              hospital_phone_alt=os.environ.get("SEED_HOSPITAL_PHONE_ALT"))

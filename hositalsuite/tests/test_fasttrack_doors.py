@@ -158,6 +158,52 @@ def test_hub_gold_card_and_plain_tile_use_different_doors(client, seeded):
     assert not tile.group(1).startswith("/book/fast-track")
 
 
+# ----------------------------- owner requirement (2026-09-13, Render go-live)
+def test_hub_shows_emergency_numbers_on_the_emergency_button(client, seeded):
+    """Each hospital's emergency number(s) MUST be visible on the welcome
+    page AND attached to the emergency button — a tel: call button beside
+    the register button, showing the actual number, plus the help-desk
+    block. Found missing on the live deploy: the seeded org had no phone,
+    so every number silently vanished from the page."""
+    from app.models import Organization, db
+    with client.application.app_context():
+        org = db.session.get(Organization, seeded["org"])
+        org.phone = "0809 111 2222"
+        org.phone_alt = "0809 333 4444"
+        db.session.commit()
+
+    html = client.get("/welcome").get_data(as_text=True)
+    # visible on the page — the actual digits, not a generic "call us"
+    assert "0809 111 2222" in html and "0809 333 4444" in html
+    # attached to the emergency card as dialable links
+    assert 'href="tel:08091112222"' in html
+    assert 'href="tel:08093334444"' in html
+    # the emergency register button is still there, right beside them
+    assert "I&#39;m coming to A&amp;E" in html or "I'm coming to A&E" in html
+    # and the help-desk block at the bottom carries both numbers too
+    assert html.count('class="help-call"') >= 2
+
+
+def test_hub_without_phone_keeps_a_graceful_fallback(client, seeded):
+    """No number configured: the page must still tell the patient where to
+    get help instead of showing a dead emergency card."""
+    from app.models import Organization, db
+    with client.application.app_context():
+        org = db.session.get(Organization, seeded["org"])
+        org.phone = None
+        org.phone_alt = None
+        db.session.commit()
+
+    html = client.get("/welcome").get_data(as_text=True)
+    # no call buttons invented out of thin air when no number exists
+    assert "Call now:" not in html
+    # the emergency register button survives
+    assert "I&#39;m coming to A&amp;E" in html or "I'm coming to A&E" in html
+    # help desk tells them where a human is (the i18n key renders to a
+    # sentence containing "reception")
+    assert "eception" in html
+
+
 # ------------------------------------------------------- queue join: no opt-in
 def test_queue_join_does_not_opt_anyone_into_a_paid_service(client, seeded):
     html = client.get("/queue/join").get_data(as_text=True)

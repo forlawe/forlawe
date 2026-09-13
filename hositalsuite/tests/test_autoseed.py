@@ -10,6 +10,10 @@ def test_auto_seed_bootstraps_empty_db_once(app, monkeypatch):
     assert db.session.query(Organization).count() == 0
 
     monkeypatch.setenv("AUTO_SEED", "1")
+    # the hospital's contact numbers come from the environment so a fresh
+    # deployment is never missing its emergency numbers on the welcome page
+    monkeypatch.setenv("SEED_HOSPITAL_PHONE", "0809 000 1111")
+    monkeypatch.setenv("SEED_HOSPITAL_PHONE_ALT", "0809 000 2222")
     app2 = create_app(scheduler=False)
     with app2.app_context():
         # These are VERIFICATION queries, not request code: the second boot
@@ -21,6 +25,9 @@ def test_auto_seed_bootstraps_empty_db_once(app, monkeypatch):
         from app.rls import background_all_orgs
         with background_all_orgs():
             assert db.session.query(Organization).count() == 1
+            org = db.session.query(Organization).first()
+            assert org.phone == "0809 000 1111"
+            assert org.phone_alt == "0809 000 2222"
             admin = db.session.query(User).filter_by(username="admin").first()
             assert admin is not None and admin.must_change_password is True
             assert db.session.query(User).count() == 10
