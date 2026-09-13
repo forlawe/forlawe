@@ -114,11 +114,9 @@
             {% if s.fast_track_price %}Price: <b>{{ s.fast_track_currency }} {{ '{:,}'.format(s.fast_track_price) }}</b>.{% endif %}
             {{ s.fast_track_price_note or '' }}
           </p>
-          {% if s.fast_track_booking_requires_payment %}
-          <p style="font-size:.8rem;margin:8px 0 0;background:#000;color:#FFD700;padding:6px 10px;border-radius:8px;display:inline-block">
-            Please pay before you arrive. {{ s.fast_track_payment_instructions or '' }}
-          </p>
-          {% endif %}
+          {# 2026-09-13, owner: "Please pay before you arrive…" is gone from the
+             Fast-Track banners — the help desk block at the bottom already
+             carries the numbers a patient needs. #}
         </div>
       </div>
     </div>
@@ -150,10 +148,8 @@
     <small class="muted" style="margin-top:6px;display:inline-block">Prefer to walk in? <a href="/queue/join">Join the queue</a> at the hospital.</small>
   </div>
 
-  <div class="card mt" style="border-left:5px solid #FFD700;padding:14px">
-    <b>Need help booking?</b>
-    <p class="muted" style="margin:6px 0 0;font-size:.88rem;line-height:1.4">Call us or visit reception. Our staff will help you book and guide you to the right place.</p>
-  </div>
+  {# 2026-09-13, owner: the "Need help booking?" card is gone — the help-desk
+     block below already shows the hospital numbers on every page. #}
   {% include "_help_desk.html" %}
 </main>
 <div class="footer">Book a visit — Fast Track available — <a href="/privacy">Privacy</a></div>
