@@ -12,16 +12,26 @@ def test_auto_seed_bootstraps_empty_db_once(app, monkeypatch):
     monkeypatch.setenv("AUTO_SEED", "1")
     app2 = create_app(scheduler=False)
     with app2.app_context():
-        assert db.session.query(Organization).count() == 1
-        admin = db.session.query(User).filter_by(username="admin").first()
-        assert admin is not None and admin.must_change_password is True
-        assert db.session.query(User).count() == 10
+        # These are VERIFICATION queries, not request code: the second boot
+        # re-armed row-level security on the tables, and on PostgreSQL a bare
+        # app-context query of the protected `user` table fails closed and
+        # sees nothing. Declare the cross-hospital intent, like the scheduler
+        # does. (The seed itself ran BEFORE RLS was armed — production logins
+        # are request-scoped and unaffected.)
+        from app.rls import background_all_orgs
+        with background_all_orgs():
+            assert db.session.query(Organization).count() == 1
+            admin = db.session.query(User).filter_by(username="admin").first()
+            assert admin is not None and admin.must_change_password is True
+            assert db.session.query(User).count() == 10
 
     # second boot must NOT reseed or duplicate anything
     app3 = create_app(scheduler=False)
     with app3.app_context():
-        assert db.session.query(Organization).count() == 1
-        assert db.session.query(User).count() == 10
+        from app.rls import background_all_orgs
+        with background_all_orgs():
+            assert db.session.query(Organization).count() == 1
+            assert db.session.query(User).count() == 10
 
 
 def test_no_auto_seed_without_flag(app, monkeypatch):

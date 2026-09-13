@@ -252,6 +252,11 @@ database).
   run once against a real Supabase database:
   `TEST_DATABASE_URL=postgresql://... pytest -q` (the suite supports it) and
   `alembic upgrade head` against the session pooler.
+  **— ADDENDUM 2026-09-13: done, and it mattered.** A real PostgreSQL 16
+  server was stood up in the workspace and every item above was executed:
+  the chain needed three fixes before it would even commit, the patient
+  doors were 500, the scheduler never ticked, and the WhatsApp table had no
+  RLS at all. See [`POSTGRES_VERIFICATION.md`](POSTGRES_VERIFICATION.md).
 * **No real WhatsApp/SMS/mail sends** — sandbox mode only.
 * **No browser on a real phone** — the 17 HTTP checks prove the right markup and
   CSS are served; only your eyes prove it looks right.

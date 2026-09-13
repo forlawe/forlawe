@@ -1,4 +1,8 @@
-# forlawe / forlawe — workspace branch `arena/01a08cab-forlawe`
+# forlawe / forlawe — workspace branch `arena/01a097c6-forlawe`
+
+> The verified deliverable is merged to `main` via pull request from the
+> session branch. The branch name above is where the work happened, not the
+> source of truth — `main` is.
 
 **The deployable application is in [`hositalsuite/`](hositalsuite/). That folder is
 the deploy root.** Its contents map 1:1 onto the root of the production repo
@@ -33,6 +37,11 @@ They are not a second copy of the app.
 * [`DEPLOY_READY.md`](DEPLOY_READY.md) — Render + Supabase runbook, the
   end-to-end booking-door test results, the `alembic` CLI blocker that was
   found and fixed, and an explicit "not verified here" section.
+* [`POSTGRES_VERIFICATION.md`](POSTGRES_VERIFICATION.md) — the consultant's
+  "next milestone", done: everything exercised against a real PostgreSQL 16
+  server. Eight bugs found and fixed (migrations that never committed,
+  patient doors that 500ed, a scheduler that never ticked, an unprotected
+  WhatsApp table…), RLS proven with raw-SQL attacks, and the re-run recipes.
 * [`CONSULTANT_REPORT_RESPONSE.md`](CONSULTANT_REPORT_RESPONSE.md) — line-by-line
   adjudication of the Patient Journey Recommendation Report.
 * [`ISSUE_1_REPLY.md`](ISSUE_1_REPLY.md) — the reply to issue #1.

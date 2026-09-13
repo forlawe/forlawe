@@ -40,35 +40,43 @@ def main() -> int:
         return 2
     app = create_app(scheduler=False)
     with app.app_context():
-        stats = {}
-        for model, fields in (
-            (Patient, ("date_of_birth", "address", "nok_phone", "nok_address")),
-            (ReceptionIntake, ("date_of_birth", "address", "nok_phone")),
-        ):
-            done = 0
-            rows = model.query.all()
-            for row in rows:
-                dirty = False
-                for field in fields:
-                    raw = getattr(row, field)      # legacy plaintext passes through
-                    if not _is_encrypted(raw if isinstance(raw, str) else str(raw or "")):
-                        setattr(row, field, raw)   # re-set → type encrypts on flush
-                        # same-value assignment produces no history, so force
-                        # the column into the UPDATE statement
-                        flag_modified(row, field)
+        # This CLI is inherently cross-hospital: it rewrites PHI rows for
+        # EVERY org in one pass. On PostgreSQL the boot that just ran armed
+        # row-level security, and without this declaration the queries below
+        # fail CLOSED — the backfill would silently see zero rows, rewrite
+        # nothing, and still exit 0. Found by the full suite on a real PG 16
+        # server (the backfill drill's legacy row stayed plaintext).
+        from .rls import background_all_orgs
+        with background_all_orgs():
+            stats = {}
+            for model, fields in (
+                (Patient, ("date_of_birth", "address", "nok_phone", "nok_address")),
+                (ReceptionIntake, ("date_of_birth", "address", "nok_phone")),
+            ):
+                done = 0
+                rows = model.query.all()
+                for row in rows:
+                    dirty = False
+                    for field in fields:
+                        raw = getattr(row, field)      # legacy plaintext passes through
+                        if not _is_encrypted(raw if isinstance(raw, str) else str(raw or "")):
+                            setattr(row, field, raw)   # re-set → type encrypts on flush
+                            # same-value assignment produces no history, so force
+                            # the column into the UPDATE statement
+                            flag_modified(row, field)
+                            dirty = True
+                    # make sure the blind index exists
+                    if getattr(row, "nok_phone", None) and not getattr(row, "nok_phone_bx", None):
+                        row.nok_phone = row.nok_phone  # triggers @validates
                         dirty = True
-                # make sure the blind index exists
-                if getattr(row, "nok_phone", None) and not getattr(row, "nok_phone_bx", None):
-                    row.nok_phone = row.nok_phone  # triggers @validates
-                    dirty = True
-                if dirty:
-                    done += 1
-                if done and done % 200 == 0:
-                    db.session.commit()
-            db.session.commit()
-            stats[model.__name__] = (done, len(rows))
-        for name, (done, total) in stats.items():
-            print(f"{name}: {done}/{total} rows rewritten")
+                    if dirty:
+                        done += 1
+                    if done and done % 200 == 0:
+                        db.session.commit()
+                db.session.commit()
+                stats[model.__name__] = (done, len(rows))
+            for name, (done, total) in stats.items():
+                print(f"{name}: {done}/{total} rows rewritten")
     return 0
 
 

@@ -20,21 +20,28 @@ def upgrade():
     # (e.g. service_clinic) then fail with "relation already exists" noise.
     bind = op.get_bind()
     insp = sa.inspect(bind)
+    # Boolean defaults: SQLite wants 0/1, PostgreSQL wants false/true. An
+    # integer literal is REJECTED by PostgreSQL ("column is of type boolean
+    # but default expression is of type integer") — found by running this
+    # chain against a real PostgreSQL 16 server, where it aborted the whole
+    # migration. Same idiom as c4a92e1f7b30 / d5b03c8a2e41.
+    _sqlite = bind.dialect.name == "sqlite"
+    _false = "0" if _sqlite else "false"
     tables = set(insp.get_table_names())
     for table in ('patient_visit', 'reception_intake', 'queue_ticket'):
         if table not in tables:
             continue
         cols = {c['name'] for c in insp.get_columns(table)}
         if 'is_fast_track' not in cols:
-            op.add_column(table, sa.Column('is_fast_track', sa.Boolean(), nullable=True, server_default=sa.text('0')))
+            op.add_column(table, sa.Column('is_fast_track', sa.Boolean(), nullable=True, server_default=sa.text(_false)))
         if 'fast_track_reason' not in cols:
             op.add_column(table, sa.Column('fast_track_reason', sa.String(length=40), nullable=True))
-    # Ensure boolean defaults are 0/False and not null for new rows
+    # Ensure boolean defaults are False and not null for new rows
     for tbl in ('patient_visit', 'reception_intake', 'queue_ticket'):
         if tbl not in tables:
             continue
         try:
-            op.execute(f"UPDATE {tbl} SET is_fast_track=0 WHERE is_fast_track IS NULL")
+            op.execute(f"UPDATE {tbl} SET is_fast_track={_false} WHERE is_fast_track IS NULL")
         except Exception:
             pass
 

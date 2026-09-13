@@ -16,6 +16,7 @@ audit trail, double-fire automation, or throttle inconsistently:
 from __future__ import annotations
 
 import types
+from contextlib import nullcontext
 
 import pytest
 from sqlalchemy import text
@@ -117,8 +118,12 @@ def _run_one_loop_iteration(monkeypatch, scheduler_mod, fake_db, tick_calls):
 
     monkeypatch.setattr(scheduler_mod.time, "sleep", _sleep)
     with pytest.raises(_LoopBreak):
-        scheduler_mod._loop(types.SimpleNamespace(logger=__import__("logging")
-                                                 .getLogger("test")), 60)
+        # app_context=nullcontext: _loop resolves db.engine inside
+        # app.app_context() (Flask-SQLAlchemy 3.x requires one); the fake
+        # stands in for it.
+        scheduler_mod._loop(types.SimpleNamespace(
+            logger=__import__("logging").getLogger("test"),
+            app_context=nullcontext), 60)
 
 
 def test_scheduler_sqlite_always_leads(monkeypatch):
@@ -175,8 +180,9 @@ def test_scheduler_survives_dead_db_connection(monkeypatch):
 
     monkeypatch.setattr(scheduler_mod.time, "sleep", _sleep)
     with pytest.raises(_LoopBreak):
-        scheduler_mod._loop(types.SimpleNamespace(logger=__import__("logging")
-                                                 .getLogger("test")), 60)
+        scheduler_mod._loop(types.SimpleNamespace(
+            logger=__import__("logging").getLogger("test"),
+            app_context=nullcontext), 60)
 
 
 # --------------------------------------------------------------- rate limiter
