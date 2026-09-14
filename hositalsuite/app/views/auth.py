@@ -7,6 +7,7 @@ from datetime import timedelta
 from flask import (Blueprint, current_app, flash, redirect, render_template,
                    request, session, url_for)
 from flask_login import current_user, login_user, logout_user
+from sqlalchemy.exc import IntegrityError
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from .. import accounts
@@ -42,7 +43,22 @@ def _lock_row(username: str, org_id: int | None = None) -> LoginAttempt:
     if row is None:
         row = LoginAttempt(org_id=org_id, username=username, failures=0)
         db.session.add(row)
-        db.session.flush()
+        try:
+            db.session.flush()
+        except IntegrityError:
+            # Issue #6 (2026-09-14): two near-simultaneous sign-ins for the
+            # same username — a double-tap, or a slow-network retry — can both
+            # pass the SELECT above and both INSERT; the second trips the
+            # unique index and used to end the login with a 500 instead of
+            # signing the person in (or refusing them). Roll the collision
+            # back and take the row the other request already created.
+            # Nothing else is pending at this point in the login request, so
+            # the rollback discards only our own collided row.
+            db.session.rollback()
+            row = (db.session.query(LoginAttempt)
+                   .filter_by(org_id=org_id, username=username).first())
+            if row is None:
+                raise
     return row
 
 
