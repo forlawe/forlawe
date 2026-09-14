@@ -164,7 +164,10 @@ def join_submit():
         phone=phone or None,
         patient_id=patient_id,
         status="WAITING",
-        source="qr" if request.form.get("loc") else "link",
+        # 2026-09-14: registrations from the emergency landing page are
+        # tagged so staff reports can tell an A&E arrival from a walk-in.
+        source=("emergency" if request.form.get("emergency") == "1"
+                else ("qr" if request.form.get("loc") else "link")),
         is_fast_track=is_fast,
         fast_track_reason=fast_reason if is_fast else None,
     )

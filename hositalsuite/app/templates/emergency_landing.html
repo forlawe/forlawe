@@ -7,16 +7,8 @@
 <meta name="theme-color" content="#c62828">
 <title>Emergency — Accident & Emergency — {{ org.name }}</title>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}?v={{ app_version }}">
-<style nonce="{{ csp_nonce }}">
-  .hero-red{border-radius:18px;padding:18px 20px 16px;margin-bottom:14px;background:linear-gradient(135deg,#fdecec 0%,#fff3cd 100%);border:2px solid #c62828}
-  .hero-red h1{margin:0;font-size:1.25rem;font-weight:900;color:#8c1d1d}
-  .hero-red p{margin:8px 0 0;font-size:.88rem;line-height:1.5;color:#8c1d1d}
-  .step-label{font-size:.75rem;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:#6b7d90;margin:16px 0 6px}
-  .card{border-radius:16px}
-  .input-big{font-size:1rem;padding:12px 14px;border-radius:10px;border:2px solid #e6edf3;width:100%}
-  .input-big:focus{border-color:#c62828;outline:none}
-  .btn.red{padding:14px;font-size:1.05rem;border-radius:999px;background:#c62828;color:#fff;border:none;font-weight:900;width:100%;box-shadow:0 6px 16px rgba(198,40,40,.25)}
-</style>
+{# 2026-09-14, consultant round 2 item 6: shared patient-portal design system
+   (.pp-hero-emergency / .pp-step-label / .pp-input / .pp-btn-emergency). #}
 </head>
 <body>
 <div class="portal-head" style="background:linear-gradient(135deg,#8c1d1d 0%,#c62828 100%)">
@@ -33,7 +25,7 @@
   {# 2026-09-13, owner: the emergency landing page is its OWN page. It carries
      emergency information only — no service dropdown, no Fast-Track box, no
      booking fields, no queue explainer. Those live on /queue/join and /book. #}
-  <div class="hero-red">
+  <div class="pp-hero pp-hero-emergency">
     <h1>🚨 Emergency — Go to Accident & Emergency Now</h1>
     <p>Do not wait online. Go straight to <b>Accident & Emergency Unit — open 24/7</b>. Tell reception it's an emergency. You will be seen immediately.</p>
     {# F-040: one instruction, not three — the emergency number form below is
@@ -56,15 +48,16 @@
   <form class="card pad-lg" method="post" action="/queue/join">
     <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
     <input type="hidden" name="loc" value="{{ loc or '' }}">
+    <input type="hidden" name="emergency" value="1">
     <input type="hidden" name="department_id" value="{{ emergency_dept.id }}">
 
-    <div class="step-label">1 · Your name</div>
-    <input type="text" name="patient_name" required class="input-big" placeholder="e.g. Aisha Bello">
+    <div class="pp-step-label">1 · Your name</div>
+    <input type="text" name="patient_name" required class="pp-input" placeholder="e.g. Aisha Bello">
 
-    <div class="step-label">2 · Phone (optional, for updates)</div>
-    <input type="tel" name="phone" inputmode="tel" class="input-big" placeholder="e.g. 08012345678">
+    <div class="pp-step-label">2 · Phone (optional, for updates)</div>
+    <input type="tel" name="phone" inputmode="tel" class="pp-input" placeholder="e.g. 08012345678">
 
-    <button class="btn red mt" type="submit">🚑 Get my emergency number</button>
+    <button class="pp-btn pp-btn-emergency mt" type="submit">🚑 Get my emergency number</button>
     <p style="font-size:.8rem;color:#8c1d1d;margin-top:10px;text-align:center;line-height:1.4">
       Your emergency number shows at the desk and on the staff screen — not your name.
       Emergencies are always seen first, ahead of every other patient.

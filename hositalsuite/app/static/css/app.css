@@ -398,3 +398,47 @@ summary{cursor:pointer;font-weight:750;font-size:var(--fs-sm)}
 .skip-link{position:absolute;left:-9999px;top:0;background:#000;color:#fff;
   padding:10px 16px;border-radius:0 0 10px 0;z-index:2000;font-weight:700}
 .skip-link:focus{left:0;outline:3px solid #FFD700}
+
+/* ============================================================
+   Patient Portal — shared premium design system (2026-09-14)
+   Used by every patient-facing page: hub, queue, booking, complaint,
+   feedback, emergency, status-check pages. Defined once here so a
+   future branding/contrast fix propagates everywhere automatically —
+   no page should define its own hero/step-label/input styling again.
+   (Consultant round-2 report, item 6: the patient journey looked like
+   two different products because each page hand-rolled its own hex
+   colours instead of using the :root tokens above.)
+   ============================================================ */
+.pp-hero{border-radius:18px;padding:18px 20px 16px;margin-bottom:14px;
+  background:linear-gradient(135deg,var(--primary-light) 0%,#e6f6f1 100%);
+  border:1px solid var(--line)}
+.pp-hero.pp-hero-gold{background:linear-gradient(135deg,#FFD700 0%,#FFC400 40%,#FFA500 100%);
+  color:#000;box-shadow:0 8px 24px rgba(255,165,0,.3);border:1px solid rgba(0,0,0,.06)}
+.pp-hero.pp-hero-emergency{background:linear-gradient(135deg,#fdecec,#fff3cd);
+  border:2px solid var(--red)}
+.pp-hero h1{margin:0;font-size:1.25rem;font-weight:900;color:var(--ink);letter-spacing:-.01em}
+.pp-hero.pp-hero-gold h1{color:#000}
+.pp-hero.pp-hero-emergency h1{color:#8c1d1d}
+.pp-hero p{margin:8px 0 0;font-size:.88rem;line-height:1.5;color:var(--ink-2)}
+.pp-hero.pp-hero-gold p{color:#3a2a00}
+.pp-hero.pp-hero-emergency p{color:#8c1d1d}
+.pp-badge-gold{background:#000;color:#FFD700;padding:4px 10px;border-radius:999px;
+  font-size:.7rem;font-weight:900;display:inline-block}
+
+.pp-step-label{font-size:.75rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--muted);margin:16px 0 6px;display:block}
+.pp-step-label:first-of-type{margin-top:4px}
+
+.pp-input{font-size:1rem;padding:12px 14px;border-radius:10px;border:2px solid var(--line-soft);
+  width:100%;background:#fff;color:var(--ink)}
+.pp-input:focus{border-color:var(--primary);outline:none;box-shadow:0 0 0 4px var(--primary-glow)}
+.pp-hint{font-size:.8rem;color:var(--muted);margin-top:6px;line-height:1.4}
+
+.pp-gold-box{padding:14px;background:linear-gradient(135deg,#FFFEF0,#FFF8DC);
+  border:2px solid #FFD700;border-radius:14px;margin-top:12px}
+
+.pp-btn{width:100%;border:none;font-weight:700;padding:14px;border-radius:999px;
+  font-size:1.05rem;cursor:pointer;text-align:center;text-decoration:none;display:block}
+.pp-btn-primary{background:var(--primary);color:#fff}
+.pp-btn-gold{background:#000;color:#FFD700;font-weight:900;box-shadow:0 6px 16px rgba(0,0,0,.2)}
+.pp-btn-emergency{background:var(--red);color:#fff;font-weight:900}

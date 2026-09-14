@@ -7,17 +7,9 @@
 <meta name="theme-color" content="#0e5a8a">
 <title>Get a Queue Number — {{ org.name }}</title>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}?v={{ app_version }}">
-<style nonce="{{ csp_nonce }}">
-  .hero{border-radius:18px;padding:18px 20px 16px;margin-bottom:14px;background: linear-gradient(135deg,#e7f0f8 0%,#e6f6f1 100%);border:1px solid #dbe4ec}
-  .hero h1{margin:0;font-size:1.25rem;font-weight:900;color:#0f2f47}
-  .hero p{margin:8px 0 0;font-size:.88rem;line-height:1.5;color:#425466}
-  .step-label{font-size:.75rem;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:#6b7d90;margin:16px 0 6px}
-  .card{border-radius:16px}
-  .input-big{font-size:1rem;padding:12px 14px;border-radius:10px;border:2px solid #e6edf3;width:100%}
-  .input-big:focus{border-color:#0e5a8a;outline:none}
-  .gold-box{margin-top:14px;padding:14px;background: linear-gradient(135deg,#FFFEF0,#FFF8DC);border:2px solid #FFD700;border-radius:14px}
-  .btn.gold{padding:14px;font-size:1.05rem;border-radius:999px;background:#000;color:#FFD700;border:none;font-weight:900;width:100%;box-shadow:0 6px 16px rgba(0,0,0,0.2)}
-</style>
+{# 2026-09-14, consultant round 2 item 6: hero / step labels / inputs / gold
+   box / button now come from the shared patient-portal design system in
+   app.css (.pp-*), not from page-local hex colours. #}
 </head>
 <body>
 <div class="portal-head">
@@ -33,7 +25,7 @@
 
   {# 2026-09-13: emergencies have their OWN landing page (/emergency). This
      page is the ordinary join-a-queue form only — no red hero, no A&E copy. #}
-  <div class="hero">
+  <div class="pp-hero">
     <h1>Track Your Visit — Receive Your Queue Number</h1>
     <p>You'll get a number and a private tracker showing your live position through every stage of your visit (Reception, Billing, Triage, Doctor, Pharmacy) — first-time patients start at Reception, returning patients go straight to Records. Your number only shows on the TV screen — not your name.</p>
   </div>
@@ -42,8 +34,8 @@
     <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
     <input type="hidden" name="loc" value="{{ loc or '' }}">
 
-    <div class="step-label">1 · Which service do you need?</div>
-    <select name="department_id" required class="input-big" id="q-dept">
+    <div class="pp-step-label">1 · Which service do you need?</div>
+    <select name="department_id" required class="pp-input" id="q-dept">
       <option value="">— Select —</option>
       {% for d, label in choices %}
       <option value="{{ d.id }}" data-fast="{{ 1 if 'fast track' in d.name|lower else 0 }}"
@@ -52,22 +44,22 @@
       </option>
       {% endfor %}
     </select>
-    <p style="font-size:.8rem;color:#6b7d90;margin:6px 0 0;line-height:1.4">
+    <p class="pp-hint" style="margin:6px 0 0">
       First-time patients start at Reception / Front Desk; if we already have your file, HIMS / Records takes you straight to it — no need to repeat paperwork. Fast-Track is premium at top — be seen faster in the quiet, private lounge.
     </p>
 
-    <div class="step-label">2 · Your name</div>
-    <input type="text" name="patient_name" required class="input-big" placeholder="e.g. Aisha Bello">
+    <div class="pp-step-label">2 · Your name</div>
+    <input type="text" name="patient_name" required class="pp-input" placeholder="e.g. Aisha Bello">
 
-    <div class="step-label">3 · Phone (optional, for updates)</div>
-    <input type="tel" name="phone" inputmode="tel" class="input-big" placeholder="e.g. 08012345678">
+    <div class="pp-step-label">3 · Phone (optional, for updates)</div>
+    <input type="tel" name="phone" inputmode="tel" class="pp-input" placeholder="e.g. 08012345678">
 
-    <div class="gold-box">
+    <div class="pp-gold-box">
       <label style="font-weight:900;color:#000;margin:0;display:flex;gap:10px;align-items:center;font-size:1rem">
         <input type="checkbox" name="is_fast_track" value="1" style="width:20px;height:20px"> ⭐ Fast Track — Be seen faster
       </label>
       <p style="font-size:.85rem;margin:8px 0 0;color:#5a4a00;line-height:1.5">Fast Track is our premium service. You are seen quickly in a quiet, private lounge. You pay a little more for comfort and speed. If you can afford it, choose Fast Track.</p>
-      <select name="fast_track_reason" style="margin-top:10px" class="input-big">
+      <select name="fast_track_reason" style="margin-top:10px" class="pp-input">
         <option value="PREMIUM" selected>Premium — Fast service, comfortable lounge</option>
         <option value="BUSINESS">Busy — I have little time today</option>
       </select>
@@ -79,8 +71,8 @@
       {% include "_fasttrack_consent.html" %}
     </label>
 
-    <button class="btn mt" type="submit">🎟️ {{ _("btn_queue") }}</button>
-    <p style="font-size:.8rem;color:#6b7d90;margin-top:10px;text-align:center;line-height:1.4">After you join, you get a private tracker. It shows your position, estimated wait, and what to do next. Your number only shows on TV — not your name.</p>
+    <button class="pp-btn pp-btn-primary mt" type="submit">🎟️ {{ _("btn_queue") }}</button>
+    <p class="pp-hint" style="margin-top:10px;text-align:center">After you join, you get a private tracker. It shows your position, estimated wait, and what to do next. Your number only shows on TV — not your name.</p>
   </form>
 
   <div style="margin-top:14px;background:#fff;border-radius:12px;padding:14px;border:1px solid #e6edf3">

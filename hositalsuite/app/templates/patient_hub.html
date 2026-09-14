@@ -11,18 +11,18 @@
   .hub-grid{display:grid;grid-template-columns:1fr;gap:12px;margin-top:10px}
   @media (min-width:620px){.hub-grid{grid-template-columns:1fr 1fr}}
   .hub-tile{display:flex;align-items:center;gap:14px;text-decoration:none;
-    background:#fff;border:1px solid #dbe4ec;border-left:6px solid var(--accent,#0e5a8a);
+    background:#fff;border:1px solid var(--line);border-left:6px solid var(--accent,#0e5a8a);
     border-radius:14px;padding:16px 14px;box-shadow:0 2px 10px rgba(16,42,67,.07);
     transition:transform .12s ease, box-shadow .12s ease;min-height:78px}
   .hub-tile:active{transform:scale(.985)}
   .hub-tile:hover{box-shadow:0 6px 18px rgba(16,42,67,.14)}
   .hub-ico{font-size:2rem;line-height:1;flex-shrink:0;width:52px;height:52px;
-    display:flex;align-items:center;justify-content:center;border-radius:12px;background:#eef4f9}
+    display:flex;align-items:center;justify-content:center;border-radius:12px;background:var(--line-soft)}
   .hub-txt{min-width:0;display:block}
-  .hub-title{display:block;font-weight:800;font-size:1.06rem;color:#0f2f47;line-height:1.25}
-  .hub-desc{display:block;font-size:.85rem;color:#5a6b7b;margin-top:3px;line-height:1.35}
-  .hub-go{margin-left:auto;font-size:1.4rem;color:#9bb0c2;flex-shrink:0}
-  .t-book   {border-left-color:#0e5a8a} .t-book   .hub-ico{background:#e7f0f8}
+  .hub-title{display:block;font-weight:800;font-size:1.06rem;color:var(--ink);line-height:1.25}
+  .hub-desc{display:block;font-size:.85rem;color:var(--muted);margin-top:3px;line-height:1.35}
+  .hub-go{margin-left:auto;font-size:1.4rem;color:var(--faint);flex-shrink:0}
+  .t-book   {border-left-color:#0e5a8a} .t-book   .hub-ico{background:var(--primary-light)}
   .t-queue  {border-left-color:#0f8a6a} .t-queue  .hub-ico{background:#e6f6f1}
   .t-chat   {border-left-color:#6b4fd8} .t-chat   .hub-ico{background:#efeafd}
   .t-comp   {border-left-color:#c2521c} .t-comp   .hub-ico{background:#fdeee5}
@@ -63,7 +63,7 @@
   .emerg{display:block;margin:16px 0 4px;padding:13px 14px;border-radius:12px;
     background:#fdecec;border:1px solid #f3c2c2;border-left:6px solid #c62828;
     color:#8c1d1d;font-weight:700;font-size:.9rem;text-decoration:none}
-  .hub-foot{text-align:center;margin:18px 0 8px;font-size:.82rem;color:#5a6b7b}
+  .hub-foot{text-align:center;margin:18px 0 8px;font-size:.82rem;color:var(--muted)}
   .hub-foot a{color:#0e5a8a}
 </style>
 </head>
@@ -91,7 +91,7 @@
     <div class="lux-go">›</div>
   </a>
 
-  <h1 style="font-size:1.25rem;margin:10px 0 2px;color:#0f2f47;font-weight:900">{{ _('hub_welcome') }}</h1>
+  <h1 style="font-size:1.25rem;margin:10px 0 2px;color:var(--ink);font-weight:900">{{ _('hub_welcome') }}</h1>
   <p class="muted" style="margin:0 0 6px;font-size:.9rem">{{ _('hub_sub') }}</p>
 
   <div class="hub-grid">
@@ -104,10 +104,10 @@
     </a>
 
     <a class="hub-tile t-queue" href="{{ url_for('queue.join_page') }}{{ q }}">
-      <span class="hub-ico">🎟️</span>
+      <span class="hub-ico">📺</span>
       <span class="hub-txt">
-        <span class="hub-title">Join the queue</span>
-        <span class="hub-desc">Get a number and track your turn live.</span>
+        <span class="hub-title">My Visit Journey</span>
+        <span class="hub-desc">Live tracker with your position, wait time, and voice updates.</span>
       </span><span class="hub-go">›</span>
     </a>
 
