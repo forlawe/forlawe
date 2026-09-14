@@ -1,0 +1,56 @@
+{# Shared patient states — Gate 1 of the UX plan (2026-09-14).
+
+   The ONLY way a patient page says:
+     "hold on"      -> pp_state_waiting   (shimmering, pulsing, calm)
+     "nothing here" -> pp_state_empty     (dashed, quiet, no blame)
+     "that broke"   -> pp_state_error     (red, honest, role=alert)
+     "all done"     -> pp_state_success   (green, warm, role=status)
+
+   Usage (content goes inside the call block, copy stays page-owned):
+     {% from "_pp_states.html" import pp_state_success %}
+     {% call pp_state_success('✅') %}
+       <h1 class="pp-state-title">Your visit is booked — Thank you</h1>
+     {% endcall %}
+
+   Inline variants are for one-line states inside other cards (form flash
+   errors, "No messages yet", ticket status pills).
+   Styling lives in static/css/app.css — never restyle these per page. #}
+
+{% macro pp_state_waiting(icon='⏳') -%}
+<div class="pp-state pp-state-waiting" role="status">
+  <div class="pp-state-ico" aria-hidden="true">{{ icon }}</div>
+  {{ caller() }}
+</div>
+{%- endmacro %}
+
+{% macro pp_state_empty(icon='🗂️') -%}
+<div class="pp-state pp-state-empty" role="note">
+  <div class="pp-state-ico" aria-hidden="true">{{ icon }}</div>
+  {{ caller() }}
+</div>
+{%- endmacro %}
+
+{% macro pp_state_error(icon='⚠️') -%}
+<div class="pp-state pp-state-error" role="alert">
+  <div class="pp-state-ico" aria-hidden="true">{{ icon }}</div>
+  {{ caller() }}
+</div>
+{%- endmacro %}
+
+{% macro pp_state_success(icon='✅') -%}
+<div class="pp-state pp-state-success" role="status">
+  <div class="pp-state-ico" aria-hidden="true">{{ icon }}</div>
+  {{ caller() }}
+</div>
+{%- endmacro %}
+
+{% macro pp_state_inline(kind, icon, role='') -%}
+<div class="pp-state pp-state-inline pp-state-{{ kind }}"{% if role %} role="{{ role }}"{% endif %}>
+  <span class="pp-state-ico" aria-hidden="true">{{ icon }}</span>
+  <span class="pp-state-body">{{ caller() }}</span>
+</div>
+{%- endmacro %}
+
+{% macro pp_shimmer() -%}
+<div class="pp-state-shimmer" aria-hidden="true"></div>
+{%- endmacro %}

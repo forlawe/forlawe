@@ -16,7 +16,7 @@
   {% include "_langbar.html" %}
   {% if qr_loc %}<div class="mt"><span class="pill blue">📍 {{ qr_loc.name }}</span></div>{% endif %}
 </div>
-<main id="main-content" class="wrap" style="max-width:560px">
+<main id="main-content" class="wrap w-560">
   {% with back_to="/welcome" %}{% include "_patient_nav.html" %}{% endwith %}
   {% with messages = get_flashed_messages(with_categories=true) %}
     {% for cat, msg in messages %}<div class="flash {{ cat }}">{{ msg }}</div>{% endfor %}
@@ -60,8 +60,8 @@
     <input type="tel" name="phone" id="cmp-phone" required inputmode="tel" class="pp-input" placeholder="08012345678"
            value="{{ form.get('phone','') if form else '' }}">
 
-    <label class="checkline" style="display:flex;gap:10px;align-items:flex-start;margin-top:10px;font-weight:400">
-      <input type="checkbox" name="anonymous" id="cmp-anon" value="1" style="width:auto;margin-top:3px"
+    <label class="checkline pp-checkline">
+      <input type="checkbox" name="anonymous" id="cmp-anon" value="1"
              {{ 'checked' if form and form.get('anonymous') }}>
       <span>🕶️ <b>Submit anonymously.</b> We will not store your phone number.
         You will still get a reference number to track the complaint, but the
@@ -69,16 +69,15 @@
     </label>
 
     <label class="pp-step-label" for="cmp-attach">5 · {{ _('f_attach') }}</label>
-    <input type="file" name="attachment" id="cmp-attach" accept="image/jpeg,image/png,image/webp" class="pp-input" style="font-size:.9rem;padding:10px 12px">
-    <select name="contact_method" id="cmp-contact" aria-label="Preferred contact method" class="pp-input mt" style="margin-top:8px">
+    <input type="file" name="attachment" id="cmp-attach" accept="image/jpeg,image/png,image/webp" class="pp-input pp-input-file">
+    <select name="contact_method" id="cmp-contact" aria-label="Preferred contact method" class="pp-input mt">
       <option value="phone">Call / Kiran / Oku</option>
       <option value="whatsapp">WhatsApp</option>
       <option value="either">— / —</option>
     </select>
 
-    <label class="checkline" id="consent-line"
-           style="display:flex;gap:10px;align-items:flex-start;margin-top:14px;font-weight:400">
-      <input type="checkbox" name="consent" id="cmp-consent" value="1" style="width:auto;margin-top:3px"
+    <label class="checkline pp-checkline" id="consent-line">
+      <input type="checkbox" name="consent" id="cmp-consent" value="1"
              {{ 'checked' if form and form.get('consent') }}>
       <span>I agree that {{ hospital.name if hospital else 'the hospital' }} may store
         and use the details above to investigate and follow up on this complaint,

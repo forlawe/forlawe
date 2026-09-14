@@ -40,7 +40,12 @@ things on top of something that actually works."*
   fresh deploy of `main` after this branch merges (restart twice, login
   twice fast, watch /book /queue/join /complaint and the scheduler log).
 
-### Gate 1 — Design-system unification (vision Step 3)
+### Gate 1 — Design-system unification (vision Step 3) — ✅ DONE 2026-09-14
+
+Implemented and pinned — see `docs/reports/2026-09-14-gate1-design-system-unification.md`:
+the four shared states (waiting/empty/error/success) exist as reusable
+blocks and are used on real pages; every patient template is free of
+private style blocks and inline styles; 11 new pins + full suite green.
 
 Already largely landed (`.pp-*` system, token-based, gold hero only on the
 gold door). Finish the four missing shared states — waiting shimmer,

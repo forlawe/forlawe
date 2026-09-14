@@ -11,12 +11,12 @@
    (.pp-hero-emergency / .pp-step-label / .pp-input / .pp-btn-emergency). #}
 </head>
 <body>
-<div class="portal-head" style="background:linear-gradient(135deg,#8c1d1d 0%,#c62828 100%)">
+<div class="portal-head portal-head-red">
   {% include "_brand_mark.html" %}
   <div>Emergency — Accident & Emergency</div>
   {% include "_langbar.html" %}
 </div>
-<main class="wrap" style="max-width:560px">
+<main class="wrap w-560">
   {% with back_to="/welcome" %}{% include "_patient_nav.html" %}{% endwith %}
   {% with messages = get_flashed_messages(with_categories=true) %}
     {% for cat, msg in messages %}<div class="flash {{ cat }}">{{ msg }}</div>{% endfor %}
@@ -30,15 +30,15 @@
     <p>Do not wait online — go straight to <b>Accident & Emergency (open 24/7)</b>. You will be seen immediately.</p>
     {# F-040: one instruction, not three — the emergency number form below is
        the single action; chat/phone/voice are demoted to one line. #}
-    <div style="margin-top:8px;font-size:.75rem;color:#8c1d1d;line-height:1.5">
+    <div class="emerg-help">
       Can't come in right now?
       {% if hospital and hospital.phone %}
-      <a href="tel:{{ hospital.phone | replace(' ', '') }}" style="color:#8c1d1d;font-weight:700">📞 Call Help Desk — {{ hospital.phone }}</a>
+      <a href="tel:{{ hospital.phone | replace(' ', '') }}" class="emerg-link">📞 Call Help Desk — {{ hospital.phone }}</a>
       {% else %}
-      <a href="#help-desk" onclick="document.querySelector('.help-desk')?.scrollIntoView({behavior:'smooth'});return false;" style="color:#8c1d1d;font-weight:700">📞 Help desk numbers below</a>
+      <a href="#help-desk" onclick="document.querySelector('.help-desk')?.scrollIntoView({behavior:'smooth'});return false;" class="emerg-link">📞 Help desk numbers below</a>
       {% endif %}
-      · <a href="/chat?q=emergency" style="color:#8c1d1d">💬 ask for directions</a>
-      · <button type="button" style="background:none;border:none;padding:0;color:#8c1d1d;text-decoration:underline;font-size:inherit;cursor:pointer" onclick="try{if(window.hmsVoice&&hmsVoice.speak){hmsVoice.speak('Emergency — Go straight to Accident and Emergency now. It is open twenty four seven. Tell reception it is an emergency, you will be seen immediately. Do not wait online.');}}catch(e){}">🔊 listen</button>
+      · <a href="/chat?q=emergency" class="emerg-link-plain">💬 ask for directions</a>
+      · <button type="button" class="emerg-listen" onclick="try{if(window.hmsVoice&&hmsVoice.speak){hmsVoice.speak('Emergency — Go straight to Accident and Emergency now. It is open twenty four seven. Tell reception it is an emergency, you will be seen immediately. Do not wait online.');}}catch(e){}">🔊 listen</button>
     </div>
   </div>
 
@@ -58,7 +58,7 @@
     <input type="tel" name="phone" inputmode="tel" class="pp-input" placeholder="e.g. 08012345678">
 
     <button class="pp-btn pp-btn-emergency mt" type="submit">🚑 Get my emergency number</button>
-    <p style="font-size:.8rem;color:#8c1d1d;margin-top:10px;text-align:center;line-height:1.4">
+    <p class="emerg-note">
       Your emergency number shows at the desk and on the staff screen — never your name.
     </p>
   </form>

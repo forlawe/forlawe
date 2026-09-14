@@ -2,15 +2,15 @@
 
    2026-09-13, owner: the language names were not visible on the patient
    welcome page and associated pages — make them white. Every pill now uses
-   WHITE text (with !important so no stylesheet can ever dim it again), and
-   the bar carries its own dark strip so the white text stays readable no
-   matter what background a page head has. The active language is marked by
-   a brighter background + white ring, never by dark text. #}
-<div style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin:10px 0 2px;padding:6px 8px;background:rgba(6,34,56,.55);border-radius:999px">
+   WHITE text (with !important so no stylesheet can ever dim it again — the
+   rule lives in app.css under .langbar a), and the bar carries its own dark
+   strip so the white text stays readable no matter what background a page
+   head has. The active language is marked by a brighter background + white
+   ring (.is-active), never by dark text.
+   Gate 1: inline styles moved into the shared design system. #}
+<div class="langbar">
   {% for code, meta in langs.items() %}
   <a href="/lang/{{ code }}?next={{ request.path }}"
-     style="padding:5px 12px;border-radius:999px;font-size:.78rem;font-weight:700;text-decoration:none;color:#fff!important;
-     {% if code == lang %}background:rgba(255,255,255,.28);border:1px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.25){% else %}background:rgba(255,255,255,.10);border:1px solid transparent{% endif %}">
-     {{ meta.name }}</a>
+     class="{{ 'is-active' if code == lang }}">{{ meta.name }}</a>
   {% endfor %}
 </div>

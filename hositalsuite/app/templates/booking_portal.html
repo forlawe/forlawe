@@ -15,14 +15,14 @@
 </head>
 <body>
 <a class="skip-link" href="#main-content">Skip to main content</a>
-<div class="portal-head" style="background: linear-gradient(135deg,#000 0%,#b8860b 100%)">
+<div class="portal-head portal-head-gold">
   {% include "_brand_mark.html" %}
   <div>Book a Hospital Visit</div>
   {% include "_langbar.html" %}
   {% if qr_loc %}<div class="mt"><span class="pill blue">📍 {{ qr_loc.name }}</span></div>{% endif %}
   {% if ref_code %}<div class="mt"><span class="pill green">💌 {{ _('refer_welcome') }}</span></div>{% endif %}
 </div>
-<main id="main-content" class="wrap" style="max-width:560px">
+<main id="main-content" class="wrap w-560">
   {% with back_to="/welcome" %}{% include "_patient_nav.html" %}{% endwith %}
   {% with messages = get_flashed_messages(with_categories=true) %}
     {% for cat, msg in messages %}<div class="flash {{ cat }}">{{ msg }}</div>{% endfor %}
@@ -108,11 +108,11 @@
     {% if s and s.fast_track_enabled %}
     {% if fast_track %}
     <div class="pp-gold-box">
-      <div style="display:flex;gap:10px;align-items:flex-start">
-        <div style="font-size:1.6rem">👑</div>
+      <div class="pp-gold-flex">
+        <div class="pp-gold-ico">👑</div>
         <div>
-          <b style="color:#000">Fast Track — Be Seen Fast</b>
-          <p style="font-size:.85rem;margin:6px 0 0;line-height:1.5;color:#3a2a00">
+          <b class="pp-gold-title">Fast Track — Be Seen Fast</b>
+          <p class="pp-gold-text">
             Seen quickly, with care and privacy — for a little more.
             {% if s.fast_track_building_name %}Location: <b>{{ s.fast_track_building_name }}</b>.{% endif %}
             {% if s.fast_track_price %}Price: <b>{{ s.fast_track_currency }} {{ '{:,}'.format(s.fast_track_price) }}</b>.{% endif %}
@@ -127,14 +127,14 @@
     {% endif %}
     {% endif %}
 
-    <label class="checkline" style="display:flex;gap:10px;align-items:flex-start;margin-top:16px;font-weight:400;font-size:.88rem;line-height:1.4">
-      <input type="checkbox" name="consent" value="1" required style="width:auto;margin-top:3px">
+    <label class="checkline pp-checkline">
+      <input type="checkbox" name="consent" value="1" required>
       <span>I agree the hospital can save my name and phone to manage this booking and send me reminders. See <a href="/privacy" target="_blank">Privacy Notice</a>.</span>
     </label>
 
     {% if fast_track %}
-    <label class="checkline" style="display:flex;gap:10px;align-items:flex-start;margin-top:12px;font-weight:700;font-size:.9rem;line-height:1.4;background:#FFFEF0;border:2px solid #FFD700;border-radius:10px;padding:10px 12px">
-      <input type="checkbox" name="fast_track_consent" value="1" required style="width:20px;height:20px;margin-top:2px">
+    <label class="checkline pp-checkline pp-checkline-gold">
+      <input type="checkbox" name="fast_track_consent" value="1" required>
       {% include "_fasttrack_consent.html" %}
     </label>
     {% endif %}
@@ -146,9 +146,9 @@
     {% endif %}
   </form>
 
-  <div class="card mt center" style="padding:14px">
-    <a href="/book/status" style="font-weight:700">Already booked? Check or cancel with your reference →</a><br>
-    <small class="muted" style="margin-top:6px;display:inline-block">Prefer to walk in? <a href="/queue/join">Get a queue number</a>.</small>
+  <div class="card mt center pp-link-card">
+    <a href="/book/status" class="pp-link-strong">Already booked? Check or cancel with your reference →</a><br>
+    <small class="muted pp-link-note">Prefer to walk in? <a href="/queue/join">Get a queue number</a>.</small>
   </div>
 
   {# 2026-09-13, owner: the "Need help booking?" card is gone — the help-desk

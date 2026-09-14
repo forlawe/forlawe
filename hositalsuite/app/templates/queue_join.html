@@ -17,7 +17,7 @@
   <div>Get a Queue Number</div>
   {% include "_langbar.html" %}
 </div>
-<main class="wrap" style="max-width:560px">
+<main class="wrap w-560">
   {% with back_to="/welcome" %}{% include "_patient_nav.html" %}{% endwith %}
   {% with messages = get_flashed_messages(with_categories=true) %}
     {% for cat, msg in messages %}<div class="flash {{ cat }}">{{ msg }}</div>{% endfor %}
@@ -45,7 +45,7 @@
       </option>
       {% endfor %}
     </select>
-    <p class="pp-hint" style="margin:6px 0 0">
+    <p class="pp-hint">
       New here? Reception / Front Desk. Already have a folder? HIMS / Records. Short on time? ⭐ Fast-Track.
     </p>
 
@@ -56,19 +56,19 @@
     <input type="tel" name="phone" inputmode="tel" class="pp-input" placeholder="e.g. 08012345678">
 
     <div class="pp-gold-box">
-      <label style="font-weight:900;color:#000;margin:0;display:flex;gap:10px;align-items:center;font-size:1rem">
-        <input type="checkbox" name="is_fast_track" value="1" style="width:20px;height:20px"> ⭐ Fast Track — Be seen faster
+      <label class="pp-gold-check">
+        <input type="checkbox" name="is_fast_track" value="1"> ⭐ Fast Track — Be seen faster
       </label>
-      <p style="font-size:.85rem;margin:8px 0 0;color:#5a4a00;line-height:1.5">Our premium lane — seen quickly, with care, for a little more.</p>
-      <select name="fast_track_reason" style="margin-top:10px" class="pp-input">
+      <p class="pp-gold-lane">Our premium lane — seen quickly, with care, for a little more.</p>
+      <select name="fast_track_reason" class="pp-input mt-sm">
         <option value="PREMIUM" selected>Premium — Fast service, comfortable lounge</option>
         <option value="BUSINESS">Busy — I have little time today</option>
       </select>
-      <p style="font-size:.78rem;color:#6b7d90;margin-top:8px;line-height:1.4">You don't need to pick Fast Track if your health condition need special attention. Just tell Reception/HIMS how we can help you, and we will prioritize your care.</p>
+      <p class="pp-gold-note">You don't need to pick Fast Track if your health condition need special attention. Just tell Reception/HIMS how we can help you, and we will prioritize your care.</p>
     </div>
 
-    <label class="checkline" style="display:flex;gap:10px;align-items:flex-start;margin-top:12px;font-weight:700;font-size:.9rem;line-height:1.4;background:#FFFEF0;border:2px solid #FFD700;border-radius:10px;padding:10px 12px">
-      <input type="checkbox" name="fast_track_consent" value="1" style="width:20px;height:20px;margin-top:2px">
+    <label class="checkline pp-checkline pp-checkline-gold">
+      <input type="checkbox" name="fast_track_consent" value="1">
       {% include "_fasttrack_consent.html" %}
     </label>
 

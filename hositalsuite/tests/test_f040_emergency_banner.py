@@ -8,13 +8,22 @@ to a single small secondary line; the repetition is gone.
 """
 from __future__ import annotations
 
+from pathlib import Path
+
+APP_CSS = (Path(__file__).resolve().parents[1] / "app" / "static" / "css"
+           / "app.css").read_text(encoding="utf-8")
+
 
 def test_hub_banner_has_one_primary_action(client, seeded):
     html = client.get("/").get_data(as_text=True)
     # the ONE primary action
     assert "I'm coming to A&E — register me now" in html
-    # exactly one big red button in the emergency card (no competing equals)
-    assert html.count("background:#c62828;color:#fff;font-weight:900") == 1
+    # exactly one big red button in the emergency card (no competing equals).
+    # Gate 1 (2026-09-14): the button's red styling moved from an inline
+    # style attr into the shared system (.btn-ae in app.css) — the pin now
+    # counts the primary class in the markup AND the colour in the system.
+    assert html.count('btn-ae"') == 1
+    assert ".btn-ae{background:#c62828;color:#fff;font-weight:900" in APP_CSS
     # the repeating link line is gone
     assert "🔗 Linked:" not in html
     # the other paths survive, demoted to small text

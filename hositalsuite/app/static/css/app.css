@@ -455,3 +455,297 @@ summary{cursor:pointer;font-weight:750;font-size:var(--fs-sm)}
   flex-shrink:0}
 .pp-steps.pp-steps-gold li b{background:#000;color:#FFD700}
 .pp-steps.pp-steps-emergency li b{background:var(--red)}
+
+/* ==========================================================================
+   PATIENT DESIGN SYSTEM — GATE 1 (2026-09-14)
+   One box of LEGO for every patient page. Rules of the system:
+   1. No patient template carries a <style> block or inline style="" attrs.
+   2. The four shared states (waiting / empty / error / success) are the only
+      way a patient page says "hold on", "nothing here", "that went wrong",
+      "all done" — macros in templates/_pp_states.html render them.
+   3. Page-specific components (hub tiles, queue ticket, emergency card)
+      live HERE, prefixed, so every page pulls from one stylesheet.
+   ========================================================================== */
+[hidden]{display:none!important}
+@keyframes pp-shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+@keyframes pp-pulse{0%{transform:scale(1)}50%{transform:scale(1.15)}100%{transform:scale(1)}}
+@keyframes emerg-pulse{0%{transform:scale(1)}50%{transform:scale(1.15)}100%{transform:scale(1)}}
+
+/* --- tiny utilities (replace inline style attrs) --- */
+.w-560{max-width:560px}
+.w-640{max-width:640px}
+.p-0{padding:0}
+.mt-xs{margin-top:6px}
+.mt-sm{margin-top:10px}
+.gap-sm{gap:8px}
+.btn-block{width:100%;border-radius:999px}
+.pill-lg{font-size:.95rem;padding:6px 12px}
+
+/* --- the four shared states --- */
+.pp-state{background:var(--card);border:1px solid var(--line);border-radius:16px;
+  padding:24px 18px;text-align:center;box-shadow:0 4px 18px rgba(16,42,67,.08);
+  max-width:560px;margin:20px auto}
+.pp-state-ico{font-size:2.6rem;line-height:1.2}
+.pp-state-title{margin:10px 0 4px;font-size:1.35rem;font-weight:900;color:var(--ink);letter-spacing:-.01em}
+.pp-state-text{margin:8px 0 0;font-size:.95rem;line-height:1.55;color:var(--ink-2)}
+.pp-state-actions{margin-top:16px;display:flex;flex-direction:column;gap:8px}
+.pp-btn-row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:16px}
+.pp-state-tip{font-size:.85rem;color:var(--muted);margin-top:8px;line-height:1.45}
+.pp-state-help{font-size:.8rem;color:var(--faint);margin-top:14px}
+/* shimmering "still moving" band — the waiting signature */
+.pp-state-shimmer{height:10px;border-radius:999px;margin:12px auto 0;max-width:280px;
+  background:linear-gradient(90deg,#e7f0f8 25%,#f9fcff 50%,#e7f0f8 75%);
+  background-size:200% 100%;animation:pp-shimmer 1.6s infinite linear}
+.pp-state-waiting{background:linear-gradient(180deg,#f2f8fd,#fff);border-color:#bcd7ec}
+.pp-state-waiting .pp-state-ico{animation:pp-pulse 1.6s infinite}
+.pp-state-empty{background:transparent;border-style:dashed;box-shadow:none}
+.pp-state-empty .pp-state-title{color:var(--muted);font-size:1.05rem}
+.pp-state-empty .pp-state-text{color:var(--muted)}
+.pp-state-error{background:var(--red-bg);border-color:var(--red-line)}
+.pp-state-error .pp-state-title{color:#8c1d1d}
+.pp-state-error .pp-state-text{color:#6b1a1a}
+.pp-state-success{background:var(--green-bg);border-color:var(--green-line)}
+.pp-state-success .pp-state-title{color:#14532d}
+/* compact inline variant (flashes, "no messages yet", ticket status pills) */
+.pp-state-inline{display:flex;gap:10px;align-items:center;text-align:left;
+  padding:10px 14px;margin:10px 0;border-radius:12px;font-weight:700;font-size:.9rem;max-width:none}
+.pp-state-inline .pp-state-ico{font-size:1rem;line-height:1;animation:none}
+.pp-state-inline.pp-state-waiting .pp-state-ico{animation:pp-pulse 1.6s infinite;color:var(--primary)}
+.pp-state-body{min-width:0}
+
+/* --- hub (patient welcome) --- */
+.hub-h1{font-size:1.25rem;margin:10px 0 2px;color:var(--ink);font-weight:900}
+.hub-sub{margin:0 0 6px;font-size:.9rem}
+.hub-grid{display:grid;grid-template-columns:1fr;gap:12px;margin-top:10px}
+@media (min-width:620px){.hub-grid{grid-template-columns:1fr 1fr}}
+.hub-tile{display:flex;align-items:center;gap:14px;text-decoration:none;
+  background:#fff;border:1px solid var(--line);border-left:6px solid var(--accent,#0e5a8a);
+  border-radius:14px;padding:16px 14px;box-shadow:0 2px 10px rgba(16,42,67,.07);
+  transition:transform .12s ease, box-shadow .12s ease;min-height:78px}
+.hub-tile:active{transform:scale(.985)}
+.hub-tile:hover{box-shadow:0 6px 18px rgba(16,42,67,.14)}
+.hub-ico{font-size:2rem;line-height:1;flex-shrink:0;width:52px;height:52px;
+  display:flex;align-items:center;justify-content:center;border-radius:12px;background:var(--line-soft)}
+.hub-txt{min-width:0;display:block}
+.hub-title{display:block;font-weight:800;font-size:1.06rem;color:var(--ink);line-height:1.25}
+.hub-desc{display:block;font-size:.85rem;color:var(--muted);margin-top:3px;line-height:1.35}
+.hub-go{margin-left:auto;font-size:1.4rem;color:var(--faint);flex-shrink:0}
+.t-book   {border-left-color:#0e5a8a} .t-book   .hub-ico{background:var(--primary-light)}
+.t-queue  {border-left-color:#0f8a6a} .t-queue  .hub-ico{background:#e6f6f1}
+.t-chat   {border-left-color:#6b4fd8} .t-chat   .hub-ico{background:#efeafd}
+.t-comp   {border-left-color:#c2521c} .t-comp   .hub-ico{background:#fdeee5}
+.t-fb     {border-left-color:#c9a227} .t-fb     .hub-ico{background:#fdf6e0}
+.t-refer  {border-left-color:#0d7fa6} .t-refer  .hub-ico{background:#e5f4fa}
+.hub-share-sub{margin:6px 0}
+.pp-share-input{margin-top:10px;font-size:.82rem;text-align:center}
+.hub-copy-done{color:#0f8a6a}
+.hub-foot{text-align:center;margin:18px 0 8px;font-size:.82rem;color:var(--muted)}
+.hub-foot a{color:#0e5a8a}
+
+/* --- luxury Fast Track card (hub) --- */
+.lux-card{background:linear-gradient(135deg,#FFD700 0%,#FFC400 30%,#FFA500 70%,#FF8C00 100%);
+  border-radius:18px;padding:18px 18px 16px;margin:10px 0 16px;
+  box-shadow:0 10px 28px rgba(255,165,0,0.35), inset 0 1px 0 rgba(255,255,255,0.6);
+  border:1px solid rgba(0,0,0,0.08);position:relative;overflow:hidden;
+  display:flex;gap:14px;align-items:center;text-decoration:none}
+.lux-card:before{content:"";position:absolute;top:-30%;left:-20%;width:60%;height:200%;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,0.35),transparent);
+  transform:rotate(18deg)}
+.lux-icon{width:56px;height:56px;border-radius:14px;background:#000;color:#FFD700;
+  display:flex;align-items:center;justify-content:center;font-size:1.9rem;
+  flex-shrink:0;box-shadow:0 4px 12px rgba(0,0,0,0.25)}
+.lux-txt{flex:1;min-width:0;position:relative}
+.lux-title{font-weight:900;font-size:1.12rem;color:#000;line-height:1.2;letter-spacing:-0.01em}
+.lux-sub{font-size:.86rem;color:#2b1a00;margin-top:4px;line-height:1.4;font-weight:500}
+.lux-badge{display:inline-flex;align-items:center;gap:4px;margin-top:8px;
+  background:#000;color:#FFD700;padding:5px 12px;border-radius:999px;
+  font-size:.72rem;font-weight:900;letter-spacing:0.04em}
+.lux-go{width:40px;height:40px;border-radius:50%;background:#000;color:#FFD700;
+  display:flex;align-items:center;justify-content:center;font-size:1.3rem;
+  flex-shrink:0;box-shadow:0 3px 10px rgba(0,0,0,0.25)}
+.emerg{display:block;margin:16px 0 4px;padding:13px 14px;border-radius:12px;
+  background:#fdecec;border:1px solid #f3c2c2;border-left:6px solid #c62828;
+  color:#8c1d1d;font-weight:700;font-size:.9rem;text-decoration:none}
+
+/* --- shared emergency card / banner / help line (hub, landing, banner include) --- */
+.emerg-card{margin:16px 0 12px;padding:14px;border-radius:14px;
+  background:linear-gradient(135deg,#fdecec 0%,#fff3cd 100%);
+  border:2px solid #c62828;border-left:7px solid #c62828;
+  box-shadow:0 4px 14px rgba(198,40,40,.15)}
+.emerg-row{display:flex;gap:10px;align-items:flex-start}
+.emerg-ico{font-size:1.6rem;flex-shrink:0}
+.emerg-body{flex:1;min-width:0}
+.emerg-title{font-size:.98rem;color:#8c1d1d}
+.emerg-text{font-size:.84rem;color:#6b1a1a;margin-top:4px;line-height:1.45;font-weight:500}
+.emerg-actions{margin-top:10px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.btn-ae{background:#c62828;color:#fff;font-weight:900;border-radius:999px;padding:10px 18px;
+  text-decoration:none;font-size:.9rem}
+.btn-ae-light{background:#fff;color:#c62828;font-weight:900;border:2px solid #c62828;
+  border-radius:999px;padding:8px 16px;text-decoration:none;font-size:.9rem}
+.btn-ae-alt{background:#fff;color:#c62828;font-weight:700;border:2px solid #c62828;
+  border-radius:999px;padding:8px 16px;text-decoration:none;font-size:.9rem}
+.emerg-help{margin-top:8px;font-size:.75rem;color:#8c1d1d;line-height:1.5}
+.emerg-link{color:#8c1d1d;font-weight:700}
+.emerg-link-plain{color:#8c1d1d}
+.emerg-listen{background:none;border:none;padding:0;color:#8c1d1d;text-decoration:underline;
+  font-size:inherit;cursor:pointer}
+.emerg-note{font-size:.8rem;color:#8c1d1d;margin-top:10px;text-align:center;line-height:1.4}
+/* the dismissible banner include (staff + patient pages) */
+.emerg-banner{margin:10px 0;padding:12px 14px;border-radius:14px;
+  background:linear-gradient(135deg,#fdecec,#fff3cd);border:2px solid #c62828;
+  border-left:7px solid #c62828;color:#8c1d1d;font-weight:700;font-size:.88rem;
+  line-height:1.4;box-shadow:0 4px 14px rgba(198,40,40,.18)}
+.emerg-banner-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.emerg-banner-ico{font-size:1.5rem;animation:emerg-pulse 1s infinite}
+.emerg-banner-body{flex:1;min-width:180px}
+.emerg-banner-title{font-size:.95rem}
+.emerg-banner-sub{font-weight:500;font-size:.82rem;color:#6b1a1a}
+.emerg-banner-actions{display:flex;gap:8px;flex-wrap:wrap}
+.btn-ae-sm{background:#c62828;color:#fff;font-weight:900;border-radius:999px;padding:7px 14px;text-decoration:none}
+.btn-ae-voice{border-radius:999px;padding:7px 12px;font-size:.8rem}
+.emerg-banner-meta{margin-top:8px;font-size:.75rem;font-weight:500;color:#6b1a1a;
+  display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+
+/* --- language pills (portal heads) --- */
+.langbar{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;margin:10px 0 2px;
+  padding:6px 8px;background:rgba(6,34,56,.55);border-radius:999px}
+.langbar a{padding:5px 12px;border-radius:999px;font-size:.78rem;font-weight:700;
+  text-decoration:none;color:#fff!important;background:rgba(255,255,255,.10);
+  border:1px solid transparent}
+.langbar a.is-active{background:rgba(255,255,255,.28);border:1px solid #fff;
+  box-shadow:0 2px 8px rgba(0,0,0,.25)}
+
+/* --- portal head colour doors --- */
+.portal-head-gold{background:linear-gradient(135deg,#000 0%,#b8860b 100%)}
+.portal-head-red{background:linear-gradient(135deg,#8c1d1d 0%,#c62828 100%)}
+
+/* --- star picker (feedback) --- */
+.stars{display:flex;gap:8px;justify-content:center;margin:14px 0}
+.stars label{flex:1;cursor:pointer}
+.stars input{position:absolute;opacity:0}
+.stars span{display:flex;align-items:center;justify-content:center;height:64px;font-size:2rem;
+  border:2px solid var(--line);border-radius:12px;background:#fff}
+.stars span b{font-size:1.1rem}
+.stars input:checked+span{border-color:var(--primary);background:var(--primary-light)}
+
+/* --- consent check lines (forms) --- */
+.pp-checkline{display:flex;gap:10px;align-items:flex-start;margin-top:14px;
+  font-weight:400;font-size:.88rem;line-height:1.4}
+.pp-checkline input[type=checkbox]{width:auto;margin-top:3px}
+.pp-checkline-gold{margin-top:12px;font-weight:700;font-size:.9rem;
+  background:#FFFEF0;border:2px solid #FFD700;border-radius:10px;padding:10px 12px}
+.pp-checkline-gold input[type=checkbox]{width:20px;height:20px;margin-top:2px}
+.pp-gold-check{font-weight:900;color:#000;margin:0;display:flex;gap:10px;align-items:center;font-size:1rem}
+.pp-gold-check input[type=checkbox]{width:20px;height:20px}
+.pp-gold-lane{font-size:.85rem;margin:8px 0 0;color:#5a4a00;line-height:1.5}
+.pp-gold-note{font-size:.78rem;color:#6b7d90;margin-top:8px;line-height:1.4}
+.pp-gold-flex{display:flex;gap:10px;align-items:flex-start}
+.pp-gold-ico{font-size:1.6rem}
+.pp-gold-title{color:#000}
+.pp-gold-text{font-size:.85rem;margin:6px 0 0;line-height:1.5;color:#3a2a00}
+.pp-input-file{font-size:.9rem;padding:10px 12px}
+
+/* --- "already booked" link card (booking portal) --- */
+.pp-link-card{padding:14px}
+.pp-link-card a.pp-link-strong{font-weight:700}
+.pp-link-note{margin-top:6px;display:inline-block}
+
+/* --- reference boxes (thanks pages) --- */
+.pp-ref-box{text-align:left;margin-top:14px}
+.pp-ref-num{font-size:1.35rem;font-weight:900;letter-spacing:.03em}
+.pp-ref-note{color:#5a6b7b;line-height:1.4}
+.notice-left{text-align:left}
+.notice-success{border-left-color:var(--green);background:var(--green-bg)}
+.pp-pill-paid{background:#10b981;color:#fff;padding:4px 10px;border-radius:999px;
+  font-weight:800;font-size:.8rem}
+.pp-state-details{font-size:.95rem;line-height:1.5;color:var(--ink-2);margin:8px 0 0}
+.pp-thanks-wrap{margin:30px auto}
+
+/* --- referral / share (feedback thanks) --- */
+.pp-refer-card{text-align:left;box-shadow:none}
+.pp-refer-title{margin-top:0}
+.pp-qr{border:1px solid var(--line);border-radius:12px;background:#fff;padding:8px}
+
+/* --- queue ticket page ("My Visit Journey" live tracker) --- */
+.tk-page{background:#f6f9fc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;
+  color:#0f2f47;margin:0}
+.tk-page *,.tk-page *::before,.tk-page *::after{box-sizing:border-box}
+.tk-top{background:linear-gradient(135deg,#0e5a8a 0%,#0f8a6a 100%);color:#fff;padding:18px 20px 22px}
+.tk-top h1{margin:0;font-size:1.15rem;font-weight:900;color:#fff}
+.tk-sub{opacity:0.9;font-size:.85rem;margin-top:6px;line-height:1.5}
+.tk-wrap{max-width:640px;margin:0 auto;padding:14px 16px 24px}
+.tk-card{background:#fff;border-radius:16px;box-shadow:0 4px 18px rgba(16,42,67,0.08);
+  border:1px solid #dbe4ec;overflow:hidden}
+.tk-pad{padding:18px}
+.tk-pad-flush{padding:0 18px 18px}
+.tk-hero{text-align:center;padding:22px 18px 16px}
+.tk-label{font-size:.7rem;letter-spacing:0.12em;text-transform:uppercase;font-weight:800;color:#6b7d90}
+.tk-code{font-size:3.6rem;font-weight:900;letter-spacing:-0.03em;color:#0e5a8a;line-height:1}
+.tk-dept{margin-top:6px;font-size:.95rem;color:#5a6b7b;font-weight:600}
+.tk-ft-badge{background:#000;color:#FFD700}
+.tk-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+.tk-kpi{background:#f6f9fc;border-radius:12px;padding:12px 14px;border:1px solid #e6edf3;text-align:center}
+.tk-kpi-v{font-size:1.4rem;font-weight:900;color:#0f2f47}
+.tk-kpi-l{font-size:.72rem;text-transform:uppercase;letter-spacing:0.05em;color:#6b7d90;
+  margin-top:2px;font-weight:700}
+.tk-live{background:#0f172a;color:#fff;border-radius:14px;padding:14px 16px;margin-top:16px}
+.tk-live-label{font-size:.8rem;letter-spacing:0.08em;text-transform:uppercase;opacity:0.8;font-weight:800}
+.tk-live-code{margin-top:8px;font-weight:900;font-size:1.05rem}
+.tk-live-note{font-size:.78rem;opacity:0.75;margin-top:4px}
+.tk-next{background:linear-gradient(135deg,#e7f0f8,#e6f6f1);border-radius:12px;
+  padding:14px 16px;margin-top:14px;border-left:5px solid #0e5a8a}
+.tk-next-h{font-weight:900;font-size:.9rem;color:#0f2f47}
+.tk-next-p{font-size:.85rem;color:#425466;margin-top:4px;line-height:1.5}
+.tk-next-strong{color:#0e5a8a}
+.tk-timeline{margin-top:16px}
+.tk-step{display:flex;gap:12px;padding:12px 0;border-left:2px solid #e6edf3;margin-left:10px;
+  padding-left:22px;position:relative}
+.tk-step:last-child{border-left-color:transparent}
+.tk-step.is-active{border-left-color:#0e5a8a}
+.tk-step.is-done{border-left-color:#10b981}
+.tk-dot{width:22px;height:22px;border-radius:50%;background:#fff;border:2px solid #dbe4ec;
+  display:flex;align-items:center;justify-content:center;position:absolute;left:-12px;top:14px;font-size:.8rem}
+.tk-step.is-active .tk-dot{border-color:#0e5a8a;background:#0e5a8a;color:#fff}
+.tk-step.is-done .tk-dot{border-color:#10b981;background:#10b981;color:#fff}
+.tk-step-title{font-weight:800;font-size:.92rem}
+.tk-step-desc{font-size:.82rem;color:#5a6b7b;margin-top:2px;line-height:1.4}
+.tk-voice{background:#fffbe6;border:1px solid #fde68a;border-radius:12px;padding:10px 14px;
+  margin-top:14px;display:flex;gap:10px;align-items:center}
+.tk-voice-body{flex:1}
+.tk-voice-title{font-size:.85rem}
+.tk-voice-sub{font-size:.78rem;color:#6b7d90;margin-top:2px}
+.tk-voice button{background:#0e5a8a;color:#fff;border:none;padding:7px 14px;border-radius:999px;
+  font-weight:800;font-size:.82rem;cursor:pointer}
+.tk-refresh{margin-top:14px}
+.tk-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:12px 16px;
+  border-radius:999px;font-weight:800;font-size:.9rem;text-decoration:none;border:none;cursor:pointer}
+.tk-btn-primary{background:#0e5a8a;color:#fff}
+.tk-btn-gold{background:#000;color:#FFD700}
+.tk-btn-full{width:100%}
+.tk-btn-secondary{background:#eef3f8;color:#0e5a8a}
+.tk-foot{font-size:.78rem;color:#6b7d90;margin-top:10px;text-align:center;line-height:1.4}
+/* CALLED panel — the loud one */
+.tk-call{text-align:center}
+.tk-call-ico{font-size:3.5rem;margin:10px 0;animation:pp-pulse 1.2s infinite}
+.tk-call-title{font-size:1.35rem;font-weight:900}
+.tk-call-text{font-size:1rem;color:#425466;margin-top:8px;line-height:1.5}
+.tk-call-code{font-size:1.3rem;color:#0e5a8a}
+.tk-call-actions{margin-top:18px}
+.tk-done-actions{margin-top:16px}
+.tk-helpbar{border-top:1px solid #eef4f9;display:flex;gap:12px;align-items:center;
+  justify-content:space-between;flex-wrap:wrap}
+.tk-helpbar-text{font-size:.8rem;color:#425466;line-height:1.4}
+.tk-privacy{text-align:center;margin:14px 0 8px;font-size:.8rem;color:#6b7d90}
+.tk-privacy a{color:#0e5a8a;text-decoration:none}
+
+/* --- queue ticket pills + panels (Gate 1 additions) --- */
+.tk-pill{display:inline-block;margin-top:10px;padding:6px 14px;border-radius:999px;
+  font-weight:800;font-size:.82rem}
+.tk-pill-call{background:#10b981;color:#fff;animation:pp-pulse 1.6s infinite}
+.tk-hero-pill .pp-state-inline{margin:10px auto;max-width:340px;justify-content:center}
+.tk-badge-row{margin-top:10px}
+.tk-done{text-align:center}
+.tk-done-ico{font-size:2.6rem}
+.tk-done-title{font-weight:900;font-size:1.15rem;margin-top:6px}
+.tk-done-text{margin-top:8px;color:#5a6b7b;font-size:.9rem;line-height:1.5}
+.tk-next-left{margin-top:16px;text-align:left}

@@ -37,17 +37,22 @@ NEW_SENTENCE = "You don't need to pick Fast Track if your health condition need 
 
 # --------------------------------------------------------------- 1 · white lang bar
 def test_language_names_are_white_on_every_patient_page(client, seeded):
+    # Gate 1 (2026-09-14): the white-text rule moved from an inline style on
+    # every pill into the shared design system (.langbar a in app.css, with
+    # the owner's !important kept so no stylesheet can ever dim it again).
+    from pathlib import Path
+    css = (Path(__file__).resolve().parents[1] / "app" / "static" / "css"
+           / "app.css").read_text(encoding="utf-8")
+    assert ".langbar a{" in css and "color:#fff!important" in css
     for url in PATIENT_PAGES:
         html = client.get(url).get_data(as_text=True)
-        bar = html.split("English", 1)[0].rsplit("<div", 1)[-1] + "English"
-        # every language pill carries white text
-        assert "color:#fff!important" in html, url
+        # the shared langbar rendered on this page
+        assert 'class="langbar"' in html, url
         # the old dark-on-white active pill is gone
         assert "color:#0a4468" not in html, url
         # all four names still present and clickable
         for name in ("English", "Yorùbá", "Hausa", "Igbo"):
             assert name in html, (url, name)
-        assert bar  # the bar itself rendered
 
 
 # ------------------------------------------- 2 · no pay-before-arrive on banners
