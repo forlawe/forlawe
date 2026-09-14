@@ -12,11 +12,14 @@
   --accent:#12b5a5;                       /* teal accent for premium feel */
   /* status (accessible, colour-blind considered) */
   --green:#1a7f37; --green-bg:#e6f4ea; --green-line:#bfe3c9;
-  --amber:#9a7400; --amber-bg:#fdf3d7; --amber-line:#ecd99a;
-  --orange:#c2660a; --orange-bg:#ffedd5;
+  /* Foreground tokens are WCAG AA on white (F-080): amber 5.24:1,
+     orange 4.94:1, and faint 4.54:1. Keep these dark enough for the
+     small status and helper text that uses them. */
+  --amber:#8f641c; --amber-bg:#fdf3d7; --amber-line:#ecd99a;
+  --orange:#ac5b01; --orange-bg:#ffedd5;
   --red:#c0262c; --red-bg:#fdeaea; --red-line:#f3c1c3;
   /* neutrals */
-  --ink:#152433; --ink-2:#33475b; --muted:#5b6b7c; --faint:#8595a6;
+  --ink:#152433; --ink-2:#33475b; --muted:#5b6b7c; --faint:#687887;
   --line:#dbe4ec; --line-soft:#e8eef3; --bg:#f2f5f8; --card:#ffffff;
   /* elevation & shape */
   --radius:14px; --radius-sm:10px; --radius-lg:20px;
