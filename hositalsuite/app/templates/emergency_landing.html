@@ -27,7 +27,7 @@
      booking fields, no queue explainer. Those live on /queue/join and /book. #}
   <div class="pp-hero pp-hero-emergency">
     <h1>🚨 Emergency — Go to Accident & Emergency Now</h1>
-    <p>Do not wait online. Go straight to <b>Accident & Emergency Unit — open 24/7</b>. Tell reception it's an emergency. You will be seen immediately.</p>
+    <p>Do not wait online — go straight to <b>Accident & Emergency (open 24/7)</b>. You will be seen immediately.</p>
     {# F-040: one instruction, not three — the emergency number form below is
        the single action; chat/phone/voice are demoted to one line. #}
     <div style="margin-top:8px;font-size:.75rem;color:#8c1d1d;line-height:1.5">
@@ -59,20 +59,15 @@
 
     <button class="pp-btn pp-btn-emergency mt" type="submit">🚑 Get my emergency number</button>
     <p style="font-size:.8rem;color:#8c1d1d;margin-top:10px;text-align:center;line-height:1.4">
-      Your emergency number shows at the desk and on the staff screen — not your name.
-      Emergencies are always seen first, ahead of every other patient.
+      Your emergency number shows at the desk and on the staff screen — never your name.
     </p>
   </form>
 
-  <div style="margin-top:14px;background:#fff;border-radius:12px;padding:14px;border:1px solid #e6edf3">
-    <div style="font-weight:900;font-size:.9rem;color:#8c1d1d">What to do now</div>
-    <div style="font-size:.84rem;color:#5a6b7b;margin-top:6px;line-height:1.6">
-      1. Go straight to <b>Accident & Emergency</b> — do not wait online<br>
-      2. Tell reception it's an emergency and show your number<br>
-      3. You will be seen immediately — emergencies always come first<br>
-      4. Cannot come in? Call the help desk numbers below
-    </div>
-  </div>
+  <ul class="pp-steps pp-steps-emergency">
+    <li><b>1</b> Go to A&amp;E</li>
+    <li><b>2</b> Tell reception it's an emergency</li>
+    <li><b>3</b> Show your number</li>
+  </ul>
 
   {% include "_help_desk.html" %}
 </main>

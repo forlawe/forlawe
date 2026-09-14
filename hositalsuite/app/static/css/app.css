@@ -442,3 +442,16 @@ summary{cursor:pointer;font-weight:750;font-size:var(--fs-sm)}
 .pp-btn-primary{background:var(--primary);color:#fff}
 .pp-btn-gold{background:#000;color:#FFD700;font-weight:900;box-shadow:0 6px 16px rgba(0,0,0,.2)}
 .pp-btn-emergency{background:var(--red);color:#fff;font-weight:900}
+
+/* Numbered step chips — the ONE way patient pages explain "what happens
+   next" (2026-09-14, owner: short, clear, premium; no repeated paragraphs).
+   Replaces the old four-line "What happens next?" boxes. */
+.pp-steps{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 0;padding:0;list-style:none}
+.pp-steps li{display:flex;align-items:center;gap:8px;background:var(--card);
+  border:1px solid var(--line);border-radius:999px;padding:7px 14px 7px 7px;
+  font-size:.82rem;font-weight:700;color:var(--ink-2);box-shadow:var(--shadow-1)}
+.pp-steps li b{display:flex;align-items:center;justify-content:center;width:22px;height:22px;
+  border-radius:50%;background:var(--primary);color:#fff;font-size:.72rem;font-weight:900;
+  flex-shrink:0}
+.pp-steps.pp-steps-gold li b{background:#000;color:#FFD700}
+.pp-steps.pp-steps-emergency li b{background:var(--red)}

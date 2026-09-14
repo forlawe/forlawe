@@ -24,10 +24,11 @@
   {% endwith %}
 
   {# 2026-09-13: emergencies have their OWN landing page (/emergency). This
-     page is the ordinary join-a-queue form only — no red hero, no A&E copy. #}
+     page is the ordinary join-a-queue form only — no red hero, no A&E copy.
+     2026-09-14, owner: short, clear, premium — every promise stated ONCE. #}
   <div class="pp-hero">
-    <h1>Track Your Visit — Receive Your Queue Number</h1>
-    <p>You'll get a number and a private tracker showing your live position through every stage of your visit (Reception, Billing, Triage, Doctor, Pharmacy) — first-time patients start at Reception, returning patients go straight to Records. Your number only shows on the TV screen — not your name.</p>
+    <h1>Get Your Queue Number</h1>
+    <p>A private live tracker for every stage of your visit. Your number shows on TV — never your name.</p>
   </div>
 
   <form class="card pad-lg" method="post" action="/queue/join">
@@ -45,7 +46,7 @@
       {% endfor %}
     </select>
     <p class="pp-hint" style="margin:6px 0 0">
-      First-time patients start at Reception / Front Desk; if we already have your file, HIMS / Records takes you straight to it — no need to repeat paperwork. Fast-Track is premium at top — be seen faster in the quiet, private lounge.
+      New here? Reception / Front Desk. Already have a folder? HIMS / Records. Short on time? ⭐ Fast-Track.
     </p>
 
     <div class="pp-step-label">2 · Your name</div>
@@ -58,7 +59,7 @@
       <label style="font-weight:900;color:#000;margin:0;display:flex;gap:10px;align-items:center;font-size:1rem">
         <input type="checkbox" name="is_fast_track" value="1" style="width:20px;height:20px"> ⭐ Fast Track — Be seen faster
       </label>
-      <p style="font-size:.85rem;margin:8px 0 0;color:#5a4a00;line-height:1.5">Fast Track is our premium service. You are seen quickly in a quiet, private lounge. You pay a little more for comfort and speed. If you can afford it, choose Fast Track.</p>
+      <p style="font-size:.85rem;margin:8px 0 0;color:#5a4a00;line-height:1.5">Our premium lane — seen quickly, with care, for a little more.</p>
       <select name="fast_track_reason" style="margin-top:10px" class="pp-input">
         <option value="PREMIUM" selected>Premium — Fast service, comfortable lounge</option>
         <option value="BUSINESS">Busy — I have little time today</option>
@@ -72,22 +73,17 @@
     </label>
 
     <button class="pp-btn pp-btn-primary mt" type="submit">🎟️ {{ _("btn_queue") }}</button>
-    <p class="pp-hint" style="margin-top:10px;text-align:center">After you join, you get a private tracker. It shows your position, estimated wait, and what to do next. Your number only shows on TV — not your name.</p>
   </form>
 
-  <div style="margin-top:14px;background:#fff;border-radius:12px;padding:14px;border:1px solid #e6edf3">
-    <div style="font-weight:900;font-size:.9rem;color:#0f2f47">What happens next?</div>
-    <div style="font-size:.84rem;color:#5a6b7b;margin-top:6px;line-height:1.6">
-      1. You get a number like <b>A-012</b> and a private link<br>
-      2. You go to the waiting area and watch the TV<br>
-      3. When your number shows and you hear your name, go to the desk<br>
-      4. Our staff will guide you through the rest
-    </div>
-  </div>
+  <ul class="pp-steps">
+    <li><b>1</b> Number + private tracker</li>
+    <li><b>2</b> Watch the TV</li>
+    <li><b>3</b> Come forward when called</li>
+  </ul>
 
   {% include "_help_desk.html" %}
 </main>
-<div class="footer"><a href="/privacy">Privacy</a> · Your number only shows on TV, not your name</div>
+<div class="footer"><a href="/privacy">Privacy</a> · {{ org.name }}</div>
 <script src="{{ url_for('static', filename='js/app.js') }}?v={{ app_version }}" nonce="{{ csp_nonce }}"></script>
 {% include "_install.html" %}
 </body>

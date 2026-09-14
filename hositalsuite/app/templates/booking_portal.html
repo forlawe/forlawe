@@ -33,18 +33,22 @@
   {% if fast_track %}
   <div class="pp-hero pp-hero-gold">
     <h1>Book a Hospital Visit <span class="pp-badge-gold">PREMIUM</span></h1>
-    <p>Want to be seen faster? Pick Fast Track — our quiet executive lounge where you are seen quickly, with care and privacy.</p>
+    <p>Our quiet executive lounge — seen quickly, with care and privacy.</p>
   </div>
   {% else %}
   <div class="pp-hero">
     <h1>Book a Hospital Visit</h1>
-    <p>Choose a day and time that suits you. Regular visit is also fine — just walk in.</p>
+    <p>Choose a day and time that suits you. Walk-ins are always welcome.</p>
   </div>
   {% endif %}
 
-  <div style="background:#fff;border-radius:12px;padding:12px 14px;border:1px solid #e6edf3;margin-bottom:12px;font-size:.85rem;line-height:1.5">
-    <b>How it works:</b> Book here, get a reference number by SMS and WhatsApp. Come 15 minutes early. Show your reference at reception. If you chose Fast Track, you will be guided to the executive lounge — no long queue.
-  </div>
+  {# 2026-09-14, owner: one short premium "what happens next", no paragraphs. #}
+  <ul class="pp-steps{% if fast_track %} pp-steps-gold{% endif %}">
+    <li><b>1</b> Book a day &amp; time</li>
+    <li><b>2</b> Get your reference</li>
+    <li><b>3</b> Arrive 15 min early</li>
+    <li><b>4</b> Show it at reception</li>
+  </ul>
 
   <form class="card pad-lg" method="post" action="/book/submit">
     <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
@@ -67,7 +71,7 @@
       </option>
       {% endfor %}
     </select>
-    <div class="pp-hint">Three services: Reception / Front Desk, HIMS / Records, and Fast-Track (premium, price shown on its own page).</div>
+    <div class="pp-hint">Reception / Front Desk · HIMS / Records · ⭐ Fast-Track (premium).</div>
     <script nonce="{{ csp_nonce }}">
       (function () {
         var sel = document.getElementById('bp-dept');
@@ -91,7 +95,6 @@
       <option {{ 'selected' if form and form.get('appointment_time')==s }}>{{ s }}</option>
       {% endfor %}
     </select>
-    <div class="pp-hint">We will do our best to see you at your chosen time.</div>
 
     <label class="pp-step-label" for="bp-name">4 · Your full name</label>
     <input type="text" name="patient_name" id="bp-name" required autocomplete="name" class="pp-input"
@@ -100,7 +103,7 @@
     <label class="pp-step-label" for="bp-phone">5 · Phone number</label>
     <input type="tel" name="phone" id="bp-phone" required inputmode="tel" placeholder="e.g. 08012345678" class="pp-input"
            value="{{ form.get('phone','') if form else '' }}">
-    <div class="pp-hint">We send your booking reference and updates here.</div>
+    <div class="pp-hint">Your reference and updates arrive here — WhatsApp first, then SMS.</div>
 
     {% if s and s.fast_track_enabled %}
     {% if fast_track %}
@@ -110,7 +113,7 @@
         <div>
           <b style="color:#000">Fast Track — Be Seen Fast</b>
           <p style="font-size:.85rem;margin:6px 0 0;line-height:1.5;color:#3a2a00">
-            Fast Track is our premium service. You pay a little more and you are seen quickly in a quiet, private lounge.
+            Seen quickly, with care and privacy — for a little more.
             {% if s.fast_track_building_name %}Location: <b>{{ s.fast_track_building_name }}</b>.{% endif %}
             {% if s.fast_track_price %}Price: <b>{{ s.fast_track_currency }} {{ '{:,}'.format(s.fast_track_price) }}</b>.{% endif %}
             {{ s.fast_track_price_note or '' }}
@@ -141,12 +144,11 @@
     {% else %}
     <button class="pp-btn pp-btn-primary mt" type="submit">📅 {{ _('btn_book') }} — Confirm Visit</button>
     {% endif %}
-    <p class="pp-hint" style="text-align:center;margin-top:10px">You will get your reference by WhatsApp first, then SMS if WhatsApp is not available.</p>
   </form>
 
   <div class="card mt center" style="padding:14px">
     <a href="/book/status" style="font-weight:700">Already booked? Check or cancel with your reference →</a><br>
-    <small class="muted" style="margin-top:6px;display:inline-block">Prefer to walk in? <a href="/queue/join">Join the queue</a> at the hospital.</small>
+    <small class="muted" style="margin-top:6px;display:inline-block">Prefer to walk in? <a href="/queue/join">Get a queue number</a>.</small>
   </div>
 
   {# 2026-09-13, owner: the "Need help booking?" card is gone — the help-desk

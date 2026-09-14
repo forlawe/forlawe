@@ -33,8 +33,7 @@
     <p>Less than a minute — and it genuinely changes how this hospital serves you.</p>
   </div>
 
-  <div class="privacy-note">🔒 Your feedback goes straight to hospital management.
-    It takes less than a minute — and it genuinely changes how this hospital serves you.</div>
+  <div class="privacy-note">🔒 {{ _('privacy') }}</div>
 
   <form class="card pad-lg" method="post" action="/feedback/submit">
     <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
