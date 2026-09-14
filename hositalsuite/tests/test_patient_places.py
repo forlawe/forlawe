@@ -19,7 +19,11 @@ def test_clinical_and_fast_track_are_patient_places():
     assert is_patient_place("Accident & Emergency") is True
 
 
-def test_queue_join_hides_laundry_and_shows_fast_track(app, client, seeded):
+def test_queue_join_shows_only_the_three_patient_services(app, client, seeded):
+    """Owner 2026-09-13: the patient service dropdown shows ONLY
+    Reception/Front Desk, HIMS/Records and Fast-Track/Premium Service —
+    not Laundry, not Internal Audit, and not A&E (emergencies have their
+    own landing page now)."""
     with app.app_context():
         org_id = seeded["org"]
         db.session.add(Department(org_id=org_id, name="Laundry", active=True))
@@ -27,10 +31,14 @@ def test_queue_join_hides_laundry_and_shows_fast_track(app, client, seeded):
         db.session.commit()
 
     body = client.get("/queue/join").get_data(as_text=True)
-    assert "Fast Track" in body
+    assert "Reception / Front Desk" in body
+    assert "HIMS / Records" in body
+    assert "Fast-Track / Premium Service" in body
     assert "Laundry" not in body
     assert "Internal Audit" not in body
-    assert "Emergency" in body
+    # A&E is no longer a queue option — /emergency owns it
+    select = body.split('<select name="department_id"', 1)[1].split("</select>", 1)[0]
+    assert "Accident" not in select and "Emergency" not in select
 
 
 def test_public_list_puts_fast_track_first(app, seeded):

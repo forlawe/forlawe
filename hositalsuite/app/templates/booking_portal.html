@@ -7,43 +7,48 @@
 <meta name="theme-color" content="#b8860b">
 <title>Book a Visit — {{ org.name }}</title>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}?v={{ app_version }}">
-<style nonce="{{ csp_nonce }}">
-  .hero-gold{background: linear-gradient(135deg,#FFD700 0%,#FFC400 40%,#FFA500 100%);color:#000;padding:18px 20px 16px;border-radius:18px;margin-bottom:14px;box-shadow:0 8px 24px rgba(255,165,0,0.3);border:1px solid rgba(0,0,0,0.06)}
-  .hero-gold h1{margin:0;font-size:1.25rem;font-weight:900;letter-spacing:-0.01em}
-  .hero-gold p{margin:8px 0 0;font-size:.88rem;line-height:1.5;font-weight:500}
-  .badge-gold{background:#000;color:#FFD700;padding:4px 10px;border-radius:999px;font-size:.7rem;font-weight:900}
-  .card{border-radius:16px}
-  .input-big{font-size:1rem;padding:12px 14px;border-radius:10px;border:2px solid #e6edf3;width:100%}
-  .input-big:focus{border-color:#FFD700;outline:none}
-  .gold-box{padding:14px;background: linear-gradient(135deg,#FFFEF0,#FFF8DC);border:2px solid #FFD700;border-radius:14px;margin-top:12px}
-  .step-label{font-size:.75rem;font-weight:800;letter-spacing:0.06em;text-transform:uppercase;color:#6b7d90;margin:16px 0 6px}
-  .step-label:first-of-type{margin-top:4px}
-  .hint{font-size:.8rem;color:#6b7d90;margin-top:6px;line-height:1.4}
-</style>
+{# 2026-09-14, consultant round 2 item 6: this page no longer carries its own
+   hand-picked hex colours. Hero, step labels, inputs, gold box and buttons
+   all come from the shared patient-portal design system in app.css
+   (.pp-hero / .pp-step-label / .pp-input / .pp-gold-box / .pp-btn), so a
+   future branding or contrast fix lands here automatically. #}
 </head>
 <body>
 <a class="skip-link" href="#main-content">Skip to main content</a>
-<div class="portal-head" style="background: linear-gradient(135deg,#000 0%,#b8860b 100%)">
+<div class="portal-head portal-head-gold">
   {% include "_brand_mark.html" %}
   <div>Book a Hospital Visit</div>
   {% include "_langbar.html" %}
   {% if qr_loc %}<div class="mt"><span class="pill blue">📍 {{ qr_loc.name }}</span></div>{% endif %}
   {% if ref_code %}<div class="mt"><span class="pill green">💌 {{ _('refer_welcome') }}</span></div>{% endif %}
 </div>
-<main id="main-content" class="wrap" style="max-width:560px">
+<main id="main-content" class="wrap w-560">
   {% with back_to="/welcome" %}{% include "_patient_nav.html" %}{% endwith %}
   {% with messages = get_flashed_messages(with_categories=true) %}
     {% for cat, msg in messages %}<div class="flash {{ cat }}">{{ msg }}</div>{% endfor %}
   {% endwith %}
 
-  <div class="hero-gold">
-    <h1>Book a Hospital Visit — Fast Track Available <span class="badge-gold">PREMIUM</span></h1>
-    <p>Choose a day and time that suits you. Want to be seen faster? Pick Fast Track — our quiet executive lounge where you are seen quickly, with care and privacy. Regular visit is also fine — just walk in.</p>
+  {# The gold hero belongs to the GOLD door only — showing "Fast Track
+     Available PREMIUM" on the free door was the drift the consultant found. #}
+  {% if fast_track %}
+  <div class="pp-hero pp-hero-gold">
+    <h1>Book a Hospital Visit <span class="pp-badge-gold">PREMIUM</span></h1>
+    <p>Our quiet executive lounge — seen quickly, with care and privacy.</p>
   </div>
+  {% else %}
+  <div class="pp-hero">
+    <h1>Book a Hospital Visit</h1>
+    <p>Choose a day and time that suits you. Walk-ins are always welcome.</p>
+  </div>
+  {% endif %}
 
-  <div style="background:#fff;border-radius:12px;padding:12px 14px;border:1px solid #e6edf3;margin-bottom:12px;font-size:.85rem;line-height:1.5">
-    <b>How it works:</b> Book here, get a reference number by SMS and WhatsApp. Come 15 minutes early. Show your reference at reception. If you chose Fast Track, you will be guided to the executive lounge — no long queue.
-  </div>
+  {# 2026-09-14, owner: one short premium "what happens next", no paragraphs. #}
+  <ul class="pp-steps{% if fast_track %} pp-steps-gold{% endif %}">
+    <li><b>1</b> Book a day &amp; time</li>
+    <li><b>2</b> Get your reference</li>
+    <li><b>3</b> Arrive 15 min early</li>
+    <li><b>4</b> Show it at reception</li>
+  </ul>
 
   <form class="card pad-lg" method="post" action="/book/submit">
     <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
@@ -57,92 +62,97 @@
     <input type="hidden" name="fast_track_reason" value="PREMIUM">
     {% endif %}
 
-    <label class="step-label" for="bp-dept">1 · Which service do you need?</label>
-    <select name="department_id" id="bp-dept" required class="input-big">
-      <option value="">— Select a place —</option>
-      {% for d in depts %}
-      <option value="{{ d.id }}" {{ 'selected' if form and form.get('department_id')==d.id|string }}>
-        {% if 'fast track' in d.name|lower %}⭐ {% endif %}{{ d.name }}
+    <label class="pp-step-label" for="bp-dept">1 · Which service do you need?</label>
+    <select name="department_id" id="bp-dept" required class="pp-input">
+      <option value="">— Select a service —</option>
+      {% for c in choices %}
+      <option value="{{ c.id }}" {% if c.goto %}data-goto="{{ c.goto }}"{% endif %} {{ 'selected' if c.selected }}>
+        {% if 'fast-track' in c.label|lower %}⭐ {% endif %}{{ c.label }}
       </option>
       {% endfor %}
     </select>
-    <div class="hint">Only places a patient visits. Fast Track is at the top.</div>
+    <div class="pp-hint">Reception / Front Desk · HIMS / Records · ⭐ Fast-Track (premium).</div>
+    <script nonce="{{ csp_nonce }}">
+      (function () {
+        var sel = document.getElementById('bp-dept');
+        if (!sel) return;
+        sel.addEventListener('change', function () {
+          var opt = sel.options[sel.selectedIndex];
+          var goto = opt && opt.getAttribute('data-goto');
+          if (goto) window.location.href = goto;   // Fast-Track line is a door, not a value
+        });
+      })();
+    </script>
 
-    <label class="step-label" for="bp-date">2 · Which day?</label>
+    <label class="pp-step-label" for="bp-date">2 · Which day?</label>
     <input type="date" name="appointment_date" id="bp-date" min="{{ min_date }}" max="{{ max_date }}"
-           value="{{ form.get('appointment_date','') if form else '' }}" required class="input-big">
+           value="{{ form.get('appointment_date','') if form else '' }}" required class="pp-input">
 
-    <label class="step-label" for="bp-time">3 · What time?</label>
-    <select name="appointment_time" id="bp-time" required class="input-big">
+    <label class="pp-step-label" for="bp-time">3 · What time?</label>
+    <select name="appointment_time" id="bp-time" required class="pp-input">
       <option value="">— Select time —</option>
       {% for s in slots %}
       <option {{ 'selected' if form and form.get('appointment_time')==s }}>{{ s }}</option>
       {% endfor %}
     </select>
-    <div class="hint">We will do our best to see you at your chosen time.</div>
 
-    <label class="step-label" for="bp-name">4 · Your full name</label>
-    <input type="text" name="patient_name" id="bp-name" required autocomplete="name" class="input-big"
+    <label class="pp-step-label" for="bp-name">4 · Your full name</label>
+    <input type="text" name="patient_name" id="bp-name" required autocomplete="name" class="pp-input"
            value="{{ form.get('patient_name','') if form else '' }}" placeholder="e.g. Aisha Bello">
 
-    <label class="step-label" for="bp-phone">5 · Phone number</label>
-    <input type="tel" name="phone" id="bp-phone" required inputmode="tel" placeholder="e.g. 08012345678" class="input-big"
+    <label class="pp-step-label" for="bp-phone">5 · Phone number</label>
+    <input type="tel" name="phone" id="bp-phone" required inputmode="tel" placeholder="e.g. 08012345678" class="pp-input"
            value="{{ form.get('phone','') if form else '' }}">
-    <div class="hint">We send your booking reference and updates here.</div>
+    <div class="pp-hint">Your reference and updates arrive here — WhatsApp first, then SMS.</div>
 
     {% if s and s.fast_track_enabled %}
     {% if fast_track %}
-    <div class="gold-box">
-      <div style="display:flex;gap:10px;align-items:flex-start">
-        <div style="font-size:1.6rem">👑</div>
+    <div class="pp-gold-box">
+      <div class="pp-gold-flex">
+        <div class="pp-gold-ico">👑</div>
         <div>
-          <b style="color:#000">Fast Track — Be Seen Fast</b>
-          <p style="font-size:.85rem;margin:6px 0 0;line-height:1.5;color:#3a2a00">
-            Fast Track is our premium service. You pay a little more and you are seen quickly in a quiet, private lounge.
+          <b class="pp-gold-title">Fast Track — Be Seen Fast</b>
+          <p class="pp-gold-text">
+            Seen quickly, with care and privacy — for a little more.
             {% if s.fast_track_building_name %}Location: <b>{{ s.fast_track_building_name }}</b>.{% endif %}
             {% if s.fast_track_price %}Price: <b>{{ s.fast_track_currency }} {{ '{:,}'.format(s.fast_track_price) }}</b>.{% endif %}
             {{ s.fast_track_price_note or '' }}
           </p>
-          {% if s.fast_track_booking_requires_payment %}
-          <p style="font-size:.8rem;margin:8px 0 0;background:#000;color:#FFD700;padding:6px 10px;border-radius:8px;display:inline-block">
-            Please pay before you arrive. {{ s.fast_track_payment_instructions or '' }}
-          </p>
-          {% endif %}
+          {# 2026-09-13, owner: "Please pay before you arrive…" is gone from the
+             Fast-Track banners — the help desk block at the bottom already
+             carries the numbers a patient needs. #}
         </div>
       </div>
     </div>
     {% endif %}
     {% endif %}
 
-    <label class="checkline" style="display:flex;gap:10px;align-items:flex-start;margin-top:16px;font-weight:400;font-size:.88rem;line-height:1.4">
-      <input type="checkbox" name="consent" value="1" required style="width:auto;margin-top:3px">
+    <label class="checkline pp-checkline">
+      <input type="checkbox" name="consent" value="1" required>
       <span>I agree the hospital can save my name and phone to manage this booking and send me reminders. See <a href="/privacy" target="_blank">Privacy Notice</a>.</span>
     </label>
 
     {% if fast_track %}
-    <label class="checkline" style="display:flex;gap:10px;align-items:flex-start;margin-top:12px;font-weight:700;font-size:.9rem;line-height:1.4;background:#FFFEF0;border:2px solid #FFD700;border-radius:10px;padding:10px 12px">
-      <input type="checkbox" name="fast_track_consent" value="1" required style="width:20px;height:20px;margin-top:2px">
+    <label class="checkline pp-checkline pp-checkline-gold">
+      <input type="checkbox" name="fast_track_consent" value="1" required>
       {% include "_fasttrack_consent.html" %}
     </label>
     {% endif %}
 
     {% if fast_track %}
-    <button class="btn big mt" type="submit" style="width:100%;background:#000;color:#FFD700;border:none;font-weight:900;padding:14px;border-radius:999px;font-size:1.05rem;box-shadow:0 6px 16px rgba(0,0,0,0.2)">👑 {{ _('btn_book') }} — Fast Track Ready</button>
+    <button class="pp-btn pp-btn-gold mt" type="submit">👑 {{ _('btn_book') }} — Fast Track Ready</button>
     {% else %}
-    <button class="btn big mt" type="submit" style="width:100%;background:#0e5a8a;color:#fff;border:none;font-weight:700;padding:14px;border-radius:999px;font-size:1.05rem">📅 {{ _('btn_book') }} — Confirm Visit</button>
+    <button class="pp-btn pp-btn-primary mt" type="submit">📅 {{ _('btn_book') }} — Confirm Visit</button>
     {% endif %}
-    <p class="hint" style="text-align:center;margin-top:10px">You will get your reference by WhatsApp first, then SMS if WhatsApp is not available.</p>
   </form>
 
-  <div class="card mt center" style="padding:14px">
-    <a href="/book/status" style="font-weight:700">Already booked? Check or cancel with your reference →</a><br>
-    <small class="muted" style="margin-top:6px;display:inline-block">Prefer to walk in? <a href="/queue/join">Join the queue</a> at the hospital.</small>
+  <div class="card mt center pp-link-card">
+    <a href="/book/status" class="pp-link-strong">Already booked? Check or cancel with your reference →</a><br>
+    <small class="muted pp-link-note">Prefer to walk in? <a href="/queue/join">Get a queue number</a>.</small>
   </div>
 
-  <div class="card mt" style="border-left:5px solid #FFD700;padding:14px">
-    <b>Need help booking?</b>
-    <p class="muted" style="margin:6px 0 0;font-size:.88rem;line-height:1.4">Call us or visit reception. Our staff will help you book and guide you to the right place.</p>
-  </div>
+  {# 2026-09-13, owner: the "Need help booking?" card is gone — the help-desk
+     block below already shows the hospital numbers on every page. #}
   {% include "_help_desk.html" %}
 </main>
 <div class="footer">Book a visit — Fast Track available — <a href="/privacy">Privacy</a></div>

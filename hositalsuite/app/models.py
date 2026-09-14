@@ -692,7 +692,7 @@ class QueueTicket(db.Model):
     patient_name = db.Column(db.String(120))        # staff-only; never shown on public screens
     phone = db.Column(db.String(32))
     status = db.Column(db.String(12), default="WAITING", nullable=False, index=True)
-    source = db.Column(db.String(12), default="link")   # qr | link | booking | ussd
+    source = db.Column(db.String(12), default="link")   # qr | link | booking | ussd | emergency
     appointment_id = db.Column(db.Integer, db.ForeignKey("appointment.id"))
     # --- Unified flow: link to real patient journey (added 2026-08-21)
     # A QR ticket may become a ReceptionIntake, then a Patient + PatientVisit.

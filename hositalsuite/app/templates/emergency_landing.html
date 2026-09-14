@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="{{ lang }}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+{% include "_pwa_head.html" %}
+<meta name="theme-color" content="#c62828">
+<title>Emergency — Accident & Emergency — {{ org.name }}</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}?v={{ app_version }}">
+{# 2026-09-14, consultant round 2 item 6: shared patient-portal design system
+   (.pp-hero-emergency / .pp-step-label / .pp-input / .pp-btn-emergency). #}
+</head>
+<body>
+<div class="portal-head portal-head-red">
+  {% include "_brand_mark.html" %}
+  <div>Emergency — Accident & Emergency</div>
+  {% include "_langbar.html" %}
+</div>
+<main class="wrap w-560">
+  {% with back_to="/welcome" %}{% include "_patient_nav.html" %}{% endwith %}
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for cat, msg in messages %}<div class="flash {{ cat }}">{{ msg }}</div>{% endfor %}
+  {% endwith %}
+
+  {# 2026-09-13, owner: the emergency landing page is its OWN page. It carries
+     emergency information only — no service dropdown, no Fast-Track box, no
+     booking fields, no queue explainer. Those live on /queue/join and /book. #}
+  <div class="pp-hero pp-hero-emergency">
+    <h1>🚨 Emergency — Go to Accident & Emergency Now</h1>
+    <p>Do not wait online — go straight to <b>Accident & Emergency (open 24/7)</b>. You will be seen immediately.</p>
+    {# F-040: one instruction, not three — the emergency number form below is
+       the single action; chat/phone/voice are demoted to one line. #}
+    <div class="emerg-help">
+      Can't come in right now?
+      {% if hospital and hospital.phone %}
+      <a href="tel:{{ hospital.phone | replace(' ', '') }}" class="emerg-link">📞 Call Help Desk — {{ hospital.phone }}</a>
+      {% else %}
+      <a href="#help-desk" onclick="document.querySelector('.help-desk')?.scrollIntoView({behavior:'smooth'});return false;" class="emerg-link">📞 Help desk numbers below</a>
+      {% endif %}
+      · <a href="/chat?q=emergency" class="emerg-link-plain">💬 ask for directions</a>
+      · <button type="button" class="emerg-listen" onclick="try{if(window.hmsVoice&&hmsVoice.speak){hmsVoice.speak('Emergency — Go straight to Accident and Emergency now. It is open twenty four seven. Tell reception it is an emergency, you will be seen immediately. Do not wait online.');}}catch(e){}">🔊 listen</button>
+    </div>
+  </div>
+
+  {# The single action on this page: register the arrival so the desk already
+     has an emergency number for the patient. It posts to the ordinary queue
+     engine with the A&E department fixed — there is nothing to choose. #}
+  <form class="card pad-lg" method="post" action="/queue/join">
+    <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+    <input type="hidden" name="loc" value="{{ loc or '' }}">
+    <input type="hidden" name="emergency" value="1">
+    <input type="hidden" name="department_id" value="{{ emergency_dept.id }}">
+
+    <div class="pp-step-label">1 · Your name</div>
+    <input type="text" name="patient_name" required class="pp-input" placeholder="e.g. Aisha Bello">
+
+    <div class="pp-step-label">2 · Phone (optional, for updates)</div>
+    <input type="tel" name="phone" inputmode="tel" class="pp-input" placeholder="e.g. 08012345678">
+
+    <button class="pp-btn pp-btn-emergency mt" type="submit">🚑 Get my emergency number</button>
+    <p class="emerg-note">
+      Your emergency number shows at the desk and on the staff screen — never your name.
+    </p>
+  </form>
+
+  <ul class="pp-steps pp-steps-emergency">
+    <li><b>1</b> Go to A&amp;E</li>
+    <li><b>2</b> Tell reception it's an emergency</li>
+    <li><b>3</b> Show your number</li>
+  </ul>
+
+  {% include "_help_desk.html" %}
+</main>
+<div class="footer"><a href="/privacy">Privacy</a> · Accident & Emergency is open 24/7</div>
+<script src="{{ url_for('static', filename='js/app.js') }}?v={{ app_version }}" nonce="{{ csp_nonce }}"></script>
+{% include "_install.html" %}
+</body>
+</html>

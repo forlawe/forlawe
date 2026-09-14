@@ -7,14 +7,8 @@
 <meta name="theme-color" content="#0e5a8a">
 <title>Your Experience — {{ org.name }}</title>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}?v={{ app_version }}">
-<style nonce="{{ csp_nonce }}">
-  .stars{display:flex;gap:8px;justify-content:center;margin:14px 0}
-  .stars label{flex:1;cursor:pointer}
-  .stars input{position:absolute;opacity:0}
-  .stars span{display:flex;align-items:center;justify-content:center;height:64px;font-size:2rem;
-    border:2px solid var(--line);border-radius:12px;background:#fff}
-  .stars input:checked+span{border-color:var(--primary);background:var(--primary-light)}
-</style>
+{# Gate 1: the star picker styling moved into the shared design system
+   (.stars in static/css/app.css) — no page-local style blocks. #}
 </head>
 <body>
 <a class="skip-link" href="#main-content">Skip to main content</a>
@@ -23,50 +17,53 @@
   <div>⭐ {{ _('fb_title') }}</div>
   {% include "_langbar.html" %}
 </div>
-<main id="main-content" class="wrap" style="max-width:560px">
+<main id="main-content" class="wrap w-560">
   {% with back_to="/welcome" %}{% include "_patient_nav.html" %}{% endwith %}
   {% with messages = get_flashed_messages(with_categories=true) %}
     {% for cat, msg in messages %}<div class="flash {{ cat }}">{{ msg }}</div>{% endfor %}
   {% endwith %}
-  <div class="privacy-note">🔒 Your feedback goes straight to hospital management.
-    It takes less than a minute — and it genuinely changes how this hospital serves you.</div>
+  <div class="pp-hero">
+    <h1>⭐ How was your visit?</h1>
+    <p>Less than a minute — and it genuinely changes how this hospital serves you.</p>
+  </div>
+
+  <div class="privacy-note">🔒 {{ _('privacy') }}</div>
 
   <form class="card pad-lg" method="post" action="/feedback/submit">
     <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
 
-    <label style="margin-top:0">1 · {{ _('fb_title') }} <span class="req">*</span></label>
+    <label class="pp-step-label">1 · {{ _('fb_title') }} <span class="req">*</span></label>
     <div class="stars">
       {% for s in (1,2,3,4,5) %}
-      <label><input type="radio" name="rating" value="{{ s }}" required><span>⭐<b style="font-size:1.1rem">&nbsp;{{ s }}</b></span></label>
+      <label><input type="radio" name="rating" value="{{ s }}" required><span>⭐<b>&nbsp;{{ s }}</b></span></label>
       {% endfor %}
     </div>
     <div class="hint center">1 = very poor · 5 = excellent</div>
 
-    <label for="fb-dept">2 · Where were you? (optional)</label>
-    <select name="department_id" id="fb-dept">
+    <label class="pp-step-label" for="fb-dept">2 · Where were you? (optional)</label>
+    <select name="department_id" id="fb-dept" class="pp-input">
       <option value="">— Whole hospital —</option>
       {% for d in depts %}
       <option value="{{ d.id }}">{% if 'fast track' in d.name|lower %}⭐ {% endif %}{{ d.name }}</option>
       {% endfor %}
     </select>
 
-    <label for="fb-comment">3 · {{ _('fb_improve') }}</label>
-    <textarea name="comment" id="fb-comment" placeholder="Tell us what happened…"></textarea>
+    <label class="pp-step-label" for="fb-comment">3 · {{ _('fb_improve') }}</label>
+    <textarea name="comment" id="fb-comment" class="pp-input" placeholder="Tell us what happened…"></textarea>
     <button type="button" class="mic-btn" data-lang="{{ speech_lang }}"
             onclick="hmsVoice.start(this,'fb-comment')">🎤 {{ _('speak') }}</button>
 
-    <label for="fb-phone">4 · {{ _('f_phone') }}</label>
-    <input type="tel" name="phone" id="fb-phone" inputmode="tel" placeholder="e.g. 08012345678">
+    <label class="pp-step-label" for="fb-phone">4 · {{ _('f_phone') }}</label>
+    <input type="tel" name="phone" id="fb-phone" inputmode="tel" class="pp-input" placeholder="e.g. 08012345678">
 
-    <label class="checkline"
-           style="display:flex;gap:10px;align-items:flex-start;margin-top:14px;font-weight:400">
-      <input type="checkbox" name="consent" value="1" required style="width:auto;margin-top:3px">
+    <label class="checkline pp-checkline">
+      <input type="checkbox" name="consent" value="1" required>
       <span>I agree that the hospital may store this feedback (and my phone number,
         if I gave one) to improve its services and follow up if needed.
         See our <a href="/privacy" target="_blank">Privacy Notice</a>.</span>
     </label>
 
-    <button class="btn big mt" type="submit" style="width:100%">{{ _('btn_feedback') }}</button>
+    <button class="pp-btn pp-btn-primary mt" type="submit">{{ _('btn_feedback') }}</button>
   </form>
   {% include "_help_desk.html" %}
 </main>

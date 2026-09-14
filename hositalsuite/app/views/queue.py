@@ -74,27 +74,48 @@ def announce_queue_depth(org_id: int, dept: Department) -> None:
                         name=dept.name, count=waiting, place=place)
 
 
+@bp.get("/emergency")
+@rate_limit(limit=30, window=60.0)
+def emergency_page():
+    """The emergency landing page — its OWN page since 2026-09-13.
+
+    It used to be the join-a-queue form wearing a red hat (?emergency=1), so an
+    emergency patient landed on a page full of queue, booking and Fast-Track
+    content and a service dropdown. Owner: separate them. This page now carries
+    ONE thing only — go to A&E, and optionally register an emergency number
+    that shows at the desk. No service dropdown, no Fast Track, no booking.
+    """
+    org = _default_org()
+    if not org:
+        abort(503)
+    from ..patient_places import ensure_emergency_dept
+    dept = ensure_emergency_dept(org.id)
+    db.session.commit()
+    loc = (request.args.get("loc") or "").strip().upper()
+    return render_template("emergency_landing.html", org=org,
+                           emergency_dept=dept, loc=loc)
+
+
 @bp.get("/queue/join")
 @rate_limit(limit=30, window=60.0)
 def join_page():
     org = _default_org()
     if not org:
         abort(503)
-    from ..patient_places import public_departments
-    # Founder: Link queue only to Reception + Fast Track, show as Patient on Queue with priority for today's date only
-    is_emergency = request.args.get("emergency") == "1"
-    if is_emergency:
-        # Emergency goes straight to Accident & Emergency
-        depts = public_departments(org.id, only_reception=False)
-        # Pre-select Accident & Emergency if exists
-        emergency_dept = next((d for d in depts if "emergency" in d.name.lower() or "accident" in d.name.lower()), None)
-        pre = emergency_dept.id if emergency_dept else None
-    else:
-        depts = public_departments(org.id, only_reception=True)
-        pre = request.args.get("dept", type=int)
-    db.session.commit()
     loc = (request.args.get("loc") or "").strip().upper()
-    return render_template("queue_join.html", org=org, depts=depts, pre=pre, loc=loc, is_emergency=is_emergency)
+    if request.args.get("emergency") == "1":
+        # Old links (welcome page card, emergency banner, printed posters)
+        # keep working — emergencies have their own landing page now.
+        return redirect(url_for("queue.emergency_page", **({"loc": loc} if loc else {})))
+    from ..patient_places import service_choices, service_label
+    # Owner 2026-09-13: the patient picks from exactly three services —
+    # Reception/Front Desk, HIMS/Records, Fast-Track/Premium Service.
+    depts = service_choices(org.id)
+    db.session.commit()
+    pre = request.args.get("dept", type=int)
+    choices = [(d, service_label(d)) for d in depts]
+    return render_template("queue_join.html", org=org, depts=depts,
+                           choices=choices, pre=pre, loc=loc)
 
 
 @bp.post("/queue/join")
@@ -143,7 +164,10 @@ def join_submit():
         phone=phone or None,
         patient_id=patient_id,
         status="WAITING",
-        source="qr" if request.form.get("loc") else "link",
+        # 2026-09-14: registrations from the emergency landing page are
+        # tagged so staff reports can tell an A&E arrival from a walk-in.
+        source=("emergency" if request.form.get("emergency") == "1"
+                else ("qr" if request.form.get("loc") else "link")),
         is_fast_track=is_fast,
         fast_track_reason=fast_reason if is_fast else None,
     )

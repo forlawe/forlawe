@@ -128,6 +128,81 @@ def ensure_reception(org_id: int) -> Department:
     return row
 
 
+# ---------------------------------------------------------------- owner's three
+# 2026-09-13, owner: the patient service dropdown must show ONLY these three —
+# "Reception/Front Desk, HIMS/Records, Fast-Track/Premium Service". Everything
+# else (every clinic, A&E, Pharmacy…) is staff routing, not a patient choice.
+RECEPTION_LABEL = "Reception / Front Desk"
+RECORDS_LABEL = "HIMS / Records"
+FAST_TRACK_LABEL = "Fast-Track / Premium Service"
+
+
+def _is_records_dept(name: str | None) -> bool:
+    n = (name or "").strip().lower()
+    return ("hims" in n) or ("health information" in n) or ("records" in n)
+
+
+def ensure_records(org_id: int) -> Department:
+    """The folder/records desk (HIMS). Reuses whatever the hospital calls it
+    ("Health Information Management (HIMS)", "Medical Records", …) instead of
+    minting a duplicate; creates "HIMS / Records" only when none exists."""
+    rows = (db.session.query(Department)
+            .filter_by(org_id=org_id)
+            .order_by(Department.name)
+            .all())
+    for row in rows:
+        if _is_records_dept(row.name):
+            if not row.active:
+                row.active = True
+            return row
+    new = Department(org_id=org_id, name="HIMS / Records", active=True)
+    db.session.add(new)
+    db.session.flush()
+    return new
+
+
+def ensure_emergency_dept(org_id: int) -> Department:
+    """Accident & Emergency — the single destination on the emergency page.
+    Reuses the hospital's own A&E department name when one exists."""
+    rows = (db.session.query(Department)
+            .filter_by(org_id=org_id)
+            .order_by(Department.name)
+            .all())
+    for row in rows:
+        n = (row.name or "").strip().lower()
+        if "accident" in n or "emergency" in n or n in ("a&e", "ae"):
+            if not row.active:
+                row.active = True
+            return row
+    new = Department(org_id=org_id, name="Accident & Emergency", active=True)
+    db.session.add(new)
+    db.session.flush()
+    return new
+
+
+def service_choices(org_id: int) -> list[Department]:
+    """Exactly the three services a patient may pick, in the owner's order:
+    Reception/Front Desk, HIMS/Records, Fast-Track/Premium Service."""
+    reception = ensure_reception(org_id)
+    records = ensure_records(org_id)
+    gold = ensure_fast_track(org_id)
+    return [reception, records, gold]
+
+
+def service_label(dept: Department | None) -> str:
+    """Owner wording for the three service choices."""
+    if dept is None:
+        return ""
+    if is_fast_track_dept(dept):
+        return FAST_TRACK_LABEL
+    n = (dept.name or "").strip().lower()
+    if n == "reception":
+        return RECEPTION_LABEL
+    if _is_records_dept(n):
+        return RECORDS_LABEL
+    return dept.name or ""
+
+
 def _normalize_for_dedup(name: str) -> str:
     """Normalize for duplicate detection: Pharmacy vs Pharmacy Dept. -> pharmacy"""
     n = (name or "").strip().lower()

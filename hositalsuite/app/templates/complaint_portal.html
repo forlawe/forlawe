@@ -16,11 +16,16 @@
   {% include "_langbar.html" %}
   {% if qr_loc %}<div class="mt"><span class="pill blue">📍 {{ qr_loc.name }}</span></div>{% endif %}
 </div>
-<main id="main-content" class="wrap" style="max-width:560px">
+<main id="main-content" class="wrap w-560">
   {% with back_to="/welcome" %}{% include "_patient_nav.html" %}{% endwith %}
   {% with messages = get_flashed_messages(with_categories=true) %}
     {% for cat, msg in messages %}<div class="flash {{ cat }}">{{ msg }}</div>{% endfor %}
   {% endwith %}
+
+  <div class="pp-hero">
+    <h1>📣 Tell us a problem</h1>
+    <p>Every complaint is read and acted on. Track yours privately with a reference.</p>
+  </div>
 
   <div class="privacy-note">🔒 {{ _('privacy') }}</div>
 
@@ -29,58 +34,57 @@
     <input type="hidden" name="loc" value="{{ qr_loc.code if qr_loc else '' }}">
     <input type="hidden" name="idem" value="{{ csrf_token()[:24] }}-{{ range(100000, 999999) | random }}">
 
-    <label for="cmp-dept">1 · {{ _('f_dept') }} <span class="req">*</span></label>
-    <select name="department_id" id="cmp-dept" required>
+    <label class="pp-step-label" for="cmp-dept">1 · {{ _('f_dept') }} <span class="req">*</span></label>
+    <select name="department_id" id="cmp-dept" required class="pp-input">
       <option value="">— {{ _('f_dept') }} —</option>
       {% for d in depts %}
       <option value="{{ d.id }}" {{ 'selected' if form and form.get('department_id')==d.id|string }}>{{ d.name }}</option>
       {% endfor %}
     </select>
 
-    <label for="cmp-cat">2 · {{ _('f_cat') }} <span class="req">*</span></label>
-    <select name="category" id="cmp-cat" required>
+    <label class="pp-step-label" for="cmp-cat">2 · {{ _('f_cat') }} <span class="req">*</span></label>
+    <select name="category" id="cmp-cat" required class="pp-input">
       <option value="">— {{ _('f_cat') }} —</option>
       {% for c in categories %}
       <option {{ 'selected' if form and form.get('category')==c.name }}>{{ c.name }}</option>
       {% endfor %}
     </select>
 
-    <label for="cmp-desc">3 · {{ _('f_desc') }} <span class="req">*</span></label>
-    <textarea name="description" id="cmp-desc" required minlength="10"
+    <label class="pp-step-label" for="cmp-desc">3 · {{ _('f_desc') }} <span class="req">*</span></label>
+    <textarea name="description" id="cmp-desc" required minlength="10" class="pp-input"
               placeholder="{{ _('f_desc') }}…">{{ form.get('description','') if form else '' }}</textarea>
     <button type="button" class="mic-btn" data-lang="{{ speech_lang }}"
             onclick="hmsVoice.start(this,'cmp-desc')">🎤 {{ _('speak') }}</button>
 
-    <label for="cmp-phone">4 · {{ _('f_phone') }} <span class="req" id="phone-req">*</span></label>
-    <input type="tel" name="phone" id="cmp-phone" required inputmode="tel" placeholder="08012345678"
+    <label class="pp-step-label" for="cmp-phone">4 · {{ _('f_phone') }} <span class="req" id="phone-req">*</span></label>
+    <input type="tel" name="phone" id="cmp-phone" required inputmode="tel" class="pp-input" placeholder="08012345678"
            value="{{ form.get('phone','') if form else '' }}">
 
-    <label class="checkline" style="display:flex;gap:10px;align-items:flex-start;margin-top:10px;font-weight:400">
-      <input type="checkbox" name="anonymous" id="cmp-anon" value="1" style="width:auto;margin-top:3px"
+    <label class="checkline pp-checkline">
+      <input type="checkbox" name="anonymous" id="cmp-anon" value="1"
              {{ 'checked' if form and form.get('anonymous') }}>
       <span>🕶️ <b>Submit anonymously.</b> We will not store your phone number.
         You will still get a reference number to track the complaint, but the
         hospital will not be able to call you back.</span>
     </label>
 
-    <label for="cmp-attach">5 · {{ _('f_attach') }}</label>
-    <input type="file" name="attachment" id="cmp-attach" accept="image/jpeg,image/png,image/webp" style="font-size:.9rem">
-    <select name="contact_method" id="cmp-contact" aria-label="Preferred contact method" class="mt" style="margin-top:8px">
+    <label class="pp-step-label" for="cmp-attach">5 · {{ _('f_attach') }}</label>
+    <input type="file" name="attachment" id="cmp-attach" accept="image/jpeg,image/png,image/webp" class="pp-input pp-input-file">
+    <select name="contact_method" id="cmp-contact" aria-label="Preferred contact method" class="pp-input mt">
       <option value="phone">Call / Kiran / Oku</option>
       <option value="whatsapp">WhatsApp</option>
       <option value="either">— / —</option>
     </select>
 
-    <label class="checkline" id="consent-line"
-           style="display:flex;gap:10px;align-items:flex-start;margin-top:14px;font-weight:400">
-      <input type="checkbox" name="consent" id="cmp-consent" value="1" style="width:auto;margin-top:3px"
+    <label class="checkline pp-checkline" id="consent-line">
+      <input type="checkbox" name="consent" id="cmp-consent" value="1"
              {{ 'checked' if form and form.get('consent') }}>
       <span>I agree that {{ hospital.name if hospital else 'the hospital' }} may store
         and use the details above to investigate and follow up on this complaint,
         as described in the <a href="/privacy" target="_blank">Privacy Notice</a>.</span>
     </label>
 
-    <button class="btn big mt" type="submit" style="width:100%">{{ _('btn_complaint') }}</button>
+    <button class="pp-btn pp-btn-primary mt" type="submit">{{ _('btn_complaint') }}</button>
   </form>
 
   <script nonce="{{ csp_nonce }}">

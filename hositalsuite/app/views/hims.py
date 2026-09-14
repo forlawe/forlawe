@@ -337,7 +337,19 @@ def register_save():
         visit = hims.open_visit(patient, user_id=current_user.id,
                                 reason=form.get("reason", ""), visit_type="NEW",
                                 department_id=request.form.get("department_id", type=int))
+        # open_visit() adds but does not flush — the visit needs its id before
+        # the tracking segment below can reference it.
+        db.session.flush()
     if visit:
+        # Consultant round 2 (2026-09-14): a folder opened straight at the HIMS
+        # desk with a visit started never entered the journey tracker, so the
+        # patient's TV/tracker showed nothing until some other desk touched
+        # them. Enter the HIMS stage here, exactly like the queue and
+        # reception doors do. safely() = a measurement must never stop care.
+        from .. import tracking as tracking_engine
+        tracking_engine.safely(tracking_engine.enter, current_user.org_id, "HIMS",
+                               visit_id=visit.id, patient_id=patient.id,
+                               department_id=visit.department_id, staff_id=current_user.id)
         _announce_arrival(patient, visit)
         _announce_reception_depth(current_user.org_id)
     audit("PATIENT_FOLDER_OPENED", "patient", patient.id,
@@ -511,6 +523,14 @@ def start_visit(pid: int):
                             visit_type=request.form.get("visit_type") or None,
                             department_id=request.form.get("department_id", type=int))
     db.session.flush()
+    # Consultant round 2 (2026-09-14): start the tracker at HIMS for a
+    # returning patient started from the desk search — same rule as above.
+    # (The "already has an open visit today" branch above needs no entry:
+    # that patient is already being tracked from earlier today.)
+    from .. import tracking as tracking_engine
+    tracking_engine.safely(tracking_engine.enter, current_user.org_id, "HIMS",
+                           visit_id=visit.id, patient_id=p.id,
+                           department_id=visit.department_id, staff_id=current_user.id)
     _announce_arrival(p, visit)
     _announce_reception_depth(current_user.org_id)
     audit("PATIENT_VISIT_STARTED", "visit", None,

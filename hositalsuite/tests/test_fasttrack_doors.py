@@ -219,7 +219,9 @@ def test_queue_join_copy_matches_the_new_routing(client, seeded):
     html = client.get("/queue/join").get_data(as_text=True)
     assert "all patients start at Reception" not in html, (
         "stale copy: returning patients now go straight to Records")
-    assert "returning patients go straight to Records" in html
+    # 2026-09-14 copy pass shortened the sentence; the routing promise it
+    # pins is unchanged: returning patients (existing folder) go to Records.
+    assert "Already have a folder? HIMS / Records." in html
 
 
 # ------------------------------------------------- Request 3: entry routing

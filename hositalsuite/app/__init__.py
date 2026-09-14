@@ -184,12 +184,12 @@ def create_app(config_object=None, scheduler: bool = True) -> Flask:
 
         # Boot steps are individually guarded: a failure in seeding or the KB
         # must never leave the hospital with a dead site. Log loudly, serve on.
+        # Issue #4: each step also rolls its own transaction back on failure,
+        # so a poisoned session can never swallow the next step's inserts.
+        from .boot import run_boot_step
+
         def _boot_step(name, fn):
-            try:
-                fn()
-            except Exception:                            # noqa: BLE001
-                db.session.rollback()
-                app.logger.exception("boot step %r failed — continuing", name)
+            run_boot_step(app, name, fn)
 
         # ONE database readiness probe up front. If the database is not
         # answering, every subsequent boot step would each burn its own
