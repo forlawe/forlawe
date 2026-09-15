@@ -91,6 +91,26 @@ TEST_DATABASE_URL=postgresql://hms_test:YOUR_PASSWORD@127.0.0.1:5432/hms_test \
 
 Expected result: the eight PostgreSQL-only tests run instead of being skipped.
 
+## CI activation and verification
+
+The workflow was activated at `.github/workflows/tests.yml` in commit
+`7ae7baa`. Its first run exposed a workspace bug: commands were executing from
+the repository root while the application and tests live under `hositalsuite/`.
+The SQLite and PostgreSQL jobs both exited with pytest code 4 before running
+the suite.
+
+Commit `cd6b021` fixed this with a workflow-wide
+`working-directory: hositalsuite` default. The rerun is now behaving correctly:
+
+- SQLite job: **passed**
+- Dependency audit: **passed**
+- PostgreSQL job: running the real full suite against the non-superuser role
+
+The PostgreSQL run is expected to take substantially longer. The repository's
+previous real-PostgreSQL verification recorded roughly 67 minutes for the full
+suite, so it is not treated as a hang after only the first few minutes. The
+workflow run is [34925550894](https://github.com/forlawe/forlawe/actions/runs/34925550894).
+
 ## GitHub delivery
 
 - Branch pushed: `arena/01a0a1a3-forlawe`
