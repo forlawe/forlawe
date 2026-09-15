@@ -10,6 +10,13 @@ on:
   pull_request:
   workflow_dispatch:
 
+# The repository is a workspace; the deployable Flask application and its
+# tests live under hositalsuite/. Without this default, pytest runs from the
+# workspace root and exits with "file or directory not found: tests/".
+defaults:
+  run:
+    working-directory: hositalsuite
+
 jobs:
   sqlite:
     name: tests (SQLite)
