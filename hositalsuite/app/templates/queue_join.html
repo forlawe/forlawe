@@ -7,9 +7,9 @@
 <meta name="theme-color" content="#0e5a8a">
 <title>Get a Queue Number — {{ org.name }}</title>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}?v={{ app_version }}">
-{# 2026-09-14, consultant round 2 item 6: hero / step labels / inputs / gold
-   box / button now come from the shared patient-portal design system in
-   app.css (.pp-*), not from page-local hex colours. #}
+{# Gate 2, Queue first: one thumb-friendly form, one clear primary action.
+   The shared patient-portal system owns the components; this page only owns
+   the order and copy of the queue task. #}
 </head>
 <body>
 <div class="portal-head">
@@ -19,65 +19,92 @@
 </div>
 <main class="wrap w-560">
   {% with back_to="/welcome" %}{% include "_patient_nav.html" %}{% endwith %}
-  {% with messages = get_flashed_messages(with_categories=true) %}
-    {% for cat, msg in messages %}<div class="flash {{ cat }}">{{ msg }}</div>{% endfor %}
-  {% endwith %}
-
-  {# 2026-09-13: emergencies have their OWN landing page (/emergency). This
-     page is the ordinary join-a-queue form only — no red hero, no A&E copy.
-     2026-09-14, owner: short, clear, premium — every promise stated ONCE. #}
-  <div class="pp-hero">
-    <h1>Get Your Queue Number</h1>
-    <p>A private live tracker for every stage of your visit. Your number shows on TV — never your name.</p>
+  <div class="pp-flash-region" aria-live="polite">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for cat, msg in messages %}
+        <div class="flash {{ cat }}" role="{{ 'alert' if cat == 'error' else 'status' }}">{{ msg }}</div>
+      {% endfor %}
+    {% endwith %}
   </div>
 
-  <form class="card pad-lg" method="post" action="/queue/join">
+  {# Emergencies have their own landing page (/emergency). This is the
+     ordinary queue form only — no red hero, no A&E copy. #}
+  <div class="pp-hero">
+    <div class="pp-kicker">Walk in today</div>
+    <h1>Get Your Queue Number</h1>
+    <p>Choose the desk you need, tell us your name, and keep your private tracker open while you wait.</p>
+  </div>
+
+  <form class="card pad-lg pp-form" method="post" action="/queue/join" aria-labelledby="queue-form-title">
+    <h2 id="queue-form-title" class="pp-form-title">Join the queue</h2>
+    <p class="pp-form-intro">Three short steps. Your number can show on the waiting-room TV — never your name.</p>
     <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
     <input type="hidden" name="loc" value="{{ loc or '' }}">
 
-    <div class="pp-step-label">1 · Which service do you need?</div>
-    <select name="department_id" required class="pp-input" id="q-dept">
-      <option value="">— Select —</option>
-      {% for d, label in choices %}
-      <option value="{{ d.id }}" data-fast="{{ 1 if 'fast track' in d.name|lower else 0 }}"
-              {{ 'selected' if pre == d.id }}>
-        {% if 'fast track' in d.name|lower %}⭐ {% endif %}{{ label }}
-      </option>
-      {% endfor %}
-    </select>
-    <p class="pp-hint">
-      New here? Reception / Front Desk. Already have a folder? HIMS / Records. Short on time? ⭐ Fast-Track.
-    </p>
-
-    <div class="pp-step-label">2 · Your name</div>
-    <input type="text" name="patient_name" required class="pp-input" placeholder="e.g. Aisha Bello">
-
-    <div class="pp-step-label">3 · Phone (optional, for updates)</div>
-    <input type="tel" name="phone" inputmode="tel" class="pp-input" placeholder="e.g. 08012345678">
-
-    <div class="pp-gold-box">
-      <label class="pp-gold-check">
-        <input type="checkbox" name="is_fast_track" value="1"> ⭐ Fast Track — Be seen faster
-      </label>
-      <p class="pp-gold-lane">Our premium lane — seen quickly, with care, for a little more.</p>
-      <select name="fast_track_reason" class="pp-input mt-sm">
-        <option value="PREMIUM" selected>Premium — Fast service, comfortable lounge</option>
-        <option value="BUSINESS">Busy — I have little time today</option>
+    <fieldset class="pp-fieldset">
+      <legend class="pp-step-label">1 · Choose your service</legend>
+      <label class="pp-field-label" for="q-dept">Which desk should guide you?</label>
+      <select name="department_id" required class="pp-input" id="q-dept"
+              aria-describedby="q-dept-help">
+        <option value="">— Choose one —</option>
+        {% for d, label in choices %}
+        <option value="{{ d.id }}" data-fast="{{ 1 if 'fast track' in d.name|lower else 0 }}"
+                {{ 'selected' if pre == d.id }}>
+          {% if 'fast track' in d.name|lower %}⭐ {% endif %}{{ label }}
+        </option>
+        {% endfor %}
       </select>
-      <p class="pp-gold-note">You don't need to pick Fast Track if your health condition need special attention. Just tell Reception/HIMS how we can help you, and we will prioritize your care.</p>
-    </div>
+      <p class="pp-field-note" id="q-dept-help">
+        Reception is the usual first stop. Already have a folder? HIMS / Records.
+      </p>
+    </fieldset>
 
-    <label class="checkline pp-checkline pp-checkline-gold">
-      <input type="checkbox" name="fast_track_consent" value="1">
-      {% include "_fasttrack_consent.html" %}
-    </label>
+    <fieldset class="pp-fieldset">
+      <legend class="pp-step-label">2 · Tell us who is waiting</legend>
+      <label class="pp-field-label" for="q-name">Your name <span class="pp-required">Required</span></label>
+      <input type="text" name="patient_name" required class="pp-input" id="q-name"
+             placeholder="e.g. Aisha Bello" autocomplete="name" maxlength="120">
+
+      <label class="pp-field-label" for="q-phone">Phone <span class="pp-optional">Optional</span></label>
+      <input type="tel" name="phone" inputmode="tel" class="pp-input" id="q-phone"
+             placeholder="e.g. 08012345678" autocomplete="tel" aria-describedby="q-phone-help">
+      <p class="pp-field-note" id="q-phone-help">Add it if you want updates. You can leave this blank.</p>
+    </fieldset>
+
+    <fieldset class="pp-fieldset pp-fast-fieldset">
+      <legend class="pp-step-label">3 · Optional Fast Track</legend>
+      <div class="pp-gold-box" id="q-fast-panel" hidden>
+        <div class="pp-fast-heading">⭐ Fast Track selected</div>
+        <label class="pp-gold-check" for="q-fast-check">
+          <input type="checkbox" name="is_fast_track" value="1" id="q-fast-check">
+          I want the Fast Track service
+        </label>
+        <p class="pp-gold-lane">A premium lane with quicker service and extra comfort.</p>
+        <label class="pp-field-label" for="q-fast-reason">What would help you today?</label>
+        <select name="fast_track_reason" class="pp-input" id="q-fast-reason">
+          <option value="PREMIUM" selected>Premium — I would like the faster service</option>
+          <option value="BUSINESS">Busy — I have little time today</option>
+        </select>
+        <label class="checkline pp-checkline pp-checkline-gold" for="q-fast-consent">
+          <input type="checkbox" name="fast_track_consent" value="1" id="q-fast-consent">
+          {% include "_fasttrack_consent.html" %}
+        </label>
+        <p class="pp-gold-note">You don't need to pick Fast Track if your health condition need special attention. Just tell Reception/HIMS how we can help you, and we will prioritize your care.</p>
+      </div>
+      <button type="button" class="pp-fast-toggle" id="q-fast-toggle"
+              aria-controls="q-fast-panel" aria-expanded="false">
+        <span>Need quicker service or a quieter wait?</span>
+        <span class="pp-fast-toggle-link">Show Fast Track</span>
+      </button>
+    </fieldset>
 
     <button class="pp-btn pp-btn-primary mt" type="submit">🎟️ {{ _("btn_queue") }}</button>
+    <p class="pp-submit-note">You will get a number and a private page showing your place.</p>
   </form>
 
-  <ul class="pp-steps">
-    <li><b>1</b> Number + private tracker</li>
-    <li><b>2</b> Watch the TV</li>
+  <ul class="pp-steps" aria-label="What happens after you join">
+    <li><b>1</b> Get your number</li>
+    <li><b>2</b> Keep your tracker open</li>
     <li><b>3</b> Come forward when called</li>
   </ul>
 
@@ -85,6 +112,51 @@
 </main>
 <div class="footer"><a href="/privacy">Privacy</a> · {{ org.name }}</div>
 <script src="{{ url_for('static', filename='js/app.js') }}?v={{ app_version }}" nonce="{{ csp_nonce }}"></script>
+<script nonce="{{ csp_nonce }}">
+(function () {
+  const dept = document.getElementById('q-dept');
+  const panel = document.getElementById('q-fast-panel');
+  const fast = document.getElementById('q-fast-check');
+  const reason = document.getElementById('q-fast-reason');
+  const consent = document.getElementById('q-fast-consent');
+  const toggle = document.getElementById('q-fast-toggle');
+  if (!dept || !panel || !fast || !reason || !consent) return;
+
+  let checkedByService = false;
+  function syncFastTrack() {
+    const chosen = dept.options[dept.selectedIndex];
+    const serviceIsFast = chosen && chosen.dataset.fast === '1';
+    if (serviceIsFast && !fast.checked) {
+      fast.checked = true;
+      checkedByService = true;
+    } else if (!serviceIsFast && checkedByService) {
+      fast.checked = false;
+      checkedByService = false;
+    }
+    const active = serviceIsFast || fast.checked;
+    panel.hidden = !active;
+    reason.disabled = !active;
+    consent.disabled = !active;
+    consent.required = active;
+    if (toggle) {
+      toggle.hidden = active;
+      toggle.setAttribute('aria-expanded', String(active));
+    }
+  }
+  dept.addEventListener('change', syncFastTrack);
+  fast.addEventListener('change', function () {
+    checkedByService = false;
+    syncFastTrack();
+  });
+  if (toggle) toggle.addEventListener('click', function () {
+    fast.checked = true;
+    checkedByService = false;
+    syncFastTrack();
+    fast.focus();
+  });
+  syncFastTrack();
+}());
+</script>
 {% include "_install.html" %}
 </body>
 </html>
