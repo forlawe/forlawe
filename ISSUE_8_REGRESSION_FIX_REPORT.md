@@ -31,11 +31,11 @@ returns its routing guidance.
 The foreground tokens in `app/static/css/app.css` were restored to the
 previously verified AA-safe values:
 
-| Token | Value | Contrast on white |
+| Token | Value | Verified contrast |
 |---|---:|---:|
-| `--amber` | `#8f641c` | 5.24:1 |
-| `--orange` | `#ac5b01` | 4.94:1 |
-| `--faint` | `#687887` | 4.54:1 |
+| `--amber` | `#8f641c` | 4.74:1 against `--amber-bg` |
+| `--orange` | `#9c4f08` | 5.18:1 against `--orange-bg` |
+| `--faint` | `#687887` | 4.54:1 against white |
 
 The copied legacy values were also removed from the admin hospital warning,
 the onboarding footer, and the triage consulting guide so those surfaces do
@@ -50,7 +50,9 @@ It verifies that:
 1. an unknown username actually invokes the fixed dummy hash through the
    rendered login endpoint; and
 2. the three CSS foreground tokens are present, are not the regressed values,
-   and compute to at least the WCAG AA 4.5:1 ratio on white.
+   and compute to at least the WCAG AA 4.5:1 ratio against the background each
+   token is actually rendered on (amber/orange status backgrounds, white for
+   faint text).
 
 ## Verification
 

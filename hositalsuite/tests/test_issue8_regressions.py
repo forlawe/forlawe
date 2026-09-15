@@ -51,20 +51,34 @@ def _relative_luminance(hex_colour: str) -> float:
     return 0.2126 * r + 0.7152 * g + 0.0722 * b
 
 
-def _contrast_on_white(hex_colour: str) -> float:
-    return 1.05 / (_relative_luminance(hex_colour) + 0.05)
+def _contrast(foreground: str, background: str) -> float:
+    foreground_luminance = _relative_luminance(foreground)
+    background_luminance = _relative_luminance(background)
+    lighter = max(foreground_luminance, background_luminance)
+    darker = min(foreground_luminance, background_luminance)
+    return (lighter + 0.05) / (darker + 0.05)
 
 
-def test_wcag_foreground_tokens_have_not_regressed():
-    """The three previously regressed tokens must remain AA on white."""
+def test_wcag_foreground_tokens_pass_on_their_real_usage_backgrounds():
+    """Test the foreground/background pairs patients actually see.
+
+    The previous check compared every token with white. That masked the
+    orange status-pill regression because --orange is rendered on --orange-bg.
+    """
     css = CSS.read_text(encoding="utf-8")
     tokens = dict(re.findall(r"--(amber|orange|faint):\s*(#[0-9a-fA-F]{6})", css))
+    backgrounds = dict(re.findall(
+        r"--(amber-bg|orange-bg):\s*(#[0-9a-fA-F]{6})", css
+    ))
 
     assert set(tokens) == {"amber", "orange", "faint"}
+    assert set(backgrounds) == {"amber-bg", "orange-bg"}
     assert tokens["amber"] != "#9a7400"
     assert tokens["orange"] != "#c2660a"
     assert tokens["faint"] != "#8595a6"
-    for name, colour in tokens.items():
-        assert _contrast_on_white(colour) >= 4.5, (
-            f"--{name} {colour} no longer meets WCAG AA on white"
-        )
+    assert "background:var(--amber-bg);color:var(--amber)" in css
+    assert "background:var(--orange-bg);color:var(--orange)" in css
+
+    assert _contrast(tokens["amber"], backgrounds["amber-bg"]) >= 4.5
+    assert _contrast(tokens["orange"], backgrounds["orange-bg"]) >= 4.5
+    assert _contrast(tokens["faint"], "#ffffff") >= 4.5
