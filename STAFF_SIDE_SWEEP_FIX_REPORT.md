@@ -114,4 +114,9 @@ it in the same PR.
 - `tests/test_fasttrack_doors.py`: 20 passed
 - Focused run (doors, queue, booking, reception, hims, gate2): 114 passed
 - Full SQLite suite: **1123 passed, 8 skipped**
-- PostgreSQL + migration verification + dependency audit: GitHub Actions
+- CI on PR #10, run 35020274878 — **all three jobs green**:
+  - tests (SQLite) — pass, 18m 26s
+  - tests (PostgreSQL) — pass, 35m 18s
+  - dependency audit — pass, 24s
+  The only annotations are pre-existing Node.js 20 deprecation notices from
+  `actions/checkout@v4` / `actions/setup-python@v5`, unrelated to this change.
