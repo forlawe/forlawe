@@ -28,7 +28,7 @@ git add .github/workflows/tests.yml && git commit -m "Activate CI (F-001)" && gi
 | Job | What it proves |
 |---|---|
 | `tests (SQLite)` | Full suite on the developer-laptop engine |
-| `tests (PostgreSQL)` | Full suite on the production engine + `alembic upgrade head` applies cleanly to an EMPTY database |
+| `tests (PostgreSQL)` | Full suite on the production engine + `alembic upgrade head` applies cleanly to an EMPTY database. The workflow creates a non-superuser `hms_test` role so all eight PostgreSQL-only RLS tests execute against real policies. |
 | `dependency audit` | `pip-audit` reports known CVEs in pinned dependencies (advisory — informs, never blocks a hotfix) |
 
 Triggers: every push to `main`, every pull request, and manual runs

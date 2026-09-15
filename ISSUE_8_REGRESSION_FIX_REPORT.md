@@ -62,6 +62,35 @@ It verifies that:
 The warnings are the existing SQLAlchemy `Query.get()` deprecation warnings
 in `tests/test_audit_round_roster_ussd_roles.py`; there were no failures.
 
+## Why eight tests were skipped
+
+The eight skipped tests are the PostgreSQL-only enforcement tests in
+`tests/test_rls.py`. The local full-suite run used the default SQLite test
+engine because no `TEST_DATABASE_URL` was supplied. SQLite has no PostgreSQL
+row-level-security feature, so those tests call `pytest.skip()` rather than
+pretending that SQLite verified tenant isolation.
+
+The browser speech test was not one of the eight: Node.js was available in the
+run, so it executed normally.
+
+The fix is to run the PostgreSQL lane, not to remove the skips or weaken the
+RLS tests. `ci/github-actions-tests.yml` now creates a dedicated non-superuser
+`hms_test` role and runs the suite with `TEST_DATABASE_URL`. A superuser would
+be wrong here because PostgreSQL superusers bypass every RLS policy and could
+make the tests appear to pass without actually enforcing tenant isolation.
+The workflow must still be activated under `.github/workflows/` as described
+in `ci/README.md`.
+
+For a local PostgreSQL server, create a database owned by a non-superuser role
+and run:
+
+```bash
+TEST_DATABASE_URL=postgresql://hms_test:YOUR_PASSWORD@127.0.0.1:5432/hms_test \
+  PYTHONPATH=. python -m pytest -q tests/test_rls.py
+```
+
+Expected result: the eight PostgreSQL-only tests run instead of being skipped.
+
 ## GitHub delivery
 
 - Branch pushed: `arena/01a0a1a3-forlawe`
