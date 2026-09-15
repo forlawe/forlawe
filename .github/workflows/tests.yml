@@ -83,6 +83,7 @@ jobs:
       - name: Verify migrations apply to an empty database
         env:
           DATABASE_URL: postgresql://hms_test:hms_test_pw@127.0.0.1:5432/hms_migrate
+          SECRET_KEY: ci-migration-test-secret
         run: alembic upgrade head
 
   security:
