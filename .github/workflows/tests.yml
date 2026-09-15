@@ -1,0 +1,83 @@
+name: tests
+
+# Runs the full suite on every push and pull request, against BOTH databases the
+# project supports. Free for public repos. This is the cheapest possible
+# protection against "it worked on my machine" reaching a hospital.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  sqlite:
+    name: tests (SQLite)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - run: python -m pytest tests/ -q
+
+  postgres:
+    name: tests (PostgreSQL)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          # The official image makes POSTGRES_USER a superuser. Keep that
+          # bootstrap account separate: PostgreSQL superusers bypass every RLS
+          # policy, so using it for the app would make the RLS tests lie.
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres_admin_pw
+          POSTGRES_DB: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Create a non-superuser test role and databases
+        env:
+          PGPASSWORD: postgres_admin_pw
+        run: |
+          psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 <<'SQL'
+          CREATE ROLE hms_test LOGIN PASSWORD 'hms_test_pw' NOSUPERUSER NOBYPASSRLS;
+          CREATE DATABASE hms_test OWNER hms_test;
+          CREATE DATABASE hms_migrate OWNER hms_test;
+          SQL
+      - name: Run tests against PostgreSQL
+        env:
+          # conftest.py reads TEST_DATABASE_URL. hms_test owns the database
+          # and is deliberately not a superuser, so the eight PostgreSQL-only
+          # RLS tests execute instead of being skipped or bypassed.
+          TEST_DATABASE_URL: postgresql://hms_test:hms_test_pw@127.0.0.1:5432/hms_test
+        run: python -m pytest tests/ -q
+      - name: Verify migrations apply to an empty database
+        env:
+          DATABASE_URL: postgresql://hms_test:hms_test_pw@127.0.0.1:5432/hms_migrate
+        run: alembic upgrade head
+
+  security:
+    name: dependency audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt pip-audit
+      # Advisory only: a new CVE should tell you, not block an urgent hotfix.
+      - run: pip-audit --desc || true
