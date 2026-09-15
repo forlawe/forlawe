@@ -58,15 +58,26 @@ def test_restart_does_not_reseed_or_mint_new_passwords(tmp_path, monkeypatch):
     random admin password because the org 'didn't reliably exist'. Two boots
     against the same database must agree on org, departments and passwords."""
     from app import create_app
+    from app.config import Config
 
     dbfile = tmp_path / "restart.db"
     monkeypatch.setenv("AUTO_SEED", "1")
-    monkeypatch.setenv("DATABASE_URL", f"sqlite:///{dbfile}")
     monkeypatch.setenv("DISABLE_SCHEDULER", "1")
+
+    # conftest deliberately points the PostgreSQL lane at a real database.
+    # An environment-only override is too late here because Config is already
+    # imported and its URI is class-level. Use an explicit SQLite config for
+    # this restart-isolation test so it remains portable on both CI engines.
+    class RestartConfig(Config):
+        SQLALCHEMY_DATABASE_URI = f"sqlite:///{dbfile}"
+        SQLALCHEMY_ENGINE_OPTIONS = {
+            **Config.SQLALCHEMY_ENGINE_OPTIONS,
+            "connect_args": {},
+        }
 
     apps = []
     try:
-        first = create_app(scheduler=False)
+        first = create_app(config_object=RestartConfig, scheduler=False)
         apps.append(first)
         with first.app_context():
             org_id = db.session.query(Organization).first().id
@@ -76,7 +87,7 @@ def test_restart_does_not_reseed_or_mint_new_passwords(tmp_path, monkeypatch):
             assert org_id and admin_hash and dept_count > 0
             db.session.remove()
 
-        second = create_app(scheduler=False)   # = a Render restart
+        second = create_app(config_object=RestartConfig, scheduler=False)   # = a Render restart
         apps.append(second)
         with second.app_context():
             org2 = db.session.query(Organization).first()

@@ -472,6 +472,18 @@ def test_scheduler_self_heals_if_its_thread_dies(app, monkeypatch):
     monkeypatch.setattr(sched, "_started", True)
     assert sched.is_alive() is False
 
+    # Do not leave a real infinite daemon thread attached to this test's
+    # database.  The old test started one, then later PostgreSQL fixtures
+    # dropped/recreated tables underneath it; that made the hosted RLS lane
+    # fail with relation-not-found errors and occasional DDL deadlocks.
+    class LiveThread:
+        def start(self):
+            pass
+
+        def is_alive(self):
+            return True
+
+    monkeypatch.setattr(sched.threading, "Thread", lambda *a, **kw: LiveThread())
     restarted = sched.ensure_running(app)
     assert restarted is True
     assert sched.is_alive() is True
