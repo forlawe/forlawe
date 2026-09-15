@@ -65,6 +65,11 @@ jobs:
           CREATE DATABASE hms_test OWNER hms_test;
           CREATE DATABASE hms_migrate OWNER hms_test;
           SQL
+      - name: Verify migrations apply to an empty database
+        env:
+          DATABASE_URL: postgresql://hms_test:hms_test_pw@127.0.0.1:5432/hms_migrate
+          SECRET_KEY: ci-migration-test-secret
+        run: alembic upgrade head
       - name: Run tests against PostgreSQL
         env:
           # conftest.py reads TEST_DATABASE_URL. hms_test owns the database
@@ -80,11 +85,6 @@ jobs:
           status=$?
           tail -n 240 /tmp/pytest-postgresql.log
           exit "$status"
-      - name: Verify migrations apply to an empty database
-        env:
-          DATABASE_URL: postgresql://hms_test:hms_test_pw@127.0.0.1:5432/hms_migrate
-          SECRET_KEY: ci-migration-test-secret
-        run: alembic upgrade head
 
   security:
     name: dependency audit
