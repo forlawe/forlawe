@@ -20,7 +20,7 @@ from app.models import (Appointment, JourneySegment, Patient, QueueTicket,
                         ReceptionIntake, db, now_naive)
 from app.models_v2 import PersonalTvSession
 
-from conftest import csrf
+from conftest import csrf, login
 
 HIDDEN_INPUT = re.compile(r'<input[^>]*type="hidden"[^>]*>')
 
@@ -281,3 +281,94 @@ def test_fast_track_choice_survives_onto_the_reception_record(client, seeded):
     intake = db.session.query(ReceptionIntake).one()
     assert intake.is_fast_track is True
     assert intake.fast_track_reason == "PREMIUM"
+
+
+# ------------------------------------- staff pages must tell the same story
+# These five tests exist because of a process gap, not a typo.
+#
+# Request 3 (entry routing) and the two booking doors were both changed and
+# test-pinned on the PATIENT side — and the staff page that describes the same
+# behaviour was never opened again. The result was a desk that promised
+# "all patients start at Reception" and a bookings list that called every
+# booking Fast Track, both quietly false for weeks.
+#
+# So: whenever patient flow changes, the staff page that describes it is part
+# of the change. These tests are that checklist item, written down.
+
+def _row_for(html: str, name: str) -> str:
+    """The <tr> of the bookings table that mentions this patient."""
+    for chunk in html.split("<tr")[1:]:
+        row = chunk.split("</tr>")[0]
+        if name in row:
+            return row
+    raise AssertionError(f"no bookings row was rendered for {name}")
+
+
+def test_queue_staff_copy_matches_the_new_routing(client, seeded):
+    login(client, "am1")
+    html = client.get("/queue").get_data(as_text=True)
+    assert "all patients start at Reception" not in html, (
+        "stale staff copy — Request 3 sends returning patients straight to "
+        "Records; only the patient-facing sentence was updated")
+    # the routing promise, in staff words
+    assert "New patients" in html and "HIMS / Records" in html
+
+
+def test_queue_staff_to_reception_does_not_mint_a_second_intake(client, seeded):
+    """Request 3 mints the Reception intake when the patient joins, so by the
+    time a desk taps "To Reception" the intake already exists. Adding another
+    one would put the same patient on the Reception list twice and open a
+    second journey — the duplicate the routing work set out to remove."""
+    _join_queue(client, seeded, "One Folder Only", "08077770000")
+    assert db.session.query(ReceptionIntake).count() == 1
+
+    ticket = db.session.query(QueueTicket).one()
+    login(client, "am1")
+    r = client.post(f"/queue/{ticket.id}/to-reception",
+                    data={"_csrf": csrf(client, "/queue")},
+                    follow_redirects=True)
+    assert b"already at Reception" in r.data
+    assert db.session.query(ReceptionIntake).count() == 1, (
+        "one patient, one folder — the desk button must not open a second journey")
+
+
+def test_bookings_staff_banner_does_not_call_every_booking_fast_track(client, seeded):
+    login(client, "am1")
+    html = client.get("/bookings").get_data(as_text=True)
+    assert "All bookings here are Fast Track" not in html, (
+        "bookings now arrive from two doors; only the Fast Track one is premium")
+
+
+def test_bookings_staff_marks_fast_track_per_booking(client, seeded):
+    """The crown and the gold check-in belong to the Fast Track booking only —
+    not to every row on the page."""
+    _submit_as_browser(client, seeded, "/book", "staff-plain-row",
+                       patient_name="Plain Person")
+    _submit_as_browser(client, seeded, "/book/fast-track", "staff-gold-row",
+                       patient_name="Gold Person", fast_track_consent="1")
+
+    login(client, "am1")
+    html = client.get("/bookings").get_data(as_text=True)
+
+    gold_row = _row_for(html, "Gold Person")
+    plain_row = _row_for(html, "Plain Person")
+
+    assert "👑" in gold_row and "Check in — Fast Track" in gold_row
+    assert "👑" not in plain_row, (
+        "a patient who never chose Fast Track must not be crowned on the list")
+    assert "Check in — Fast Track" not in plain_row
+    assert "Check in → Queue" in plain_row
+
+
+def test_checking_in_a_standard_booking_does_not_claim_the_gold_lane(client, seeded):
+    _submit_as_browser(client, seeded, "/book", "staff-plain-checkin",
+                       patient_name="Plain Person")
+    apt = db.session.query(Appointment).filter_by(patient_name="Plain Person").one()
+
+    login(client, "am1")
+    r = client.post(f"/bookings/{apt.id}/checkin-queue",
+                    data={"_csrf": csrf(client, "/bookings")},
+                    follow_redirects=True)
+    assert db.session.get(Appointment, apt.id).status == "ARRIVED"
+    assert b"gold lane" not in r.data, (
+        "staff were told a standard booking entered the paid lane")

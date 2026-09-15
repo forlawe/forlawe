@@ -349,6 +349,15 @@ def ticket_to_reception(tid: int):
         flash("Ticket no longer waiting.", "error")
         return redirect(url_for("fasttrack.desk"))
 
+    # Same guard as /queue/<id>/to-reception: a first-time patient who joined
+    # the queue already had their Reception intake minted (Fast Track flag and
+    # all). Welcoming them twice would put one patient on the desk list twice.
+    if t.intake_id:
+        already = db.session.get(ReceptionIntake, t.intake_id)
+        if already:
+            flash(f"⭐ {t.patient_name or 'Patient'} ({t.code}) is already at Reception as {already.ref}.", "success")
+            return redirect(url_for("fasttrack.desk"))
+
     parts = (t.patient_name or "").strip().split()
     surname = parts[-1] if parts else "—"
     first = " ".join(parts[:-1]) if len(parts) > 1 else (parts[0] if parts else "Patient")
