@@ -37,7 +37,7 @@
 
   <form class="card pad-lg pp-form" method="post" action="/queue/join" aria-labelledby="queue-form-title">
     <h2 id="queue-form-title" class="pp-form-title">Join the queue</h2>
-    <p class="pp-form-intro">Three short steps. Your number can show on the waiting-room TV — never your name.</p>
+    <p class="pp-form-intro">Three short steps. Your number shows on TV — never your name.</p>
     <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
     <input type="hidden" name="loc" value="{{ loc or '' }}">
 
@@ -55,7 +55,7 @@
         {% endfor %}
       </select>
       <p class="pp-field-note" id="q-dept-help">
-        Reception is the usual first stop. Already have a folder? HIMS / Records.
+        New here? Reception / Front Desk. Already have a folder? HIMS / Records.
       </p>
     </fieldset>
 
@@ -79,7 +79,7 @@
           <input type="checkbox" name="is_fast_track" value="1" id="q-fast-check">
           I want the Fast Track service
         </label>
-        <p class="pp-gold-lane">A premium lane with quicker service and extra comfort.</p>
+        <p class="pp-gold-lane">Our premium lane — quicker service and extra comfort.</p>
         <label class="pp-field-label" for="q-fast-reason">What would help you today?</label>
         <select name="fast_track_reason" class="pp-input" id="q-fast-reason">
           <option value="PREMIUM" selected>Premium — I would like the faster service</option>
