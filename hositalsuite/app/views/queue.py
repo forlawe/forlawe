@@ -567,6 +567,17 @@ def to_reception(tid: int):
         flash("That ticket is no longer waiting.", "error")
         return redirect(url_for("queue.staff_queue", dept=t.department_id))
 
+    # Request 3 (entry routing) mints the Reception intake the moment a
+    # first-time patient joins the queue, so by the time this button is pressed
+    # the intake very often already exists. Minting a second one would put the
+    # same name on the Reception desk twice and open two journeys — the exact
+    # duplicate the routing work set out to remove. One journey, not two.
+    if t.intake_id:
+        already = db.session.get(ReceptionIntake, t.intake_id)
+        if already:
+            flash(f"{t.patient_name or 'Patient'} ({t.code}) is already at Reception as {already.ref}.", "success")
+            return redirect(url_for("queue.staff_queue", dept=t.department_id))
+
     # Split name into surname/first for intake (best effort)
     parts = (t.patient_name or "").strip().split()
     surname = parts[-1] if parts else "—"
@@ -643,5 +654,12 @@ def booking_checkin_queue(aid: int):
     db.session.flush()
     audit("BOOKING_ARRIVED", "appointment", apt.id, {"ref": apt.ref, "queue": t.code, "fast_track": ft, "paid": apt.fast_track_payment_status})
     db.session.commit()
-    flash(f"⭐ {apt.patient_name} checked in — queue ticket {t.code} gold lane.", "success")
+    # Only a Fast Track booking gets the gold lane. Telling staff a standard
+    # booking is "gold lane" is the same staff/patient copy drift this file has
+    # been burned by before: the patient-facing pages say one thing, the desk
+    # that acts on it says another.
+    if ft:
+        flash(f"⭐ {apt.patient_name} checked in — Fast Track queue ticket {t.code}, gold lane.", "success")
+    else:
+        flash(f"{apt.patient_name} checked in — queue ticket {t.code}.", "success")
     return redirect(url_for("queue.staff_queue", dept=apt.department_id))
