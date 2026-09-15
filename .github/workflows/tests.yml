@@ -71,7 +71,15 @@ jobs:
           # and is deliberately not a superuser, so the eight PostgreSQL-only
           # RLS tests execute instead of being skipped or bypassed.
           TEST_DATABASE_URL: postgresql://hms_test:hms_test_pw@127.0.0.1:5432/hms_test
-        run: python -m pytest tests/ -q
+        # Keep the hosted step readable: the app emits a lot of tenant/RLS
+        # diagnostics during this deliberately broad suite. The exit status is
+        # preserved while the final failure summary remains visible in CI.
+        run: |
+          set +e
+          python -m pytest tests/ -q > /tmp/pytest-postgresql.log 2>&1
+          status=$?
+          tail -n 240 /tmp/pytest-postgresql.log
+          exit "$status"
       - name: Verify migrations apply to an empty database
         env:
           DATABASE_URL: postgresql://hms_test:hms_test_pw@127.0.0.1:5432/hms_migrate
