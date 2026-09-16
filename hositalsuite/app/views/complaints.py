@@ -3,8 +3,8 @@ from __future__ import annotations
 
 import re
 
-from flask import (Blueprint, Response, abort, flash, redirect, render_template,
-                   request, send_file, url_for)
+from flask import (Blueprint, Response, abort, flash, jsonify, redirect,
+                   render_template, request, send_file, url_for)
 from flask_login import current_user
 
 from .. import notifications, qrgen, services
@@ -320,12 +320,50 @@ def staff_detail(cid: int):
         abort(403)
     hod = services.route_hod(c.department)
     may_escalate = escalation.may_escalate(current_user, c)
+    # The one role the system actually keeps on a shift roster (Admin Manager
+    # on duty) gets a real "on duty today" tag in the escalation dropdown.
+    # The other authority roles have no roster data, so no fake availability
+    # signal for them — User.last_login_at is tracked, but logging in is not
+    # the same thing as being on duty.
+    on_duty_am = services.on_duty(c.org_id, now_naive().date())
     return render_template("complaint_detail.html", c=c, hod=hod, now=now_naive(),
                            can_act=current_user.role in ("SUPER_ADMIN", "MD_CEO", "ADMIN_MANAGER")
                            or (hod and hod.id == current_user.id),
                            may_escalate=may_escalate,
                            authorities=escalation.authorities(c.org_id) if may_escalate else [],
+                           on_duty_am_id=on_duty_am.id if on_duty_am else None,
                            hours_left=escalation.hours_left(c))
+
+
+@bp.get("/complaints/<int:cid>/status.json")
+@require_login
+@require_permission("complaints")
+@require_role("SUPER_ADMIN", "MD_CEO", "DMD", "DCST", "HEAD_ADMIN_HR", "ADMIN_MANAGER", "HOD")
+def staff_status_json(cid: int):
+    """Tiny polling endpoint so the SLA countdown on the detail page stays live,
+    the same pattern personal_tv.html already uses for patient tracking.
+
+    The countdown itself ticks client-side; this only re-reads the complaint
+    every couple of minutes so a page left open does not disagree with a
+    colleague who just resolved or extended it from another screen.
+    """
+    from .. import escalation
+    from .. import roles as R
+    c = db.session.get(Complaint, cid)
+    if not c or c.org_id != current_user.org_id:
+        abort(404)
+    # Same department gate as the page itself — polling must not be a way to
+    # read another department's complaint state.
+    if not R.can_see_department_audit(current_user, c.department_id,
+                                      action=f"POLL_COMPLAINT_{cid}"):
+        abort(403)
+    hrs = escalation.hours_left(c)
+    return jsonify({
+        "status": c.status,
+        "hours_left": round(hrs, 2),
+        "breached": hrs <= 0,
+        "deadline": c.sla_deadline_at.isoformat() if c.sla_deadline_at else None,
+    })
 
 
 @bp.post("/complaints/<int:cid>/escalate")

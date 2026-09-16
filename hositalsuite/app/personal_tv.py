@@ -268,6 +268,27 @@ def update_session_from_visit(session, visit: PatientVisit):
     except Exception:
         pass
 
+# ------------------------------------------------------------------ journey stages
+# The routine journey — what a walk-in or booking goes through, in order.
+STAGES_ORDER = ["RECEPTION", "BILLING", "PAYMENT", "HIMS", "TRIAGE",
+                "WAIT_DOCTOR", "CONSULTATION", "LABORATORY", "PHARMACY", "DONE"]
+
+# Emergency arrivals skip Billing/Payment/HIMS entirely — care comes first;
+# paperwork and payment are sorted out after, never gating urgent treatment.
+EMERGENCY_STAGES = ["RECEPTION", "TRIAGE", "WAIT_DOCTOR", "CONSULTATION", "DONE"]
+
+
+def stages_for(session, ticket) -> list:
+    """The stage sequence THIS patient's tracker should show.
+
+    A ticket registered from the emergency landing page (source == 'emergency')
+    gets the short emergency journey — a patient in A&E should never see
+    'Billing' and 'Payment' standing between them and a doctor.
+    """
+    source = getattr(ticket, "source", None) if ticket else None
+    return EMERGENCY_STAGES if source == "emergency" else STAGES_ORDER
+
+
 def build_personal_feed(org_id: int, session) -> Dict[str, Any]:
     """Build JSON feed for personal TV — <1KB, fast on slow internet, multi-browser."""
     from . import queue_estimator
@@ -282,9 +303,11 @@ def build_personal_feed(org_id: int, session) -> Dict[str, Any]:
     visit = db.session.get(PatientVisit, session.visit_id) if session.visit_id else None
     patient = db.session.get(Patient, session.patient_id) if session.patient_id else None
 
-    # Journey timeline — premium UX like Domino's
+    # Journey timeline — premium UX like Domino's. Emergency arrivals get the
+    # short care-first sequence (see stages_for); everyone else the full one.
     timeline = []
-    stages_order = ["RECEPTION", "BILLING", "PAYMENT", "HIMS", "TRIAGE", "WAIT_DOCTOR", "CONSULTATION", "LABORATORY", "PHARMACY", "DONE"]
+    stages_order = stages_for(session, ticket)
+    is_emergency = stages_order is EMERGENCY_STAGES
     # Determine which stages done based on journey segments
     done_stages = set()
     current_stage = session.current_stage
@@ -385,6 +408,7 @@ def build_personal_feed(org_id: int, session) -> Dict[str, Any]:
         "wait_text": wait_text,
         "is_fast_track": getattr(session, 'is_fast_track', False),
         "fast_track_reason": getattr(session, 'fast_track_reason', None),
+        "is_emergency": is_emergency,
         "preferred_lang": getattr(session, 'preferred_lang', 'en') or 'en',
         "timeline": timeline,
         "last_updated": now.isoformat(),

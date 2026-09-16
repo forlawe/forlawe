@@ -27,9 +27,8 @@
     <p><b>SLA deadline:</b> {{ c.sla_deadline_at.strftime('%d %b %Y %H:%M') }}
       {% if c.sla_extended_at %}<span class="pill amber">extended</span>{% endif %}<br>
       {% if c.status not in ('RESOLVED','CLOSED') %}
-        {% set hrs = ((c.sla_deadline_at - now).total_seconds()/3600) %}
-        {% if hrs > 0 %}<span class="pill {{ 'amber' if hrs < 4 else 'green' }}">{{ hrs|round(1) }}h remaining</span>
-        {% else %}<span class="pill red">breached {{ (-hrs)|round(1) }}h ago</span>{% endif %}
+        <span id="sla-pill" class="pill green" data-cid="{{ c.id }}"
+              data-deadline="{{ c.sla_deadline_at.isoformat() }}">calculating…</span>
       {% endif %}
     </p>
     <div class="timeline">
@@ -63,7 +62,7 @@
     <select name="to_user_id" required>
       <option value="">— choose who should take this —</option>
       {% for u in authorities %}
-      <option value="{{ u.id }}">{{ u.name }} — {{ u.role_name }}</option>
+      <option value="{{ u.id }}">{{ u.name }} — {{ u.role_name }}{% if u.id == on_duty_am_id %} 🟢 on duty today{% endif %}</option>
       {% endfor %}
     </select>
     <label class="mt">Why does this need them? <span class="req">*</span></label>
@@ -138,4 +137,45 @@
   </div>
   {% endfor %}
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script nonce="{{ csp_nonce }}">
+// Live SLA countdown — ticks client-side every 30s so moving the clock never
+// needs a server round-trip. A small JSON poll every 2 minutes keeps the page
+// honest when a colleague resolves or extends the complaint from another
+// screen while this one stays open.
+(function(){
+  var pill = document.getElementById('sla-pill');
+  if (!pill) return;
+  var deadline = new Date(pill.dataset.deadline);
+
+  function render(){
+    var hrs = (deadline - new Date()) / 3600000;
+    var breached = hrs <= 0;
+    pill.textContent = breached
+      ? ('breached ' + Math.abs(hrs).toFixed(1) + 'h ago')
+      : (hrs.toFixed(1) + 'h remaining');
+    pill.className = 'pill ' + (breached ? 'red' : (hrs < 4 ? 'amber' : 'green'));
+  }
+  render();
+  setInterval(render, 30000);
+
+  setInterval(function(){
+    fetch('/complaints/' + pill.dataset.cid + '/status.json', {cache:'no-store'})
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(d){
+        if (!d) return;
+        if (d.deadline && new Date(d.deadline) > deadline) {
+          // Extended while this page was open — count from the new promise.
+          deadline = new Date(d.deadline);
+          render();
+        }
+        if (['RESOLVED','CLOSED'].indexOf(d.status) !== -1) {
+          location.reload();   // someone else closed it — show the real state
+        }
+      }).catch(function(){});
+  }, 120000);
+})();
+</script>
 {% endblock %}
