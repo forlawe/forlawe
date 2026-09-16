@@ -56,6 +56,16 @@
 .ptv-btn.gold { background: linear-gradient(135deg,#FFD700,#FFA500); color: #000; }
 .ptv-btn.secondary { background: #f5f5f5; color: #333; border: 1px solid #ddd; }
 .ptv-qr { text-align: center; margin: 16px 0; padding: 16px; background: #fff; border-radius: 16px; }
+.ptv-qr summary { cursor: pointer; font-weight: 700; margin-bottom: 8px; }
+/* Emergency arrivals — condensed header: they need the queue position NOW,
+   not the branding. No greeting line, smaller ticket code, red instead of blue. */
+.ptv-header-emergency { background: #c0262c; color: #fff; padding: 10px 14px; }
+.ptv-header-emergency h1 { font-size: 1.05rem; }
+.ptv-header-emergency .code { font-size: 1.35rem; margin: 4px 0; letter-spacing: 1px; }
+.ptv-emergency-badge {
+  display: inline-block; background: #fff; color: #c0262c; padding: 3px 10px;
+  border-radius: 999px; font-weight: 800; font-size: .8rem;
+}
 .ptv-footer { text-align: center; font-size: .85rem; color: #666; margin-top: 20px; }
 .ptv-offline { background: #fff3cd; border: 1px solid #ffe69c; padding: 10px; border-radius: 8px; text-align: center; margin-bottom: 12px; }
 @media (prefers-color-scheme: dark) {
@@ -68,12 +78,13 @@
 <div class="personal-tv">
   <div id="offline-note" class="ptv-offline" style="display:none">📴 Offline — showing last known. Will update when back online.</div>
 
-  <div class="ptv-header">
+  <div class="ptv-header{% if feed.is_emergency %} ptv-header-emergency{% endif %}">
     <h1>{{ feed.org.name }}</h1>
     {% if feed.ticket %}<div class="code">{{ feed.ticket.code }}</div>{% endif %}
     {% if feed.intake %}<div class="code">{{ feed.intake.ref }}</div>{% endif %}
-    {% if feed.is_fast_track %}<span class="ptv-badge">⭐ Fast Track — Premium</span>{% endif %}
-    <div style="margin-top:8px;font-size:.9rem">Hi {{ feed.patient_name or 'there' }} 👋</div>
+    {% if feed.is_emergency %}<span class="ptv-emergency-badge">🚑 Emergency — we are on it</span>
+    {% elif feed.is_fast_track %}<span class="ptv-badge">⭐ Fast Track — Premium</span>{% endif %}
+    {% if not feed.is_emergency %}<div style="margin-top:8px;font-size:.9rem">Hi {{ feed.patient_name or 'there' }} 👋</div>{% endif %}
   </div>
 
   <div class="ptv-position">
@@ -106,8 +117,11 @@
 
   <div id="push-status" style="text-align:center;font-size:.85rem;color:#12b5a5;margin-bottom:12px;display:none">✅ You will be notified even if app closed, like alarm</div>
 
-  <div class="ptv-qr">
-    <div style="font-weight:700;margin-bottom:8px">Keep this page — scan QR</div>
+  {# QR behind a toggle: routine patients get it open (as before); emergency
+     arrivals see it collapsed — "save this page" is a convenience, and for
+     them the queue position is what matters first. #}
+  <details class="ptv-qr"{% if not feed.is_emergency %} open{% endif %}>
+    <summary>{% if feed.is_emergency %}📱 Save this page for another device{% else %}Keep this page — scan QR{% endif %}</summary>
     {% if qr_data_uri %}
     <img id="qr-img" alt="QR" style="width:160px;height:160px" src="{{ qr_data_uri }}">
     {% else %}
@@ -115,7 +129,7 @@
     {% endif %}
     <div style="font-size:.8rem;color:#666;margin-top:8px;word-break:break-all">{{ request.url_root }}t/{{ access_key }}</div>
     <div style="font-size:.75rem;color:#888;margin-top:4px">No app install needed. Works on any browser: Chrome, Firefox, Safari, Edge, Samsung, UC, Opera. Feature phone? Main TV + Voice + USSD.</div>
-  </div>
+  </details>
 
   <div class="ptv-footer">
     <div>💡 Tip: Main TV in waiting hall also shows your number</div>
