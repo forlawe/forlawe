@@ -4,7 +4,8 @@
 Usage:
   python run.py                  # start the web server (with scheduler)
   python run.py seed             # first-time setup: hospital, users, structure, roster
-  python run.py demo             # seed + sample inspection/complaint history for evaluation
+  python run.py demo             # DEMO ACCOUNT: tagged hospital, admin/Password, sample history
+  python run.py make-demo        # turn the EXISTING hospital in this database into the demo account
   python run.py tick             # run one scheduler pass (reminders, SLA, WhatsApp queue)
   python run.py backup           # create a database backup now
 """
@@ -33,6 +34,18 @@ def main():
         return
     if len(sys.argv) > 1 and sys.argv[1] == "demo":
         seed(demo=True)
+        return
+    if len(sys.argv) > 1 and sys.argv[1] == "make-demo":
+        # Existing deployment: tag the hospital as the DEMO ACCOUNT and set
+        # the demo sign-in (admin / Password). Seeds nothing; safe to re-run.
+        os.environ["DISABLE_SCHEDULER"] = "1"
+        from app import create_app
+        from app.seeddata import make_demo
+        app = create_app(scheduler=False)
+        org = make_demo(app)
+        if org is None:
+            print("No hospital in this database yet. Run `python run.py seed` "
+                  "(or `python run.py demo` for a fresh demo hospital) first.")
         return
     if len(sys.argv) > 1 and sys.argv[1] == "tick":
         os.environ["DISABLE_SCHEDULER"] = "1"

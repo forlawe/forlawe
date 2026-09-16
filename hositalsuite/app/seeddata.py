@@ -26,6 +26,27 @@ DEFAULT_PASSWORDS = {
     "hod.lab": "Hodlab#2026!",
 }
 
+# ---------------------------------------------------------------- demo account
+# The starter hospital is the DEMO ACCOUNT: a hospital any stakeholder may
+# explore without touching real patient data. In demo mode the hospital is
+# visibly tagged "(Demo Account)" on every page/PDF, the administrator signs
+# in with the simple demo login  admin / Password  (owner request), and no
+# seeded account is forced through a password change — visitors must be able
+# to walk straight in. NEVER set demo mode on a server that holds real data.
+DEMO_HOSPITAL_NAME = "Lagos State Teaching Hospital"
+DEMO_ACCOUNT_TAG = " (Demo Account)"
+DEMO_ADMIN_PASSWORD = "Password"
+
+DEMO_PASSWORDS = dict(DEFAULT_PASSWORDS, admin=DEMO_ADMIN_PASSWORD)
+
+
+def demo_org_name(name: str | None = None) -> str:
+    """The hospital's name with the Demo Account tag (idempotent)."""
+    base = name or DEMO_HOSPITAL_NAME
+    if DEMO_ACCOUNT_TAG.strip() in base:
+        return base
+    return (base + DEMO_ACCOUNT_TAG)[:160]
+
 
 def _pw(username: str, overrides: dict | None) -> str:
     if overrides and username in overrides:
@@ -38,21 +59,32 @@ def seed_data(app, demo: bool = False, passwords: dict | None = None,
               hospital_phone: str | None = None,
               hospital_phone_alt: str | None = None,
               announce: bool = True):
-    """Create the starter hospital if (and only if) the database is empty."""
+    """Create the starter hospital if (and only if) the database is empty.
+
+    With ``demo=True`` the hospital is tagged "(Demo Account)", the admin
+    signs in with ``admin / Password``, and seeded accounts are NOT forced
+    to change their password at first login.
+    """
     from .models import (ComplaintCategory, Department, DutyRoster, Organization,
                          QrLocation, Section, Unit, User, db, new_code, now_naive)
+    if passwords is None and demo:
+        passwords = DEMO_PASSWORDS
     with app.app_context():
         if db.session.query(Organization).first():
             return None
+        name = hospital_name or (demo_org_name() if demo else DEMO_HOSPITAL_NAME)
         org = Organization(code=(hospital_code or "HOSP")[:12],
-                           name=hospital_name or "Lagos City Teaching Hospital",
+                           name=name,
                            phone=hospital_phone, phone_alt=hospital_phone_alt)
         db.session.add(org)
         db.session.flush()
 
         def user(username, name, role, phone=None, email=None):
             u = User(org_id=org.id, username=username, name=name, role=role,
-                     phone=phone, email=email, must_change_password=True)
+                     phone=phone, email=email,
+                     # Demo visitors must walk straight in; production accounts
+                     # (demo=False) still get the forced first-login change.
+                     must_change_password=not demo)
             u.set_password(_pw(username, passwords))
             db.session.add(u)
             db.session.flush()
@@ -103,8 +135,15 @@ def seed_data(app, demo: bool = False, passwords: dict | None = None,
 
         if announce:
             print("=" * 70)
-            print("FIRST-RUN SETUP COMPLETE — initial accounts (change at first login):")
-            print("-" * 70)
+            if demo:
+                print("DEMO ACCOUNT READY — " + org.name)
+                print("-" * 70)
+                print("  DEMO LOGIN:  admin / " + DEMO_ADMIN_PASSWORD)
+                print("  (demo accounts are NOT forced to change password)")
+                print("-" * 70)
+            else:
+                print("FIRST-RUN SETUP COMPLETE — initial accounts (change at first login):")
+                print("-" * 70)
             for uname in DEFAULT_PASSWORDS:
                 print(f"  {uname:14s} / {_pw(uname, passwords)}")
             print("=" * 70)
@@ -191,6 +230,11 @@ def auto_seed(app):
     Credentials: from SEED_<USERNAME> env vars when provided, otherwise
     strong random passwords printed ONCE to the server log.
 
+    SEED_DEMO=1 turns the fresh hospital into the DEMO ACCOUNT: the hospital
+    is tagged "(Demo Account)" and the sign-in is admin / Password with no
+    forced password change. Only for showcase deployments — never point a
+    real hospital's server at it.
+
     SEED_HOSPITAL_PHONE / SEED_HOSPITAL_PHONE_ALT set the hospital's
     contact numbers on the seeded org — the patient welcome page shows
     them on the emergency card and help desk, so a fresh deployment is
@@ -201,16 +245,51 @@ def auto_seed(app):
     with app.app_context():
         if db.session.query(Organization).first():
             return
+    demo = os.environ.get("SEED_DEMO") == "1"
+    base = dict(DEMO_PASSWORDS) if demo else {}
     overrides = {}
     for uname in DEFAULT_PASSWORDS:
         env_key = "SEED_" + uname.upper().replace(".", "_").replace("-", "_")
         val = os.environ.get(env_key)
         if val:
             overrides[uname] = val
+        elif uname in base:
+            overrides[uname] = base[uname]
     if not overrides:
         overrides = {uname: secrets.token_urlsafe(10) + "A1!" for uname in DEFAULT_PASSWORDS}
-    seed_data(app, passwords=overrides,
+    seed_data(app, demo=demo, passwords=overrides,
               hospital_name=os.environ.get("SEED_HOSPITAL_NAME"),
               hospital_code=os.environ.get("SEED_HOSPITAL_CODE"),
               hospital_phone=os.environ.get("SEED_HOSPITAL_PHONE"),
               hospital_phone_alt=os.environ.get("SEED_HOSPITAL_PHONE_ALT"))
+
+
+def make_demo(app, hospital_name: str | None = None):
+    """Turn the hospital already in this database into the DEMO ACCOUNT.
+
+    Use on an EXISTING deployment (the seed helpers only run on an empty
+    database): tags the hospital name with "(Demo Account)", resets the
+    ``admin`` sign-in to ``admin / Password`` and lifts every forced
+    password change in the org so demo visitors can log straight in.
+    Other accounts keep their passwords. Returns the Organization, or
+    None when the database has no hospital yet.
+    """
+    from .models import Organization, User, db
+    with app.app_context():
+        org = db.session.query(Organization).order_by(Organization.id).first()
+        if org is None:
+            return None
+        org.name = demo_org_name(hospital_name or org.name)
+        for u in db.session.query(User).filter_by(org_id=org.id).all():
+            u.must_change_password = False
+            if u.username == "admin":
+                u.set_password(DEMO_ADMIN_PASSWORD)
+        db.session.commit()
+        print("=" * 70)
+        print("DEMO ACCOUNT READY — " + org.name)
+        print("-" * 70)
+        print("  DEMO LOGIN:  admin / " + DEMO_ADMIN_PASSWORD)
+        print("  WARNING: this is a guessable password on a real server.")
+        print("  Change it back (or wipe the data) before going live.")
+        print("=" * 70)
+        return org
