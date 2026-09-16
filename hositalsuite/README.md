@@ -43,11 +43,29 @@ Rating bands: 22–25 EXCELLENT · 18–21 GOOD · 13–17 FAIR/NEEDS IMPROVEMEN
 cd hospitalsuite
 pip install -r requirements.txt
 python run.py seed          # clean production setup (hospital + users + structure + roster)
-# or: python run.py demo    # same + 10 days of sample inspection history for evaluation
+# or: python run.py demo    # DEMO ACCOUNT: hospital tagged '(Demo Account)',
+#                           # admin/Password sign-in + sample inspection history
 ./start.sh                  # serves on http://0.0.0.0:8077
 ```
 
-**Seeded accounts (change all passwords before real use):**
+**DEMO ACCOUNT** (`python run.py demo`, or `AUTO_SEED=1 SEED_DEMO=1` on Render):
+
+| Role | Username | Password |
+|---|---|---|
+| Super Administrator (demo) | `admin` | `Password` |
+
+The seeded hospital is **Lagos State Teaching Hospital (Demo Account)** — the
+tag shows on every page, portal and PDF. No seeded account is forced to change
+its password, so stakeholders can sign straight in. **For showcase use only:
+never point a demo deployment at real patient data**, and change the password
+(or reseed with `python run.py seed`) before going live.
+
+Already deployed? Convert the existing hospital in place with
+`python run.py make-demo` — it tags the hospital, sets the admin sign-in to
+`admin / Password` and lifts forced password changes (idempotent).
+
+**Production seeded accounts** (`python run.py seed`, change all passwords
+before real use — the seed output prints them once):
 
 | Role | Username | Password |
 |---|---|---|
@@ -103,6 +121,7 @@ ReportLab · qrcode · Web Speech API (voice-to-text) · Meta WhatsApp Cloud API
 | `SECRET_KEY` | session/CSRF signing — long random string |
 | `DATABASE_URL` | `sqlite:///data/app.db` (default) or `postgresql://user:pass@host/db` |
 | `PUBLIC_BASE_URL` | used inside QR codes and verification links |
+| `SEED_DEMO` | `1` = first boot of an empty DB seeds the DEMO ACCOUNT (hospital tagged `(Demo Account)`, sign-in `admin` / `Password`, no forced change). Showcase deployments only. |
 | `WHATSAPP_MODE` | `sandbox` (default) · `cloud` · `disabled` |
 | `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_ACCESS_TOKEN` | **Meta Cloud API credentials** (create a Meta Business app → WhatsApp → API Setup; use a permanent System User token) |
 | `WHATSAPP_VERIFY_TOKEN`, `WHATSAPP_APP_SECRET` | webhook security |

@@ -34,6 +34,12 @@ services:
       - key: AUTO_SEED
         value: "1"               # seeds ONLY an empty database; prints initial
                                  # logins once to the deploy log (free plan has no shell)
+      - key: SEED_DEMO
+        value: "0"               # set "1" to make the fresh hospital the DEMO
+                                 # ACCOUNT: name tagged '(Demo Account)', sign-in
+                                 # admin / Password, no forced password change.
+                                 # First boot of an EMPTY database only. Showcase
+                                 # deployments only — never with real patient data.
       - key: WHATSAPP_MODE
         value: sandbox           # switch to 'cloud' + credentials when Meta is approved
       - key: SMS_MODE
