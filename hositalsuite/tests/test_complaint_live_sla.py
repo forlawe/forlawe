@@ -136,3 +136,53 @@ def test_no_roster_entry_means_no_tag(app, client, seeded):
     login(client, "md")
     html = client.get(f"/complaints/{cid}").data.decode()
     assert "on duty today" not in html
+
+
+# ============================================ last active — real data, not duty
+def test_roles_without_roster_show_last_active_not_duty(app, client, seeded):
+    from app.models import User
+    with app.app_context():
+        bob = db.session.get(User, seeded["am2"])
+        bob.last_login_at = now_naive() - timedelta(hours=2, minutes=15)
+        db.session.flush()
+        dept = db.session.get(Department, seeded["dept"])
+        c = _complaint(seeded["org"], dept, hours_left=6.0)
+        cid = c.id
+        db.session.commit()
+    login(client, "md")
+    lines = client.get(f"/complaints/{cid}").data.decode().splitlines()
+    bob_line = [l for l in lines if "Bob Manager" in l][0]
+    assert "last active 2 hours 15 minutes ago" in bob_line
+    # No roster entry for Bob — he must not carry an on-duty claim.
+    assert "on duty today" not in bob_line
+
+
+def test_on_duty_tag_beats_last_active(app, client, seeded):
+    from app.models import User
+    with app.app_context():
+        alice = db.session.get(User, seeded["am"])   # rostered for today
+        alice.last_login_at = now_naive() - timedelta(hours=5)
+        db.session.flush()
+        dept = db.session.get(Department, seeded["dept"])
+        c = _complaint(seeded["org"], dept, hours_left=6.0)
+        cid = c.id
+        db.session.commit()
+    login(client, "md")
+    lines = client.get(f"/complaints/{cid}").data.decode().splitlines()
+    alice_line = [l for l in lines if "Alice Manager" in l][0]
+    assert "on duty today" in alice_line
+    # Saying both would imply the login is tracking duty — it isn't.
+    assert "last active" not in alice_line
+
+
+def test_never_logged_in_gets_no_last_active_guess(app, client, seeded):
+    with app.app_context():
+        dept = db.session.get(Department, seeded["dept"])
+        c = _complaint(seeded["org"], dept, hours_left=6.0)
+        cid = c.id
+        db.session.commit()
+    login(client, "md")
+    lines = client.get(f"/complaints/{cid}").data.decode().splitlines()
+    bob_line = [l for l in lines if "Bob Manager" in l][0]
+    assert "last active" not in bob_line
+    assert "on duty today" not in bob_line

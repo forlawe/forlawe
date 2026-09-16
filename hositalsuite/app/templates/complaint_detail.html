@@ -62,7 +62,7 @@
     <select name="to_user_id" required>
       <option value="">— choose who should take this —</option>
       {% for u in authorities %}
-      <option value="{{ u.id }}">{{ u.name }} — {{ u.role_name }}{% if u.id == on_duty_am_id %} 🟢 on duty today{% endif %}</option>
+      <option value="{{ u.id }}">{{ u.name }} — {{ u.role_name }}{% if u.id == on_duty_am_id %} 🟢 on duty today{% elif u.id in last_active %} · {{ last_active[u.id] }}{% endif %}</option>
       {% endfor %}
     </select>
     <label class="mt">Why does this need them? <span class="req">*</span></label>

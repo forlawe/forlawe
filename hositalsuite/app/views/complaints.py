@@ -15,6 +15,7 @@ from ..models import (Complaint, ComplaintCategory, ComplaintStatusHistory,
 from ..navigation import require_permission
 from ..security import rate_limit, require_login, require_role, resolve_upload_path, save_upload
 from .. import scoring
+from ..timefmt import last_active_phrase
 
 bp = Blueprint("complaints", __name__)
 
@@ -322,15 +323,23 @@ def staff_detail(cid: int):
     may_escalate = escalation.may_escalate(current_user, c)
     # The one role the system actually keeps on a shift roster (Admin Manager
     # on duty) gets a real "on duty today" tag in the escalation dropdown.
-    # The other authority roles have no roster data, so no fake availability
-    # signal for them — User.last_login_at is tracked, but logging in is not
-    # the same thing as being on duty.
+    # The other authority roles have no roster data, so for them we show what
+    # IS real — when they last logged in — and nothing more: last active is
+    # presence evidence, not duty status, and the on-duty tag beats it.
     on_duty_am = services.on_duty(c.org_id, now_naive().date())
-    return render_template("complaint_detail.html", c=c, hod=hod, now=now_naive(),
+    now = now_naive()
+    authorities = escalation.authorities(c.org_id) if may_escalate else []
+    last_active = {}
+    for u in authorities:
+        phrase = last_active_phrase(u.last_login_at, now)
+        if phrase:
+            last_active[u.id] = phrase
+    return render_template("complaint_detail.html", c=c, hod=hod, now=now,
                            can_act=current_user.role in ("SUPER_ADMIN", "MD_CEO", "ADMIN_MANAGER")
                            or (hod and hod.id == current_user.id),
                            may_escalate=may_escalate,
-                           authorities=escalation.authorities(c.org_id) if may_escalate else [],
+                           authorities=authorities,
+                           last_active=last_active,
                            on_duty_am_id=on_duty_am.id if on_duty_am else None,
                            hours_left=escalation.hours_left(c))
 

@@ -94,3 +94,22 @@ def say_hm(value) -> str:
     if mins:
         parts.append("1 minute" if mins == 1 else f"{mins} minutes")
     return " ".join(parts)
+
+
+def last_active_phrase(when, now) -> str | None:
+    """'last active 2 hours 5 minutes ago' from a timestamp, None if never set.
+
+    Deliberately says LAST ACTIVE, never available or on duty: a login is
+    evidence of presence, not a duty status. Callers must not dress this up
+    as availability — the duty roster (services.on_duty) is the only real
+    on-duty signal this system has.
+    """
+    if when is None:
+        return None
+    try:
+        mins = int((now - when).total_seconds() // 60)
+    except Exception:
+        return None
+    if mins < 1:
+        return "last active just now"
+    return f"last active {say_hm(mins)} ago"
