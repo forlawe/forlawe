@@ -1,6 +1,10 @@
 # One-click Render Blueprint — https://render.com/docs/blueprint-spec
 # FIX 2026-08-27 (expert review): Free tier is NOT for production — it sleeps after 15 min,
 # causes 30 sec cold start, and caused 15 Aug outage (Supabase pause). Upgrade to starter minimum.
+# STATUS 2026-09-23: this service is still on plan=free and is currently SUSPENDED FOR
+# BILLING (Render account, not this file). A blueprint's `plan:` line only applies on a
+# fresh blueprint-driven create — it does NOT retroactively change an existing service.
+# See PRODUCTION_ENV_AUDIT_2026-09-23.md for what a human must do in the Render dashboard.
 # IMPORTANT: workers=1 on purpose for PILOT. The app runs an in-process scheduler
 # (reminders, SLA escalation, WhatsApp/SMS retries, nightly backup). With more
 # than one worker those jobs would run once per worker and double-send.
@@ -42,6 +46,15 @@ services:
                                  # deployments only — never with real patient data.
       - key: WHATSAPP_MODE
         value: sandbox           # switch to 'cloud' + credentials when Meta is approved
+      - key: WHATSAPP_PHONE_NUMBER_ID   # Meta phone-number-id — required for WHATSAPP_MODE=cloud
+        sync: false
+      - key: WHATSAPP_ACCESS_TOKEN      # permanent system-user token from Meta
+        sync: false
+      - key: WHATSAPP_VERIFY_TOKEN      # any string you choose; must match Meta webhook setup
+        sync: false
+      - key: WHATSAPP_APP_SECRET        # SECURITY (F-005): without this, inbound webhook
+        sync: false                    # signature verification is SKIPPED, not enforced.
+                                       # Must be set before WHATSAPP_MODE=cloud goes live.
       - key: SMS_MODE
         value: sandbox           # switch to 'termii' when ready — see
                                  # docs/SMS_AND_WHATSAPP_SETUP.md
@@ -62,6 +75,37 @@ services:
       - key: TWILIO_AUTH_TOKEN
         sync: false
       - key: TWILIO_WHATSAPP_FROM  # e.g. +14155238886 — keep the leading +
+        sync: false
+      - key: USSD_SHARED_SECRET  # shared secret any USSD aggregator (Africa's Talking etc.)
+        sync: false             # must send when POSTing to /api/v1/ussd/*
+      # --- Push / "alarm when app closed" (compulsory feature) ---
+      # Without these three, app/push.py auto-generates a fresh keypair on every
+      # boot and only saves it to the ephemeral local disk — every push
+      # subscription breaks silently on every redeploy. Generate ONCE and set
+      # here so keys survive redeploys. See PRODUCTION_ENV_AUDIT_2026-09-23.md
+      # for a ready-to-use generated pair for THIS service, or generate your own:
+      #   python3 -c "from cryptography.hazmat.primitives.asymmetric import ec;
+      #   import base64; k=ec.generate_private_key(ec.SECP256R1());
+      #   pn=k.private_numbers(); pb=pn.private_value.to_bytes(32,'big');
+      #   pub=k.public_key().public_numbers();
+      #   ub=b'\x04'+pub.x.to_bytes(32,'big')+pub.y.to_bytes(32,'big');
+      #   b64=lambda b: base64.urlsafe_b64encode(b).decode().rstrip('=');
+      #   print('VAPID_PUBLIC_KEY='+b64(ub)); print('VAPID_PRIVATE_KEY='+b64(pb))"
+      - key: VAPID_PUBLIC_KEY
+        sync: false
+      - key: VAPID_PRIVATE_KEY
+        sync: false
+      - key: VAPID_SUBJECT       # e.g. mailto:admin@yourhospital.org
+        sync: false
+      # --- AI chatbot fallback (optional, free tiers, but chatbot degrades to
+      # rule-based-only without at least one of these) ---
+      - key: AI_FALLBACK
+        value: "1"
+      - key: GROQ_API_KEY        # https://console.groq.com — recommended primary provider
+        sync: false
+      - key: GEMINI_API_KEY      # https://aistudio.google.com — recommended secondary
+        sync: false
+      - key: OPENROUTER_API_KEY  # https://openrouter.ai — optional third line
         sync: false
       - key: STORAGE_BACKEND
         value: db                # uploads/PDFs in the database — Render's disk is
